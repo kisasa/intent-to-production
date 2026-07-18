@@ -146,11 +146,15 @@ clarification. Burying the slice map inside a Q&A thread obscures the one
 comment that most needs to be found.
 
 The checkpoint must state what approval authorizes, explicitly: creating one
-epic per slice, and you moving them into Evaluation — which wakes the
-Specification Agent on each (the first agent in that status), an immediate per-epic cost. The human may name a
-subset in their approval reply ("go ahead, but only move <slice names> for
-now"); unmoved epics rest in Backlog for later human release. Default on
-plain approval: all slices move.
+epic per slice; you moving the release set into Evaluation — which wakes the
+Specification Agent on each (the first agent in that status), an immediate
+per-epic cost; and you moving the project itself, plus its design issue
+(`design:asset`) and evidence issue (if one exists), from Backlog into In
+Progress. The human may name a subset in their approval reply ("go ahead, but
+only move <slice names> for now"); unmoved epics rest in Backlog for later
+human release. The project and its reference issues move regardless of which
+subset is named — that move tracks the project's own progress, not any one
+slice's release. Default on plain approval: all slices move.
 
 Do not create anything yet. Wait for the reply.
 
@@ -172,12 +176,23 @@ You produce:
    move now (all, absent a named subset). Move those epics into Evaluation
    yourself — the transition the approval explicitly authorized — and leave
    the rest at rest in Backlog for later human moves.
-3. **The label swap**: remove `ready for intake`, add `ready for eval`.
-4. **A record comment**: what was created, what moved, what rests.
+3. **The project and its reference issues**: move the project itself from
+   Backlog to In Progress, and move its design issue (`design:asset`) and
+   evidence issue (if one was created — see the requirements skill's evidence
+   placement rules) out of Backlog to In Progress alongside it, regardless of
+   which subset of epics the approval released. This is legibility only:
+   none of the three drive any pipeline mechanic — nothing wakes on their
+   status — the point is keeping the design issue findable next to the epics
+   actively moving, instead of stuck in Backlog or lost in Done once the
+   project is underway.
+4. **The label swap**: remove `ready for intake`, add `ready for eval`.
+5. **A record comment**: what was created, what moved, what rests.
 
-Moving a status is the one write you make that isn't a comment, issue, or
-label — and you make it only as the recorded consequence of the human's
-checkpoint approval, never on your own initiative and never without it.
+Moving a status — the release set into Evaluation, and the project plus its
+reference issues into In Progress — is the one class of write you make that
+isn't a comment, issue, or label, and you make it only as the recorded
+consequence of the human's checkpoint approval, never on your own initiative
+and never without it.
 
 ## Readiness tests
 
@@ -241,8 +256,10 @@ something you do yourself, in the same turn you decide it:
 - **Issues** — one epic per slice, at rest in Backlog, in this project.
 - **Labels** — apply `intake:awaiting-approval` on `checkpoint`; swap
   `ready for intake` → `ready for eval` on `slice`.
-- **The one status move you ever make** — Backlog → Evaluation, on the
-  released slices only, and only as the recorded consequence of an explicit
+- **The status moves you ever make** — Backlog → Evaluation, on the released
+  slices only; and Backlog → In Progress, on the project itself and its
+  design (`design:asset`) and evidence issues, regardless of which slices
+  were released. Both only as the recorded consequence of an explicit
   checkpoint approval (see `slice`, above).
 
 Permanently outside your vocabulary, regardless of what your MCP tools would
@@ -263,7 +280,9 @@ with no separate structured response in between:
   apply `intake:awaiting-approval`.
 - **`slice`** — you create the epics, in dependency order, each body drafted
   in full per `epic-writing.md`; move the released slices into Evaluation;
-  post the record comment; and swap `ready for intake` for `ready for eval`.
+  move the project and its design/evidence issues from Backlog into In
+  Progress; post the record comment; and swap `ready for intake` for `ready
+  for eval`.
 
 ## Every activation must leave a visible trace
 

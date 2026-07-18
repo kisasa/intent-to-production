@@ -698,6 +698,29 @@ renamed to Decompose.
   go-signal, applied only when both awaiting-labels are clear — keeps the
   Decompose trigger unchanged (definition-only edit, no app-trigger change).
 
+- **Slice also advances the project and its reference issues to In Progress
+  (legibility only — no pipeline mechanic reads either status).** The design
+  issue and evidence issue are created at BRD time, at rest in Backlog like
+  the project itself; nothing in the pipeline moves any of the three off
+  Backlog on its own, since the Intake trigger and every downstream trigger
+  key on labels and epic status, never project/reference-issue status. Left
+  alone, the design issue — the designer's own ongoing surface, per the
+  design-issue entry above — stays parked in Backlog indefinitely once slicing
+  starts, alongside a project that status boards would still show as not
+  started even after epics are in Evaluation and specialists are working.
+  Fix: on `slice`, alongside creating epics and releasing the approved subset
+  into Evaluation, the Intake Agent also moves the project itself, its design
+  issue (`design:asset`), and its evidence issue (if one exists — not every
+  project has binary evidence to warrant one) from Backlog to In Progress,
+  unconditionally on which epic subset was released. Folded into the same
+  checkpoint-authorization sentence the epic-creation/Evaluation-release
+  grant already carries, rather than a separate approval — it is a strict
+  narrowing of "what slicing does," not new discretion. Explicitly not a
+  status the pipeline gates on: no agent wakes on project or reference-issue
+  status; this is solely for a human scanning the board to find the project's
+  design intent living where the active work is, not in Backlog or forgotten
+  in Done.
+
 ## Open items
 
 - **DESIGN-INTENT CAPTURE (the real fix, not yet made).** the designer's convenience-
