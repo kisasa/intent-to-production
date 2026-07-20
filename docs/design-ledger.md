@@ -721,9 +721,100 @@ renamed to Decompose.
   design intent living where the active work is, not in Backlog or forgotten
   in Done.
 
+- **Conventions are a spec in the codebase, not a skill in the framework.**
+  Working through what a specialist needs (against PROJ-24) surfaced the
+  over-provisioning trap: if the codebase is the ONLY source of house
+  conventions, a greenfield surface would need a complete example of every
+  pattern before the pipeline could run. Rejected the first fix (per-type
+  `*-conventions` SKILLS shipped in the framework) — conventions are not
+  framework artifacts and not skills. Adopted: an optional, architect-owned
+  **conventions spec** (commonly `CONVENTIONS.md`) living at each surface root
+  in the PROVIDED repo, read by the specialist via MCP IF PRESENT. Code
+  EXEMPLIFIES (runtime, structure, one representative pattern); the conventions
+  spec GENERALIZES (the rules) — neither has to be complete because they cover
+  different things. Not seeded, not proposed, not confirmed by any agent — the
+  pipeline does not manage it; the Specification Agent keeps doing the API map
+  only. Rejected auto-deriving it (even for brownfield, where it's derivable
+  from code): the architect's call, for productizing to teams that cut corners, an
+  auto-derived spec would look authoritative while being thin — dishonest.
+  Better that output quality tracks architect effort LEGIBLY: effort in,
+  quality out, the relationship visible and the responsibility the architect's.
+  Corner-cutting is not prevented, it is made the architect's own and its
+  consequences visible. ("Prototype"/conventions-skill vocabulary scrubbed;
+  the four `*-conventions` skills removed from the framework.)
+
+- **Spec-readiness gate — the codebase must be readable before the map is
+  drawn (Specification Agent, blocking).** Real failure from the last LET run:
+  the agent was given a frontend-only repo (old POS app, no backend, wrong
+  folder structure) and would infer "backend is TypeScript because the frontend
+  is" — a wrong runtime assumption nothing downstream could catch, hardening
+  into the map and then every story. Fix: before reading for existence, the
+  Specification Agent confirms each surface's codebase is spec-ready — real code
+  present, runtime/framework a READABLE FACT not a cross-surface inference, and
+  for a greenfield surface at least a representative starter (solution +
+  structure + one real pattern) to shape and write stories against. If not, it
+  BLOCKS (posts exactly what's missing, waits) rather than mapping against a
+  guess. Placed at spec, NOT decompose: spec is the pipeline's codebase reader,
+  and a reader that can't read its source can't produce a valid map; blocking
+  at decompose would be after the bad assumption already hardened. Distinct from
+  the conventions spec: the gate is about the code being spec-able at all
+  (can-the-pipeline-function), independent of the optional quality-tuning
+  conventions spec. For greenfield surfaces this is a documented human setup
+  precondition (make the codebase spec-ready first), enforced by the gate but
+  performed by the architect — and the same act that seeds the starter is where
+  the architect would author the conventions spec.
+
+- **Specialist model settled: a Claude Code agent driven by a developer prompt,
+  taught the pipeline's structure, not any story's content.** Reconciling the
+  stale specialist definitions against the real PROJ-24 story and the MCP shift.
+  Rejected app-orchestrated specialists (verdict-consuming, context-fed-by-app —
+  the whole `submit_verdict` model). Adopted: a developer points the specialist
+  at a story identifier; it is taught the pipeline's STRUCTURE and how to
+  navigate it (walk up story → epic → resolved API-map document → design issue),
+  NOT the content of any story (that is per-run context it fetches, not baked
+  in). It touches TWO MCPs — the issue tracker (fetch its own context, post its
+  report + outcome label) and source control (implement, open a PR for human
+  review; it never merges). Hand-back is a PR plus a completion report on the
+  issue (PR/branch, what-implemented, local-env tribal knowledge, unit-test-
+  scenario coverage map, questions/assumptions = feedback to the shaping tier,
+  blockers). Two sharpenings fell out: read the dependency's actual MERGED code,
+  not the story's description of it; and reads the surface conventions spec if
+  present. Validated in reasoning (not yet a run) by PROJ-24's self-containment:
+  the story carried its own why + the architect's map ruling + exact anchors, so
+  a lean specialist can execute it — which is the evidence that decomposition
+  thoroughness is what makes lean specialists possible.
+
+- **Decomposition is invariant; only the band VALUE is tunable (resolves the
+  general-vs-rich framing).** "General agent fed skills" and "rich specialist"
+  are not a fork — richness comes from stacking the invariant agent + the
+  variant conventions spec + the run-time context (all-why/relevant-what). The
+  general agent IS the rich specialist. Because a lean specialist works only
+  when the story is thorough, decomposition's thoroughness is load-bearing and
+  therefore INVARIANT — teams don't reshape how an epic is cut; they depend on
+  it being maximally thorough. This settles the parked A/B: Option A — the
+  partition rules, taxonomy, and dependency-graph logic live inline in
+  `decompose-agent.md`; only the size-band number is a team tunable (config,
+  not a skill). Applied: the dangling `story-decomposition.md` citations are
+  removed and that content inlined (see Open-items resolution below).
+
+- **The whole shaping tier reconciled to MCP-direct writes.** The write-path
+  collapse (recorded earlier as a RULE) is now applied to the agent DEFINITIONS
+  themselves. `intake-agent.md`, `specification-agent.md`, and
+  `decompose-agent.md` no longer emit a verdict an app executes — each makes its
+  own tracker writes via MCP, bounded by role discipline stated in what it may
+  write (status only as a recorded consequence of human approval; never
+  priority; never delete) rather than by an app whitelist gating it. Decompose
+  is the reference version; intake and spec follow the same pattern. The four
+  specialist definitions likewise reconciled (see specialist model above). The
+  app retains exactly two roles, unchanged and correct: WAKING agents on webhook
+  events, and posting an error comment when a run crashes before the agent can
+  narrate it (the two-failure-mode error handler). `code-review-agent.md` is
+  still a draft and still carries old framing — the one un-reconciled agent.
+
 ## Open items
 
-- **DESIGN-INTENT CAPTURE (the real fix, not yet made).** the designer's convenience-
+- **RESOLVED: design-intent capture.** (Kept here as the trail from problem to
+  fix; the resolution is the design-issue keeper above.) the designer's convenience-
   fees example: "turn on Cardpoint -> convenience fees auto-light-up" is a
   behavioral rule / cross-surface dependency, likely ABSENT from artifacts
   because (a) evidence was a crawl of the running prototype + stabilization
@@ -743,6 +834,33 @@ renamed to Decompose.
   rich single-agent execution; the architect leans split-with-shared-E2E. Agreed to
   add a decompose-time question (split vs. full-stack) and judge on code
   quality from real runs.
+- **PARKED: generated specialist.** the architect wants to reach a place where the
+  specialist agent is GENERATED — composed per-story from the invariant agent +
+  the team conventions spec + the story's context — but "now is not the time."
+  Validate the static prompt-driven specialist first: you cannot build a good
+  generator until a real run shows what a specialist actually needs (the
+  generator's output is a specialist definition, so its hardest job — composing
+  the right context — is exactly what a run reveals). The static PROJ-24 run is
+  strictly on the path to the generated version, not throwaway. Note: Managed
+  Agents (server-hosted stateful agents with Anthropic-managed sandbox, Skills +
+  MCP, file mounts — surfaced in the agent-development research) are a plausible
+  substrate; a reason to keep specialist definitions clean enough to become a
+  managed-agent spec later.
+- **PARKED: right-sized pipeline entry (bug fixes).** Not all work should enter
+  at the top (BRD). A small bug fix has no intent to map or epic to slice —
+  forcing it through five gates would discredit the framework. Likely shape:
+  work enters at the tier matching it; story-shaped work (a bug fix) enters at
+  the story tier directly, getting the gates that matter (well-formed story,
+  unit-test scenarios, specialist execution, PR review) and skipping the ones
+  that don't (intent-mapping, decomposition). NOT decided — real trap: a
+  "skip to story" path is an exception to every-story-traces-to-intent, and
+  exceptions leak quality. Design deliberately later.
+- **The PROJ-24 backend specialist run is the frontier.** First specialist
+  execution ever; answers "does the pipeline produce good code?" and settles
+  the specialist model + decomposition-invariant empirically. Requires the LET
+  backend surface made spec-ready first (C# starter solution + structure + one
+  representative endpoint) per the spec-readiness gate — the same act authors
+  the backend conventions spec.
 
 - Exhibit redaction depth (per exhibit; reconstructed exhibits weaken the
   reference claim).
@@ -763,20 +881,14 @@ renamed to Decompose.
   system-prompt-per-agent-type loading with per-activation template +
   agent-file + skill-file attachment (per the prompt format already in
   hand).
-- **`decompose-agent.md` cites `story-decomposition.md`, a file it doesn't
-  declare loading.** Its intro states it loads only `epic-writing.md` and
-  `story-contract.md` (consistent with the ledger's "loads NO team-forked
-  skill" and the stale pre-MCP code's skill list), but its body twice
-  references applying `story-decomposition.md` for the size band and
-  partition rules, while also saying to apply the size band "below" —
-  implying that content is actually self-contained in the definition, not
-  external. Likely a leftover from the merge the ledger already records
-  ("Decompose Agent definition merged: field-tuned original as base +
-  settled amendments") that wasn't fully cleaned up. Doesn't affect the
-  prompt template — the file list (`epic-writing.md`, `story-contract.md`)
-  is already correct — but the agent definition itself has a dangling
-  reference. Unresolved: fix `decompose-agent.md` now, or batch with the
-  Claude Code rebuild.
+- **RESOLVED: `decompose-agent.md` dangling `story-decomposition.md`
+  reference.** Fixed via Option A (see the decomposition-invariant keeper
+  above): the partition rules and size band are now written inline in
+  `decompose-agent.md` as their own sections, and every `story-decomposition.md`
+  citation is removed — the "loads no skill" claim is now literally true. The
+  band default (3–10) is a stated inline value, the one thing a team may tune;
+  the rule that an over-band decomposition must surface as a choice is
+  invariant. (Done alongside the MCP-direct reconciliation of the same file.)
 - Minor, not blocking: the per-story `spec:<specialist>` / `size:<size>` /
   `tier:<tier>` label convention isn't stated anywhere in
   `decompose-agent.md`'s own text (unlike the `eval:*` labels, which it
