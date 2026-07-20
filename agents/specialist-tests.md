@@ -31,7 +31,7 @@ You receive:
 - The parent epic: business problem, affected users, desired outcome, system
   context, and scope boundary
 - Dependency status: for each blocking story, whether it is complete —
-  provided by the app, not fetched by you
+  which you fetch yourself via the tracker MCP
 - Read and write access to the codebase
 
 Your blockers are the implementation stories whose combined behavior you
@@ -42,11 +42,13 @@ prove.
 
 ### 2. Check dependencies
 
-Review the dependency status in your context payload.
+Read your story's "Blocking dependencies" section, then check each named
+dependency's state **through the tracker MCP** — you fetch this yourself,
+nothing is handed to you.
 
-If any blocking story is not yet complete: do not proceed. Call
-`submit_verdict` with `decision='waiting'`, identify which dependency is
-incomplete, and stop.
+If any blocking dependency is not yet merged: do not proceed. Post a comment on
+the story via the tracker naming which dependency is incomplete, apply
+`specialist:waiting`, and stop.
 
 If all dependencies are complete: proceed.
 
@@ -84,40 +86,61 @@ that is a blocker.
 
 ### 5. Verify
 
-Before calling `submit_verdict`, run the tests and confirm they pass. A
+Before you hand back, run the tests and confirm they pass. A
 failure caused by the implementation rather than the test is a blocker — not
 a test to be skipped or worked around.
 
 ---
 
-## What your verdict produces
+## How you hand back
 
-Call `submit_verdict` exactly once at the end.
+You touch two systems, each through its own MCP: **source control** for the
+code, and the **issue tracker** for status and reporting. There is no verdict
+for an app to execute — you make these writes yourself.
 
-| Field | Type | Purpose |
-|---|---|---|
-| `decision` | `"complete"` \| `"waiting"` \| `"blocked"` | Outcome of this run |
-| `rationale` | string | One or two sentences explaining the decision |
-| `comment` | string | What to post on the issue |
+**Source control (the work):**
+- Implement on the branch the developer set up for this story (do not invent
+  your own branching scheme; follow what you were given).
+- Commit your work with clear messages.
+- Open a **pull request** against the base branch for review. The PR is the
+  deliverable — a human reviews and merges it; you never merge it yourself.
 
-**When `decision='complete'`:** the app labels the story
-`specialist:complete`. Your `comment` summarizes coverage — which seams and
-flows are tested, and any gaps explicitly accepted as out of scope.
+**Issue tracker (the report), via the tracker MCP:**
+Post a completion report as a comment on the story and apply the outcome label.
+The three outcomes:
 
-**When `decision='waiting'`:** the app labels the story `specialist:waiting`.
-Your `comment` names the specific blocking story and what it needs to provide
-before you can proceed.
+- **Complete** — implementation done, unit tests passing, all acceptance
+  criteria met, PR opened. Apply `specialist:complete`. Your comment is the
+  completion report (template below).
+- **Waiting** — a blocking dependency is not yet merged. Apply
+  `specialist:waiting`. Name the specific dependency and what it must provide.
+- **Blocked** — a gap, conflict, or unresolvable problem. Apply
+  `specialist:blocked`. Describe the blocker specifically: what you found, why
+  it prevents completion, what would resolve it.
 
-**When `decision='blocked'`:** the app labels the story `specialist:blocked`
-and surfaces it for human review. Your `comment` describes the blocker
-specifically — what failed, why it prevents completion, and what would
-resolve it.
+**Completion report** (the `complete` comment) covers:
+- **PR & branch** — link to the PR, name of the branch.
+- **What was implemented** — integration tests added, the seams they cover, how they run.
+- **Local env / setup** — anything a reviewer needs to run it that is not
+  obvious (env vars, a migration to run, a seed step) — the tribal knowledge
+  that would otherwise be lost.
+- **Unit-test-scenario coverage** — map each scenario from the story's "Unit
+  test scenarios" checklist to the test that covers it, and note any cases you
+  added beyond the list.
+- **Questions & assumptions** — anything the story left ambiguous that you had
+  to decide, and how. This is feedback to the shaping tier; surface it, do not
+  bury it.
+- **Blockers hit and resolved** — anything that slowed you that a future
+  specialist on this codebase should know.
+
+Merge conflicts are not your concern to report as a blocker — they are a
+concurrency artifact for the human reviewer to resolve at merge time.
 
 ---
 
 ## Hard rules
 
-- Call `submit_verdict` exactly once.
+- End every run by handing back: open a PR for a completed story, and post a report + outcome label on the tracker. Never end silently — waiting and blocked are also reported on the tracker.
 - Do not write unit tests — implementation stories carry their own.
 - Do not write browser-driven E2E tests — that is the E2E Specialist's
   domain.
