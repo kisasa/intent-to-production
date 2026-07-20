@@ -290,185 +290,69 @@ renaming a type is a compiler-checked refactor for Claude Code, not a doc
 edit. Runner function renamed runDecomposeAgent; user-visible comment bodies
 renamed to Decompose.
 
-## Write-path collapse — MCP access replaces the app's tracker client
+## Specialist conventions spec + spec-readiness gate
 
-- **Rule:** with Claude holding direct MCP access to the tracker, the app's
-  own tracker contact collapses to zero on the happy path. The only write
-  the app performs is posting an error comment, and only in two enumerated
-  failure modes: (a) **infra failure** — the Anthropic API call itself never
-  completed (timeout, 5xx, an exception before Claude's turn); Claude never
-  got a turn to narrate the failure, so the app has to. (b) **explicit tool
-  failure** — the call completed, but a `mcp_tool_result` block in the
-  response shows an error (auth, rate limit, malformed args); Claude
-  attempted a tracker write and failed, and its own final text can't be
-  trusted to say so, so the app scans response blocks rather than trusting
-  the narrated outcome.
-- Send is fail-fast: one call, either failure mode fires the error comment
-  immediately, no retry or backoff before posting.
-- **Explicitly out of scope: the silent no-op** — Claude reads the issue,
-  decides not to act, and writes nothing; there is no error anywhere to
-  catch. Accepted gap, not a deferred TODO. (Superseded: a post-call
-  read-back checking the issue's label state against each agent's known
-  terminal-label set was proposed as the only way to catch this case, and
-  rejected — the architect: "the app is only responsible for hard errors it can
-  catch or parse out of structured data." A read-back would mean the app
-  holds a table of valid end-states per agent — a step toward judgment the
-  app is meant to stay clear of.)
-- Confirmed unchanged from the pre-MCP app: the self-comment guard (ignore
-  webhook events authored by the pipeline's own tracker user, or the
-  agent's own comments retrigger evaluation indefinitely), event dedupe
-  (stable key from event fields, not delivery id — trackers retry
-  delivery), and debounce/coalescing on follow-up comments (a burst of
-  human replies becomes one run). All three are infra concerns,
-  agent-design-agnostic, and don't change under the MCP shift.
+**SUPERSEDED IN PART:** the "per-type conventions skills in the framework" idea
+below was replaced. Conventions are NOT skills and NOT framework artifacts.
+They are a **conventions spec** — an optional, architect-owned document living
+in the provided repo at each surface root (e.g. `backend/CONVENTIONS.md`,
+`frontend/CONVENTIONS.md`), authored and iterated by the architect like code.
+The specialist reads its surface's conventions spec IF PRESENT and follows it;
+if absent or thin, it works from codebase + story alone and does not invent
+conventions or treat absence as a blocker. Not seeded, not proposed, not
+confirmed by any agent — the pipeline does not manage it. Rationale (the architect):
+productizing for others who cut corners, an auto-derived spec would look
+authoritative while being thin (dishonest); better that output quality tracks
+architect effort *legibly* — effort in, quality out, the relationship visible
+and the responsibility the architect's. The Specification agent is NOT
+burdened with conventions; it keeps doing the API map only. The greenfield
+spec-readiness gate stays but is a DIFFERENT mechanism: it ensures a greenfield
+surface has readable starter code so the pipeline can function at all
+(existence-mappable, real patterns to build against) — independent of the
+optional conventions spec. Original (partly superseded) entry follows:
 
-## Reconciliation with current webhook-listener code (audit, this session)
+## (superseded) Specialist conventions skills + spec-readiness gate
 
-- **Finding: agent definitions are current, the app is not.**
-  `agents/intake-agent.md`, `specification-agent.md`, and
-  `decompose-agent.md` reflect the ladder restructure above.
-  `webhook-listener/src` still implements the pre-split single
-  evaluation/decompose agent, unchanged since before that restructure
-  landed.
-- **Routing is column-based, not label-driven.** `swim-lanes.ts` registers
-  one lane keyed on tracker column (`"Evaluation"` → one agent); no Intake
-  or Specification lane exists. Firing on `issue_entered_column` triggers
-  agents on a status transition, but the control model reserves status
-  moves for humans and drives agent activation off labels. Needs
-  replacing, not extending.
-- **The agent still writes to the tracker directly.**
-  `agents/evaluation/run-agent.ts` performs every tracker mutation itself
-  through a `TrackerApiClient` (`postComment`, `addLabel`, `removeLabel`,
-  `moveToColumn`, `createChildIssue`), and its Anthropic call carries no
-  `mcp_servers` parameter — codebase reads go through a local
-  cloned-repo tool loop (`read_file`/`grep`/`list_dir`), not Claude
-  reading the tracker itself. This is the full pre-MCP architecture, one
-  design generation behind the write-path collapse above.
-- **`CLAUDE.md` is stale** — still names the four-agent model
-  (Evaluation/Specialist/Testing/Code Review) and lists open questions
-  ("how is the comment loop bounded") already resolved: in code, by the
-  self-comment guard; in this ledger, by everything since.
-- Confirmed sound, carries forward unchanged: event dedupe and follow-up
-  debounce. Infra, not agent design — nothing above touches them.
+Prompted by working through what a real specialist needs to execute PROJ-24
+(backend, roster data model) and three scenarios the architect raised: store/existing-
+codebase vs greenfield, small bug fixes, and whether specialists get team-
+customizable skills.
 
-## Intake Agent prompt template — unified, one placeholder for first/follow-up
+- **Specialists get per-type conventions skills** (`backend-conventions`,
+  `frontend-conventions`, `tests-conventions`, `e2e-conventions`), team-forked,
+  loaded by each specialist alongside the story. They carry the VARIANT half of
+  implementation — house patterns, internal libraries, error/testing style,
+  structural opinions — while the specialist's judgment stays invariant in the
+  agent definition. This resolves the over-provisioning problem: without a
+  conventions skill, the CODEBASE would have to demonstrate every pattern by
+  example (impossible for greenfield, absurd for real engagements). With it,
+  code EXEMPLIFIES (runtime, structure, one representative pattern) and the
+  skill GENERALIZES (the rules). Answers the store-vs-greenfield question: the
+  provided repo does NOT need a complete example — representative + skill
+  suffices. Written as honest-empty TEMPLATES (prompts, not invented
+  conventions) since no team has forked one yet — an unfilled section means
+  "no team opinion, use judgment + codebase," never a fabricated rule.
+- **Spec-readiness gate at the Specification Agent (step 3, blocking).** Real
+  failure from the last LET run: the eval/spec agent was given a repo that was
+  frontend-only (old POS app), no backend provisions, wrong folder structure —
+  and it would infer "backend is TypeScript because frontend is," a wrong
+  assumption nothing downstream could catch. Fix: before reading for existence,
+  the spec agent confirms each surface's codebase is spec-ready — real code
+  present, runtime/framework a READABLE FACT not a cross-surface inference, and
+  for greenfield surfaces a representative starter (solution + structure + one
+  pattern) to shape stories against. If not, it BLOCKS (posts what's missing,
+  waits) rather than mapping against a guess. Placed at spec, NOT decompose:
+  spec is the pipeline's codebase reader, and a reader that can't read its
+  source can't produce a valid map; blocking at decompose would be after the
+  bad assumption already hardened into the resolved map. This is a documented
+  human setup precondition for greenfield surfaces (make the codebase spec-
+  ready first), enforced by the gate but performed by the architect.
 
-- **Rule:** the Intake Agent's first-pass (label just applied) and
-  follow-up (thread reply while label present) activations differ by
-  exactly one variable clause, not by having separate templates. The rest
-  of the prompt — file attachments, read instructions, `checkpoint`/`slice`
-  handling — is identical across both, and was previously duplicated across
-  two hand-maintained prompts that had begun to drift on wording ("the
-  project's description" vs. "the project's current description") with no
-  reason for the difference.
-- One template; the app supplies:
-  - `<PROJECT_TITLE>`, `<PROJECT_ID>` — literal fields from the webhook
-    payload, unified on angle-bracket delimiters (one placeholder had
-    dropped its brackets in the source prompt — matters if substitution is
-    literal string-replace).
-  - `<ACTIVATION_TRIGGER>` — one of two fixed strings, chosen from
-    swim-lane routing's event kind. First pass: "The label was just
-    applied — this is a first look." Follow-up: "A human replied in the
-    comment thread you're participating in. The thread contains your own
-    prior checkpoint proposal — treat it as your prior activation's output
-    and carry the conversation forward." This is reinforcement, not
-    load-bearing: `intake-agent.md`'s own decision-flow section already has
-    the agent determine ask/checkpoint/slice state from the thread
-    regardless of what the app says. Kept anyway — cheap, and removes
-    ambiguity for the model.
-- **"Current description" unified across both passes** — no variance
-  needed; a human can edit the description before or after any activation,
-  and the self-consistency check runs either way.
-- **Read-instruction correctness fix, applies to both passes:** the
-  first-pass prompt's original wording ("read the project's description")
-  risked exactly the trap `intake-agent.md` itself warns against — reading
-  only the one-line summary instead of the linked BRD document. Unified
-  wording: read the description to find the linked BRD document, then read
-  that document itself, plus all project attachments, the full thread, and
-  the evidence issue's attachments.
-- **Resolved: "the app does all of this, never you" was a stale leftover,
-  not a testing guard** (the architect, confirming — disregard it). It predates the
-  MCP shift, from when the app genuinely executed verdicts; it does not
-  describe current or intended production behavior. The unified template's
-  omission of the line stands as correct and it should not reappear in any
-  prompt, production or test.
-
-## Specification Agent prompt templates — placeholders, and the app-can't-know-this principle
-
-- **Naming fix:** the kickoff/reply prompt pair had inherited `PROJECT_TITLE`
-  / `PROJECT_ID` from the Intake templates, but Specification wakes on an
-  **epic** (an issue), not a project. Renamed to `<EPIC_TITLE>` / `<EPIC_ID>`
-  — placeholder names need to mean one consistent tracker-object type
-  everywhere they appear, once the app holds a name-keyed substitution table.
-- **Evidence-issue read removed, confirmed unnecessary (the architect).**
-  `specification-agent.md`'s own context-payload list names the epic's
-  capabilities/scope/business-context/evidence pointers, the design issue,
-  and the two skills — no separate evidence issue. The epic's own Evidence
-  Pointers section (`epic-writing.md`, inherited from Intake's slice map)
-  already carries what Specification needs as text. The draft prompt's
-  reference to a hardcoded evidence-issue id (copied from the Intake
-  pattern) is dropped, not replaced with a placeholder.
-- **Design-issue id: NOT app-supplied — the app has no way to know it**
-  (the architect). Unlike a repo base, which gets explicitly recorded as text in a
-  project's thread and is therefore something the app can parse and hand
-  forward, the design issue's identity isn't tracked anywhere the app can
-  read. Fix: the prompt instructs Specification to find and read the
-  project's design issue itself via the Linear connector, by its label
-  (`design:asset`) — discovery, not injection.
-- **General principle for remaining prompts (Decompose, specialists):** a
-  placeholder is only warranted for something the app can actually produce
-  — from the webhook payload, from its own recorded state, or from content
-  already rendered into an artifact body. Where a referenced artifact's
-  identity isn't something the app tracks, the fix is either (a) drop the
-  reference if the information already reached the consuming artifact by
-  inheritance (the evidence-issue case), or (b) have the agent discover it
-  itself via the connector, by label or another stable convention (the
-  design-issue case) — never a placeholder standing in for a value the app
-  cannot actually resolve.
-- **Kickoff prompt gap, fixed:** the agent's own definition requires
-  checking "any repo bases already recorded for this project (from earlier
-  epics or prior turns)" before asking for one — sibling epics in the same
-  project, not just this epic's own thread. The original draft only
-  directed a read of this epic's thread; the corrected version adds the
-  project-level check.
-- **Reply prompt generalized, same shape as the Intake follow-up fix:** the
-  draft assumed "the architect replied... supplying the answer you asked
-  for," but the two reviewer gates (architect existence, designer intent)
-  clear independently and in either order, and a reply may be an ask-answer,
-  an architect resolution, or a designer resolution — three cases under one
-  trigger. Unified to a generic "a reply was posted" activation line; the
-  agent's own decision-flow logic (already reads the thread to determine
-  state) sorts out which case it is.
-
-## Decompose Agent prompt templates — unified, plus a standing rule
-
-- **Rule, third occurrence, now standing:** any reply-triggered activation
-  prompt uses the same generic template as its first-pass counterpart —
-  the same full ask/checkpoint/shaped (or ask/checkpoint/slice) branch
-  instructions, never a template that names the decision in advance. This
-  surfaced identically in Intake (the follow-up prompt presumed the reply
-  was an approval), Specification (the reply prompt presumed specifically
-  the architect had replied), and Decompose (the reply prompt presumed the
-  checkpoint reply was an approval and gave only `shaped`-branch
-  instructions). Every one of these agents already documents its own
-  state-detection logic from the thread; the prompt's job is to report what
-  triggered the run, not to pre-decide the outcome. Applies to every
-  remaining prompt (specialists) without needing to be rediscovered.
-- **Kickoff and reply unified into one template.** `PASS: first` /
-  `PASS: follow-up` kept as a literal field — unlike Intake and
-  Specification, `decompose-agent.md`'s own Orient section explicitly
-  states it receives a `PASS` field as part of what it's given, so this one
-  is load-bearing, not reinforcement. A variable `<ACTIVATION_DESCRIPTION>`
-  clause supplies what happened this activation without naming the outcome.
-- **Fixed: "resolved by the architect" → both gates.** `spec:resolved`
-  requires the architect (existence) AND the designer (design intent, or an
-  explicit waiver) — attributing resolution to the architect alone was
-  wrong per `specification-agent.md`'s two-reviewer AND-gate.
-- **Placeholder naming standardized on `EPIC_TITLE` / `EPIC_ID`** across
-  Specification and Decompose — both operate on the same epic at adjacent
-  stages of the same shaping sequence; "issue" (Linear's underlying type
-  name) is dropped in favor of the domain term used throughout the ledger
-  and every agent doc.
+Also settled (informs the parked decomposition variant/invariant question):
+PROJ-24 executed well against a lean specialist BECAUSE the story carried its
+own context (epic why, architect's row-9 ruling, exact anchors) — decomposition
+thoroughness is what makes lean specialists possible, which argues decomposition
+logic is INVARIANT (Option A: logic inline, only the band value is a tunable).
 
 ## Guiding phrasing (keepers)
 
@@ -698,30 +582,48 @@ renamed to Decompose.
   go-signal, applied only when both awaiting-labels are clear — keeps the
   Decompose trigger unchanged (definition-only edit, no app-trigger change).
 
-- **Slice also advances the project and its reference issues to In Progress
-  (legibility only — no pipeline mechanic reads either status).** The design
-  issue and evidence issue are created at BRD time, at rest in Backlog like
-  the project itself; nothing in the pipeline moves any of the three off
-  Backlog on its own, since the Intake trigger and every downstream trigger
-  key on labels and epic status, never project/reference-issue status. Left
-  alone, the design issue — the designer's own ongoing surface, per the
-  design-issue entry above — stays parked in Backlog indefinitely once slicing
-  starts, alongside a project that status boards would still show as not
-  started even after epics are in Evaluation and specialists are working.
-  Fix: on `slice`, alongside creating epics and releasing the approved subset
-  into Evaluation, the Intake Agent also moves the project itself, its design
-  issue (`design:asset`), and its evidence issue (if one exists — not every
-  project has binary evidence to warrant one) from Backlog to In Progress,
-  unconditionally on which epic subset was released. Folded into the same
-  checkpoint-authorization sentence the epic-creation/Evaluation-release
-  grant already carries, rather than a separate approval — it is a strict
-  narrowing of "what slicing does," not new discretion. Explicitly not a
-  status the pipeline gates on: no agent wakes on project or reference-issue
-  status; this is solely for a human scanning the board to find the project's
-  design intent living where the active work is, not in Backlog or forgotten
-  in Done.
+- **Intake slice also advances the project and reference issues to In Progress.**
+  On successful slice, the app now moves the project Backlog -> In Progress and
+  moves its design issue (`design:asset`) and evidence issue out of Backlog to
+  In Progress alongside it. Keeps the backlog honest — once work has entered
+  the pipeline, neither it nor its reference artifacts should still read as
+  un-started. Reference issues drive no mechanics; the move is legibility only,
+  and keeps the design issue findable adjacent to active work rather than
+  stranded in backlog or buried in Done (the architect's call: follow the project, not
+  mark Done). Authorization chain extended: the PM's checkpoint approval now
+  authorizes epic creation + release-set-to-Evaluation + project-and-reference-
+  issues-to-In-Progress, stated explicitly in the checkpoint. DEFINITION half
+  done (intake); APP half is a webhook/Linear-API change in the repo
+  (intent-to-production) — Ugo's layer, since agents hold no mutation tools.
 
 ## Open items
+
+- **PARKED: generated specialist.** the architect wants to reach a place where the
+  specialist agent is generated (composed per-story from invariant agent +
+  team conventions skill + story context) — but "now is not the time." Current
+  decision: specialist is a Claude Code agent driven by the developer prompt
+  (reads Linear via MCP, walks up to epic/map itself, works the repo, opens a
+  PR, fills the completion template). The stale `submit_verdict`/app-executes
+  framing in the specialist .md files predates the MCP write-path collapse and
+  should be reconciled to the prompt-driven reality — but AFTER a real PROJ-24
+  run informs it, not before (man-in-the-middle discipline: don't polish a
+  definition before running the tier).
+- **PARKED: right-sized pipeline entry (bug fixes).** Not all work should enter
+  at the top (BRD). A small bug fix has no intent to map or epic to slice —
+  forcing it through five gates would discredit the framework. Likely shape:
+  work enters at the tier that matches it; story-shaped work (a bug fix) can
+  enter at the story tier directly, getting the gates that matter (well-formed
+  story, unit-test scenarios, specialist execution, PR review) and skipping the
+  ones that don't (intent-mapping, decomposition). NOT decided — has a real
+  trap (a "skip to story" path is an exception to every-story-traces-to-intent,
+  and exceptions leak quality). Design deliberately later.
+- **DECOMPOSITION variant/invariant + dangling `story-decomposition.md` ref.**
+  Leaning Option A (decomposition logic invariant/inline; band value the only
+  tunable, as config not skill), now reinforced by the PROJ-24 finding above.
+  The `decompose-agent.md` citations of `story-decomposition.md` (a skill it is
+  declared NOT to load) are the contradiction to fix under A: inline the
+  partition rules, make band a stated default overridable by config, drop the
+  skill citations. Confirm A and apply in Claude Code against the repo file.
 
 - **DESIGN-INTENT CAPTURE (the real fix, not yet made).** the designer's convenience-
   fees example: "turn on Cardpoint -> convenience fees auto-light-up" is a
@@ -752,33 +654,3 @@ renamed to Decompose.
 - Slice-map-as-record vs. pre-creation review — flagged as a judgment call in
   the Intake definition; revisit if practice wants the map before epics
   exist.
-- Skill/agent file resolution is a single fixed directory (`skills.ts`: one
-  top-level `skills/` path), not engagement-scoped. True today because
-  there's one live engagement; not yet decided whether to build scoping now
-  or treat it as a forward problem.
-- Webhook-listener rebuild scope, per this session's audit: replace
-  column-based single-lane routing with label-driven routing across
-  Intake/Specification/Decompose/specialists; cut the agent's direct
-  tracker writes down to error-comment-only; replace fixed
-  system-prompt-per-agent-type loading with per-activation template +
-  agent-file + skill-file attachment (per the prompt format already in
-  hand).
-- **`decompose-agent.md` cites `story-decomposition.md`, a file it doesn't
-  declare loading.** Its intro states it loads only `epic-writing.md` and
-  `story-contract.md` (consistent with the ledger's "loads NO team-forked
-  skill" and the stale pre-MCP code's skill list), but its body twice
-  references applying `story-decomposition.md` for the size band and
-  partition rules, while also saying to apply the size band "below" —
-  implying that content is actually self-contained in the definition, not
-  external. Likely a leftover from the merge the ledger already records
-  ("Decompose Agent definition merged: field-tuned original as base +
-  settled amendments") that wasn't fully cleaned up. Doesn't affect the
-  prompt template — the file list (`epic-writing.md`, `story-contract.md`)
-  is already correct — but the agent definition itself has a dangling
-  reference. Unresolved: fix `decompose-agent.md` now, or batch with the
-  Claude Code rebuild.
-- Minor, not blocking: the per-story `spec:<specialist>` / `size:<size>` /
-  `tier:<tier>` label convention isn't stated anywhere in
-  `decompose-agent.md`'s own text (unlike the `eval:*` labels, which it
-  confirms explicitly) — matches the stale code's convention and is
-  probably right, but is inherited rather than currently specified.
