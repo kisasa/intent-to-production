@@ -62,6 +62,7 @@ export interface TrackerNotifier {
     elapsedMs: number,
     timeoutMinutes: number,
     quip: string,
+    attempt: number,
   ): Promise<void>;
   postErrorComment(entityId: string, entityType: EntityType, traceId: string, message: string): Promise<void>;
   deleteComment(commentId: string, traceId: string): Promise<void>;
@@ -84,23 +85,41 @@ export function pickPatienceQuip(): string {
   return PATIENCE_QUIPS[Math.floor(Math.random() * PATIENCE_QUIPS.length)] ?? "Good things take time.";
 }
 
+// Each attempt (the initial call, and every pause_turn resume after it) gets
+// its own fresh requestTimeoutMs window from the SDK — a resume is a brand
+// new HTTP request, not a continuation of the old one's clock. Observed
+// 2026-07-20: a run spanning several continuations kept showing "~0m left
+// before timeout" for over an hour past the stated deadline, because the
+// original wording promised one global countdown from the very first call
+// while the code underneath was actually resetting the clock on every
+// resume. Worded per-attempt now so the two agree.
 function activationStartedBody(laneName: string, timeoutMinutes: number, quip: string): string {
   return (
     `**${laneName} is working on this** _(automated)_\n\n` +
-    `This can take a few minutes — no action needed yet. If it hasn't wrapped up within ${timeoutMinutes} minutes ` +
-    `of starting, it'll time out and I'll leave an error comment instead.\n\n` +
+    `This can take a few minutes — no action needed yet. Each attempt gets up to ${timeoutMinutes} minutes; if the ` +
+    `server's own tool-call loop pauses partway through, it resumes automatically with a fresh ${timeoutMinutes}-minute ` +
+    `window rather than picking up the old one's clock. I'll leave an error comment if it can't complete.\n\n` +
     `_${quip}_`
   );
 }
 
-function activationProgressBody(laneName: string, elapsedMs: number, timeoutMinutes: number, quip: string): string {
+function activationProgressBody(
+  laneName: string,
+  elapsedMs: number,
+  timeoutMinutes: number,
+  quip: string,
+  attempt: number,
+): string {
   const elapsedMinutes = Math.floor(elapsedMs / 60_000);
   const remainingMinutes = Math.max(timeoutMinutes - elapsedMinutes, 0);
+  const attemptNote = attempt > 1 ? ` (attempt ${attempt} — resumed after the server's tool-call loop paused)` : "";
   return (
     `**${laneName} is working on this** _(automated)_\n\n` +
-    `This can take a few minutes — no action needed yet. If it hasn't wrapped up within ${timeoutMinutes} minutes ` +
-    `of starting, it'll time out and I'll leave an error comment instead.\n\n` +
-    `_Still going — ${elapsedMinutes}m elapsed, ~${remainingMinutes}m left before timeout, connection active._\n\n` +
+    `This can take a few minutes — no action needed yet. Each attempt gets up to ${timeoutMinutes} minutes; if the ` +
+    `server's own tool-call loop pauses partway through, it resumes automatically with a fresh ${timeoutMinutes}-minute ` +
+    `window rather than picking up the old one's clock. I'll leave an error comment if it can't complete.\n\n` +
+    `_Still going — ${elapsedMinutes}m elapsed this attempt${attemptNote}, ~${remainingMinutes}m left before this ` +
+    `attempt's timeout, connection active._\n\n` +
     `_${quip}_`
   );
 }
@@ -206,11 +225,17 @@ export function createLinearTrackerNotifier(apiKey: string, baseUrl: string = DE
       elapsedMs: number,
       timeoutMinutes: number,
       quip: string,
+      attempt: number,
     ): Promise<void> {
       const reqLog = log.child(traceId);
-      reqLog.trace(`updating progress comment ${commentId}, elapsedMs=${elapsedMs}`);
+      reqLog.trace(`updating progress comment ${commentId}, elapsedMs=${elapsedMs}, attempt=${attempt}`);
       try {
-        await updateComment(apiKey, baseUrl, commentId, activationProgressBody(laneName, elapsedMs, timeoutMinutes, quip));
+        await updateComment(
+          apiKey,
+          baseUrl,
+          commentId,
+          activationProgressBody(laneName, elapsedMs, timeoutMinutes, quip, attempt),
+        );
         reqLog.trace(`progress comment ${commentId} updated`);
       } catch (err) {
         reqLog.warn(`failed to update progress comment ${commentId}:`, err);
