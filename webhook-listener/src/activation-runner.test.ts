@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { findMcpError, type ToolUseRecord } from "./activation-runner.js";
+import { findMcpError, findDuplicateWrites, type ToolUseRecord } from "./activation-runner.js";
 
 // Minimal content blocks — only the fields findMcpError reads.
 function toolUse(id: string, name: string, input: Record<string, unknown> = {}) {
@@ -85,5 +85,73 @@ describe("findMcpError", () => {
       toolResult("t2", false),
     ];
     expect(findMcpError(finalContent as never, allToolUses)).toBeNull();
+  });
+});
+
+describe("findDuplicateWrites", () => {
+  it("returns empty when no write repeats", () => {
+    const content = [
+      toolUse("t1", "save_comment", { issueId: "PROJ-19", body: "first" }),
+      toolResult("t1", false),
+      toolUse("t2", "save_comment", { issueId: "PROJ-19", body: "second" }),
+      toolResult("t2", false),
+    ];
+    const allToolUses = new Map<string, ToolUseRecord>([
+      ["t1", { name: "save_comment", input: { issueId: "PROJ-19", body: "first" } }],
+      ["t2", { name: "save_comment", input: { issueId: "PROJ-19", body: "second" } }],
+    ]);
+    expect(findDuplicateWrites(content as never, allToolUses)).toEqual([]);
+  });
+
+  it("flags the same successful write repeated against the same target (the observed PROJ-32 case)", () => {
+    // Real shape from a 2026-07-20 run: decompose posted the exact same
+    // save_comment (same issueId, byte-identical body) twice, 219ms apart.
+    // Neither call errored, so findMcpError has nothing to see here — this
+    // is the check that catches it instead.
+    const body = "Picking this up for decomposition... (same text both times)";
+    const content = [
+      toolUse("t1", "save_comment", { issueId: "PROJ-32", body: body }),
+      toolResult("t1", false),
+      toolUse("t2", "save_comment", { issueId: "PROJ-32", body: body }),
+      toolResult("t2", false),
+    ];
+    const allToolUses = new Map<string, ToolUseRecord>([
+      ["t1", { name: "save_comment", input: { issueId: "PROJ-32", body: body } }],
+      ["t2", { name: "save_comment", input: { issueId: "PROJ-32", body: body } }],
+    ]);
+    const duplicates = findDuplicateWrites(content as never, allToolUses);
+    expect(duplicates).toHaveLength(1);
+    expect(duplicates[0]?.name).toBe("save_comment");
+  });
+
+  it("does not flag a failed write's near-miss retry as a duplicate", () => {
+    // The corrupted-then-corrected save_comment shape findMcpError already
+    // tolerates — the first call errored, so it must never count as a
+    // "successful duplicate" of the corrected retry.
+    const content = [
+      toolUse("t1", "save_comment", { issueId: "PROJ-19", body: { garbled: true } }),
+      toolResult("t1", true),
+      toolUse("t2", "save_comment", { issueId: "PROJ-19", body: "corrected text" }),
+      toolResult("t2", false),
+    ];
+    const allToolUses = new Map<string, ToolUseRecord>([
+      ["t1", { name: "save_comment", input: { issueId: "PROJ-19", body: { garbled: true } } }],
+      ["t2", { name: "save_comment", input: { issueId: "PROJ-19", body: "corrected text" } }],
+    ]);
+    expect(findDuplicateWrites(content as never, allToolUses)).toEqual([]);
+  });
+
+  it("does not flag two different writes to different entities sharing a tool name", () => {
+    const content = [
+      toolUse("t1", "save_issue", { issueId: "PROJ-30", title: "Story A" }),
+      toolResult("t1", false),
+      toolUse("t2", "save_issue", { issueId: "PROJ-31", title: "Story B" }),
+      toolResult("t2", false),
+    ];
+    const allToolUses = new Map<string, ToolUseRecord>([
+      ["t1", { name: "save_issue", input: { issueId: "PROJ-30", title: "Story A" } }],
+      ["t2", { name: "save_issue", input: { issueId: "PROJ-31", title: "Story B" } }],
+    ]);
+    expect(findDuplicateWrites(content as never, allToolUses)).toEqual([]);
   });
 });

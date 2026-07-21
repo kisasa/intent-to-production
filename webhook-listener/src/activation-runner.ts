@@ -213,6 +213,40 @@ export function findMcpError(
   return null;
 }
 
+// Observed 2026-07-20: a single decompose run against PROJ-32 posted the exact
+// same save_comment — same issueId, byte-identical body — twice, 219ms apart.
+// Both calls succeeded (no is_error block on either), so findMcpError had
+// nothing to flag; the only visible symptom was two duplicate comments on the
+// issue, found by reading the thread directly. Root cause unconfirmed —
+// possibly the same pause_turn-boundary fragility findMcpError's write-retry
+// tolerance above already documents, this time duplicating a call instead of
+// corrupting one. This check doesn't try to prevent or undo a duplicate
+// write; it only makes one visible in the trace log instead of silently
+// absorbed, the same way a duplicate is nothing to look past.
+export function findDuplicateWrites(
+  content: Anthropic.ContentBlock[],
+  allToolUses: Map<string, ToolUseRecord>,
+): ToolUseRecord[] {
+  const blocks = content as unknown as { type: string; tool_use_id?: string; is_error?: boolean }[];
+  const successfulWrites: ToolUseRecord[] = [];
+  for (const block of blocks) {
+    if (block.type !== "mcp_tool_result" || block.is_error) continue;
+    const use = block.tool_use_id ? allToolUses.get(block.tool_use_id) : undefined;
+    if (use && MCP_WRITE_TOOL_PREFIXES.some((prefix) => use.name.startsWith(prefix))) {
+      successfulWrites.push(use);
+    }
+  }
+  const duplicates: ToolUseRecord[] = [];
+  successfulWrites.forEach((a, i) => {
+    for (const b of successfulWrites.slice(i + 1)) {
+      if (a.name === b.name && sameTarget(a.input, b.input) && JSON.stringify(a.input) === JSON.stringify(b.input)) {
+        duplicates.push(b);
+      }
+    }
+  });
+  return duplicates;
+}
+
 // The failed call whose corrupted-then-retried shape findMcpError tolerates
 // (see above) is often split across a pause_turn boundary: the original,
 // erroring tool_use lives in an earlier round already pushed into `messages`,
@@ -368,16 +402,26 @@ export function createActivationRunner(lane: AgentLaneConfig): AgentFn {
       // Keeps that same comment current for however long the run actually
       // takes, rather than posting a new one each tick. No-ops if the post
       // above failed (nothing to update) — never blocks or fails the run.
+      // callStartedAt/attempt are reset inside callOnce() itself, not here —
+      // each pause_turn resume opens a brand new HTTP request against
+      // requestTimeoutMs, so the elapsed/remaining math this timer reports
+      // must track the current attempt's own clock, not the very first
+      // call's. Observed 2026-07-20: before this, the comment kept showing
+      // "~0m left before timeout" for over an hour into a multi-continuation
+      // run, because the displayed countdown never reset even though the
+      // underlying per-request timeout did.
+      let callStartedAt = Date.now();
+      let attempt = 0;
       if (progressCommentId) {
-        const startedAt = Date.now();
         progressTimer = setInterval(() => {
           void trackerNotifier.updateActivationProgress(
             progressCommentId,
             traceId,
             lane.name,
-            Date.now() - startedAt,
+            Date.now() - callStartedAt,
             timeoutMinutes,
             quip,
+            attempt,
           );
         }, activationConfig.progressUpdateIntervalMs);
       }
@@ -389,7 +433,9 @@ export function createActivationRunner(lane: AgentLaneConfig): AgentFn {
       // nothing downstream (error scanning, content-block inspection) needs
       // to know the transport was streaming.
       async function callOnce(): Promise<Anthropic.Message> {
-        reqLog.trace(`calling Anthropic messages.stream, model=${lane.model}`);
+        attempt++;
+        callStartedAt = Date.now();
+        reqLog.trace(`calling Anthropic messages.stream, model=${lane.model} (attempt ${attempt})`);
         stream = client.messages.stream(params, { headers: { "anthropic-beta": "mcp-client-2025-04-04" } });
 
         // Raw visibility into what Anthropic actually sent, event by event —
@@ -454,6 +500,14 @@ export function createActivationRunner(lane: AgentLaneConfig): AgentFn {
         return;
       }
       reqLog.trace("no mcp_tool_result error block found");
+
+      const duplicateWrites = findDuplicateWrites(response.content, allToolUses);
+      if (duplicateWrites.length > 0) {
+        reqLog.warn(
+          `entity ${entityId}: ${duplicateWrites.length} duplicate successful write(s) detected — ` +
+            duplicateWrites.map((d) => `${d.name}(${JSON.stringify(d.input)})`).join("; "),
+        );
+      }
 
       // No client-side tools were declared, so a tool_use block here means the
       // model tried to call something outside its attached MCP servers —
