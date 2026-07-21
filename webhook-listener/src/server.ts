@@ -48,7 +48,7 @@ const AGENT_USER_ID = required("AGENT_USER_ID");
 const port = Number(envOr("PORT", "8787"));
 
 const dispatch = makeDispatcher({
-  debounceMs: Number(envOr("DEBOUNCE_MS", "45000")),
+  debounceMs: Number(envOr("DEBOUNCE_MS", "15000")),
 });
 
 const app = new Hono();
