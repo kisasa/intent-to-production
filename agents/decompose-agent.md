@@ -188,6 +188,17 @@ Make these writes, in order:
 
 The dependency graph is a DAG, not a tree: a story may depend on several siblings. You express it as content in the Blocking dependencies section — never as tracker-native sub-issue nesting and never as tracker relations. Children are always flat under the epic.
 
+**There is no separate add-label or remove-label tool.** Label changes on an
+existing issue go through `save_issue`'s `labels` field, which **replaces
+the issue's entire label set** — any existing label you omit is removed,
+including ones outside your own vocabulary (specialist/size/tier labels on a
+child, or team labels a human applied). Before changing labels on the epic
+(e.g. step 3 above — dropping the eval working label and applying
+`eval:ready`), read its current labels first and pass back the complete
+desired set, not just the one label you're adding or removing. This does not
+apply to labels set at story creation (step 1) since there is no prior set
+to preserve there. Never invent a per-label tool call.
+
 ---
 
 ## Examples

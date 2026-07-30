@@ -150,6 +150,18 @@ function sameTarget(a: Record<string, unknown>, b: Record<string, unknown>): boo
   return false;
 }
 
+// True if any of the known target-id keys carries a real (non-empty) value.
+// A failed call with none of them set — e.g. an empty string where a real id
+// belongs — has no target for sameTarget to compare against in the first
+// place, which is itself evidence the call was incomplete/corrupted rather
+// than a deliberate write to some other specific entity.
+function hasUsableTarget(input: Record<string, unknown>): boolean {
+  return TARGET_ID_KEYS.some((key) => {
+    const value = input[key];
+    return value !== undefined && value !== "";
+  });
+}
+
 // Observed 2026-07-17: a pause_turn boundary landed mid-argument-stream on a
 // save_comment call, corrupting one field (body came back as a non-string,
 // tripping the MCP server's own validation) — a real is_error result, but an
@@ -200,10 +212,28 @@ export function findMcpError(
     if (!isWrite) continue;
 
     if (toolName && failedUse) {
+      // Observed 2026-07-29: a save_comment call came back as just
+      // `{"issueId": ""}` — no body, no real target — and was rejected by
+      // the MCP server's own schema validation. Claude retried immediately
+      // with a complete, correctly-targeted call (`projectId`, not
+      // `issueId`, since the target was a project) and that retry
+      // succeeded — but sameTarget requires the same key with the same
+      // value, and an empty issueId matches nothing, so the run was still
+      // reported as failed on top of a comment that had, in fact, posted
+      // fine. When the failed call has no usable target at all, there is
+      // nothing for sameTarget to meaningfully compare — the absence of a
+      // real target is itself the signal that this was a corrupted/
+      // incomplete call, not a deliberate write to some other entity, so a
+      // same-tool success afterward is accepted as recovery on tool name
+      // alone. A failed call that DOES carry a real target still requires
+      // sameTarget to match, same as always — this only loosens the check
+      // for the shape where there was no target to begin with.
+      const failedHasTarget = hasUsableTarget(failedUse.input);
       const recovered = blocks.slice(i + 1).some((later) => {
         if (later.type !== "mcp_tool_result" || later.is_error) return false;
         const retryUse = later.tool_use_id ? localToolUses.get(later.tool_use_id) : undefined;
-        return retryUse?.name === toolName && sameTarget(failedUse.input, retryUse.input);
+        if (retryUse?.name !== toolName) return false;
+        return failedHasTarget ? sameTarget(failedUse.input, retryUse.input) : true;
       });
       if (recovered) continue;
     }

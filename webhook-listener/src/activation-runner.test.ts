@@ -72,6 +72,24 @@ describe("findMcpError", () => {
     expect(findMcpError(content as never)).not.toBeNull();
   });
 
+  it("ignores a failed write with no usable target at all, retried successfully with a different key", () => {
+    // Real shape from a 2026-07-29 run: save_comment came back as just
+    // {"issueId": ""} — no body, no real target — and was rejected by the
+    // MCP server's own schema validation. Claude retried immediately with a
+    // complete, correctly-targeted call using `projectId` (the target was a
+    // project, not an issue) and that retry succeeded. sameTarget alone
+    // would miss this (empty issueId vs. a populated projectId share no
+    // key/value), so the run got reported as failed on top of a comment
+    // that had actually posted fine.
+    const content = [
+      toolUse("t1", "save_comment", { issueId: "" }),
+      toolResult("t1", true),
+      toolUse("t2", "save_comment", { projectId: "a50e804f-6aa3-47a0-b973-b5fc2a78fa66", body: "Decision: ask" }),
+      toolResult("t2", false),
+    ];
+    expect(findMcpError(content as never)).toBeNull();
+  });
+
   it("recovers a write's target from an earlier round via the cross-round tool-use map", () => {
     // The corrupted call's own tool_use lives in a prior (already-pushed) round,
     // not in the final content array being scanned — findMcpError must still be

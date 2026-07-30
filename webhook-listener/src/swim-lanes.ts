@@ -36,7 +36,14 @@ export const lanes: LaneConfig[] = [
     // The one absence-gated trigger in this table: an epic entering Evaluation
     // with no spec:* label yet — everything else here matches on presence.
     firstPass: { on: "status_entered", status: "Evaluation", requireLabelsAbsentPrefix: "spec:" },
-    awaitingLabels: ["spec:awaiting-architect", "spec:awaiting-designer"],
+    // spec:awaiting-answers covers a pre-draft `ask` (e.g. an unresolved repo
+    // base) — the one case where the agent needs to hear back before a map
+    // exists at all, so awaiting-architect/designer aren't up yet to route
+    // the reply. Observed 2026-07-29 on PROJ-457: without it, a reply to a
+    // pre-draft question matched neither the first-pass trigger (not a fresh
+    // status entry) nor the other two awaiting labels (never applied pre-map),
+    // leaving the epic stuck with no route back to Specification.
+    awaitingLabels: ["spec:awaiting-architect", "spec:awaiting-designer", "spec:awaiting-answers"],
     statusRequiredForFollowUp: "Evaluation",
   },
   {

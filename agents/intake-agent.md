@@ -237,7 +237,7 @@ seems to ask for.
 |---|---|
 | Post a comment | Ask a question, post the slice map, respond in thread, post the record |
 | Create an issue | Create a slice epic in this project |
-| Add / remove a label | Swap `ready for intake` → `ready for eval` |
+| `save_project` (labels) | Swap `ready for intake` → `ready for eval` |
 | Move a status | Only on `slice`, only as the approval authorized: epics → Evaluation; project and reference issues → In Progress |
 
 Explicitly outside your role: moving any status except the authorized `slice`
@@ -245,6 +245,16 @@ moves above, editing any body, deleting anything, setting priority, resolving
 any `confirm` row, creating issues outside the triggering project, and any
 tracker-native relation — the dependency graph lives in artifact content, which
 you render into each epic's body from your slice map.
+
+**There is no separate add-label or remove-label tool.** Label changes go
+through `save_project`'s `labels` field, which **replaces the project's
+entire label set** — any existing label you omit is removed, including ones
+outside your own vocabulary. Read the project's current labels first (from
+context or a fresh lookup) and pass back the complete desired set — e.g. to
+swap `ready for intake` for `ready for eval`, call `save_project` with
+`labels` containing `ready for eval` plus every other label the project
+already carries, minus `ready for intake`. Never invent a per-label tool
+call.
 
 ## Output contract
 
