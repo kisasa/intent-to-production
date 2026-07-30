@@ -1,0 +1,46 @@
+{
+  "language": "typescript",
+  "app": "npx tsx main.ts",
+  "output": "cdktn.out",
+  "sendCrashReports": false,
+  "terraformProviders": [],
+  "terraformModules": [],
+  "targetVersions": {
+    "terraform": ">=1.10.0",
+    "opentofu": ">=1.10.0"
+  },
+  "context": {
+    "aws": {
+      "region": "us-east-1",
+      "account-number": "000000000000",
+      "profile": "example-org"
+    },
+    "state-bucket-name": "ki-webhook-listener-tfstate",
+    "global-tags": {
+      "terraform": "true",
+      "project": "intent-to-production",
+      "environment": "prod"
+    },
+    "domain-name": "example.com",
+    "hosted-zone-id": "Z0000000000000000000",
+    "vpc-cidr-block": "10.10.0.0/22",
+    "listener": {
+      "environment-name": "prod",
+      "subdomain": "intent",
+      "ecr-repository-name": "intent-to-production",
+      "image-tag": "7b35920d0323",
+      "port": 8787,
+      "cpu": 512,
+      "memory": 1024,
+      "log-retention-days": 30,
+      "debounce-ms": 15000,
+      "log-level": "info",
+      "parameter-prefix": "/example/prod/",
+      "linear-api-url": null,
+      "linear-mcp-url": null,
+      "github-mcp-url": null,
+      "product-context-paths": null
+    }
+  },
+  "projectId": "181a046c-3409-4a14-a5b9-f827800976cf"
+}

@@ -61,6 +61,10 @@ what it doesn't yet cover.
 
 ## Run it locally
 
+For the deployed environment — an always-on Fargate service behind a load
+balancer, with env vars sourced from SSM — see
+[infrastructure/](../infrastructure/README.md). Everything below is local.
+
 ```bash
 cp .env.example .env   # fill in the required values
 npm install
