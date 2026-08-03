@@ -810,6 +810,97 @@ renamed to Decompose.
   events, and posting an error comment when a run crashes before the agent can
   narrate it (the two-failure-mode error handler). `code-review-agent.md` is
   still a draft and still carries old framing — the one un-reconciled agent.
+  (Superseded: retired 2026-08-03, see the development-tier session below.)
+
+## Development tier — dispatch, branch topology, and review (2026-08-03)
+
+Session input: the architect's dictated notes on what happens once a story reaches
+To-Do and a human developer picks it up. Four decisions settled; all four
+specialist definitions revised against them.
+
+Artifacts: the four revised definitions in `agents/`, and a new dispatch
+runbook + prompt at `docs/development-tier-dispatch.md` — placed in `docs/`
+rather than `examples/` on purpose, since `examples/` is gitignored and this is
+invariant framework material that has to ship with the published repo.
+
+**Dispatch is human, not app-driven.** No webhook wakes a specialist. A
+developer decides a story is next, sets up the branch, and dispatches in Claude
+Code against a local checkout. The rationale is the standing one: the scarce
+resource is human review throughput, so the person who will review the PR
+decides when it gets written. Consequence for the specialist definitions —
+they run with local git plus tracker MCP, unlike the shaping agents, which
+never touch a working copy.
+
+**The comment thread is context, and it is the point.** While a story sits in
+To-Do the developer reads it and asks the architect questions *in the story's
+comment thread*, building a written clarification history before any agent is
+engaged. Every specialist now reads that thread as part of orienting, with the
+standing rule stated in each definition: an architect's answer is an
+authoritative clarification carrying the same weight as the description; an
+answer that *contradicts* an acceptance criterion is a story defect the
+specialist surfaces rather than resolving. This is the first place the pipeline
+treats human-to-human discussion as a first-class agent input rather than
+noise, and it is cheap — the alternative is the specialist re-deriving what a
+human already settled, or worse, silently deciding differently.
+
+**Branch topology: `main` → BRD branch → epic branch → story branch.** Each
+story is developed in its own branch off the epic branch, so conflicts resolve
+in small chunks as work lands rather than accumulating to one large merge.
+Distributing that load is the whole reason for the depth: a BRD carries six to
+eight epics, which is what an architect can review, while story-level conflict
+resolution stays with the developers who wrote the code.
+
+The specialist **verifies this chain; it does not build it.** Epic and story
+branch names come from the tracker's own `gitBranchName` field (confirmed live
+on PROJ-19 and PROJ-24), so no naming convention is invented. The BRD branch has
+no tracker-assigned name — the specialist identifies it as the epic branch's
+base and checks only that the epic branch was not cut straight from `main`.
+Bases are confirmed against real history, not inferred from names: a
+correctly-named branch cut from the wrong parent is exactly the failure this
+catches. A broken chain is `specialist:blocked` and a full stop. The specialist
+never creates a missing branch and never rebases one — re-parenting a branch a
+human may be working in is destructive, and choosing a base is a structural
+decision belonging to whoever set the epic up. PRs go story branch → epic
+branch, never to the BRD branch or `main`.
+
+Open, deliberately: whether a specialist may self-serve a *missing story
+branch* off an already-verified epic branch. Cheap and safe in isolation, but
+it softens "verify, don't build" for a case the dispatch runbook already
+prevents. Left strict — strict is reversible.
+
+**Story-PR review is CI plus a human developer; `code-review-agent.md` is
+retired.** Unit and integration tests run in CI on the PR; a developer other
+than the dispatcher reviews the diff for correctness and pattern fit and merges
+into the epic branch. The agent draft was never built and was two architectures
+stale (verdict object, app-applied). What remained between "CI can check it"
+and "a human must judge it" did not justify a third actor — and inserting one
+before the first specialist run would add a variable to the experiment that run
+exists to measure. Moved to `docs/archive/` with a retirement header rather than
+deleted; if mechanical review returns, it starts from the CI checks that
+replaced it. Epic-branch review, and the PR from epic branch to BRD branch,
+remain the architect's.
+
+**E2E runs at the epic level.** An E2E story's branch is cut from the epic
+branch like any other, but last — after every implementation and integration
+story under that epic has merged — and the environment is stood up from the
+epic branch. This fixes an instruction in the old definition that could not be
+satisfied: it told the specialist to run against "the target environment" while
+working on a story branch carrying one story's work. Cross-epic flows, which
+only exist once epics meet at the BRD branch, are explicitly out of scope and a
+blocker to surface; whether the BRD branch gets its own E2E tier is left open.
+
+**Incidental fixes found while reconciling.** The frontend, tests, and E2E
+definitions still opened with a passive "You receive:" list — the app-hands-
+context model retired by the write-path collapse, which backend had been
+updated for and the other three had not. All three now open with backend's
+"gather your own context" framing. The tests and E2E completion reports both
+required a "Unit-test-scenario coverage" section mapping the story's unit-test
+checklist, while both definitions forbid writing unit tests and the story
+contract puts that checklist only on implementation stories — a copy-paste
+error, now acceptance-criteria coverage plus an explicit coverage boundary. The
+conventions-spec paragraph existed only in backend; it is now in all four.
+Frontend did not mention the design issue at all, despite the design asset
+being the specification for UI work.
 
 ## Open items
 
@@ -894,3 +985,27 @@ renamed to Decompose.
   `decompose-agent.md`'s own text (unlike the `eval:*` labels, which it
   confirms explicitly) — matches the stale code's convention and is
   probably right, but is inherited rather than currently specified.
+  **Sharpened 2026-08-03:** live data disagrees with the docs. PROJ-24 carries
+  `specialist:backend`, `size:medium`, `tier:mid` — but the prompt templates in
+  `examples/` instruct the agent to apply `spec:<specialist>`. One of the two is
+  wrong and nothing currently arbitrates. `specialist:*` is also the prefix the
+  specialist outcome labels use (`specialist:complete` / `:waiting` /
+  `:blocked`), which argues for it as the assignment prefix too — but that is an
+  argument, not a decision. Settle before the PROJ-24 run; a dispatch that
+  can't find its own assignment label is a stupid way to lose the first run.
+- **Story contract still describes the app-hands-context model.**
+  `story-contract.md` says the app "resolves each entry and provides completion
+  status in the specialist's context payload" (blocking dependencies) and
+  "resolves these pointers into the specialist's context payload at run time"
+  (evidence pointers, codebase anchors). No such payload exists — the
+  specialists fetch all of it themselves via MCP, and now that dispatch is
+  human there is no app in the loop at all at this tier. Same reconciliation
+  the four agent definitions just had; the skill was missed. Not blocking the
+  first run (the specialist's own definition is correct and takes precedence),
+  but it will mislead the next person who reads the contract to understand what
+  a story owes a specialist.
+- **BRD-branch tier: does it get its own E2E, and who reviews it?** E2E is
+  settled at the epic level. What happens when epic branches meet at the BRD
+  branch — cross-epic flows, a BRD-level suite, who opens the PR to `main` — is
+  named but not designed. Deliberately deferred: the first epic has not been
+  built, let alone a second one to conflict with it.

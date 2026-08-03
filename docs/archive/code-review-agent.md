@@ -1,4 +1,24 @@
-# Code Review Agent
+# Code Review Agent — RETIRED, NOT PART OF THE PIPELINE
+
+> **Retired 2026-08-03.** This agent was never built and is no longer part of
+> the roster. Story-PR review is now **CI plus a human developer**: the
+> mechanical checks below (lint-class defects, unit and integration tests) run
+> in CI on the pull request, and the judgment this document explicitly refused
+> to make — architecture, taste, whether the change is actually right — was
+> always a human's. What was left in the middle did not justify a third actor
+> in the loop, and inserting one before the first specialist run had produced
+> any code would have added a variable to the very experiment meant to measure
+> specialist output quality.
+>
+> It is also two architectures out of date: it describes a `decision` /
+> `rationale` / `comment` verdict object that an app applies, which the
+> MCP-direct write-path collapse retired for every agent.
+>
+> Kept for the trail. Do not load it, do not cite it as current design. If
+> mechanical review ever returns as an agent, it starts from the CI checks that
+> replaced it, not from this document.
+>
+> Original status note follows.
 
 > Status note: no prior written definition of this agent was recovered from
 > past design sessions — this is a first full draft built on the established

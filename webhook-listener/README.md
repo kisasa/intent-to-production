@@ -159,10 +159,15 @@ crash-survival — the function signatures in `agent-scheduler.ts` don't change.
 
 ## Not yet built
 
-- **Specialist lanes** (backend/frontend/tests/e2e). The registration point
-  exists — one `AgentLaneConfig` under `src/lanes/` plus one entry in
-  `swim-lanes.ts` — but no specialist prompt or trigger condition has been
-  written yet.
+- **Specialist lanes** (backend/frontend/tests/e2e) — **and deliberately so.**
+  The four specialist definitions exist (`agents/specialist-*.md`), as does a
+  dispatch prompt (`docs/development-tier-dispatch.md`), but
+  they are not webhook lanes and are not queued to become ones. Specialists are
+  dispatched by a human developer in Claude Code against a local checkout: the
+  scarce resource is human review throughput, so the person who will review the
+  pull request decides when it gets written. The registration point is still
+  here — one `AgentLaneConfig` under `src/lanes/` plus one entry in
+  `swim-lanes.ts` — if that decision ever reverses.
 - **A second issue tracker.** The write path is Linear-specific (MCP) — a
   Jira or GitHub Issues adapter would need its own MCP server to reach the
   same architecture, not just a webhook parser. (GitHub is already wired in,

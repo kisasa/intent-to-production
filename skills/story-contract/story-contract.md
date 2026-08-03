@@ -98,20 +98,20 @@ grounding lives only in the drafter's session.
 
 Anchors are relative paths within a named surface/repo base (carried down
 from the Specification Agent's recorded bases), e.g. `frontend:
-features/gateways/gateways.page.ts:233-237` — never absolute URLs. The app
-composes clickable absolute links (and, at specialist-run time, resolves the
-anchor's actual code into the specialist's payload) from the surface's base.
-This is the fix for anchors that are hard to work from as bare relative
-paths: the human gets a link, the specialist gets the code, and neither the
-story nor the agent has to know the repo's absolute location.
+features/gateways/gateways.page.ts:233-237` — never absolute URLs. The base is
+recorded on the epic, so a relative anchor resolves for both readers: a human
+composes the link, and the specialist — which works in a local checkout of that
+surface — opens the path directly. Neither the story nor the anchor has to know
+the repo's absolute location.
 
 **Evidence pointers**
 Expected for any story with a user-facing surface; optional elsewhere. Names
 the specific artifacts from the project's evidence that anchor this story —
 screenshot filenames with what each shows, quoted lines from source notes.
 For UI work the design asset is the spec: prose describes it,
-the image resolves it. The app resolves these pointers into the specialist's
-context payload at run time.
+the image resolves it. A pointer must be specific enough that the specialist
+can retrieve the artifact itself through the tracker — nothing is pre-resolved
+and handed to it.
 
 **Scope boundary**
 State what this story does not cover if anything adjacent might be assumed in
@@ -121,14 +121,14 @@ scope. Prevents scope creep at the Specialist stage.
 Lists the sibling stories that must be complete before this story can begin
 — each entry carrying the blocker's issue identifier and title (the tracker
 auto-links identifiers, so every entry is one click from the blocker) — or
-"No blocking dependencies." This section has one author: the app renders it
-from the decomposition verdict's dependency graph, in dependency order so
-identifiers exist at render time. The specialist honors it — the app
-resolves each entry and provides completion status in the specialist's
-context payload.
+"No blocking dependencies." This section has one author: the Decompose Agent
+renders it from its own dependency graph, in dependency order so identifiers
+exist at render time. The specialist honors it, and looks each entry's state up
+itself through the tracker — completion status is never handed to it.
 
 **Assignment metadata**
-Every story carries three assignment fields, applied as labels by the app:
+Every story carries three assignment fields, applied as labels at
+decomposition time:
 
 - `specialist` — backend, frontend, tests, or e2e. Which specialists exist
   and what their domains cover is engagement context, not part of this
@@ -139,5 +139,6 @@ Every story carries three assignment fields, applied as labels by the app:
 - `tier` — small, mid, or large: which execution tier (model class) runs the
   specialist for this story. This is cost control applied per story — routine
   stories run on cheaper tiers; stories with architectural surface run on
-  stronger ones. [Verify tier semantics against the app's routing code —
-  documented from the verdict schema, not from observed routing.]
+  stronger ones. Specialists are dispatched by a developer, not routed by the
+  app, so today this label informs a human's model choice rather than driving
+  automated routing.

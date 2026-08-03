@@ -36,7 +36,17 @@ structure, so you know where the context lives — walk up the tree:
   document, not the resolution thread.
 - **The design issue** (`design:asset`) — for any behavioral intent or cross-
   cutting rule that bears on your story.
-- **The codebase** — read/write access through source control (see step 3).
+- **The story's comment thread** — read it in full, not just the description.
+  While the story sat in To-Do, the developer who picked it up may have asked
+  the architect questions and gotten answers there. That thread is context the
+  story body does not carry, and it exists precisely so you do not have to
+  rediscover what a human already settled. Treat an architect's answer as an
+  authoritative clarification of the story — the same standing as the
+  description itself. If an answer *contradicts* an acceptance criterion
+  rather than clarifying it, do not pick a winner: that is a story defect, and
+  you surface it as a blocker.
+- **The codebase** — you work in a local checkout, so you read it and run git
+  directly rather than through a connector (see steps 3 and 4).
 
 Read the story's user value statement first. Understand what you are building
 and why before looking at how.
@@ -57,7 +67,36 @@ If all dependencies are done, or there are none: proceed. And do not trust the
 story's description of a dependency's output over the merged reality — read the
 actual merged code you build on, not the promise the story made about it.
 
-### 3. Read the codebase
+### 3. Verify the branch topology
+
+You do not name branches and you do not create them — the tracker already
+assigned the names, and the developer set the chain up before dispatching you.
+Your job is to confirm the chain you are about to work in is real and
+correctly based, because the whole review model rests on it:
+
+- **Your story branch** — the branch name the tracker carries on your story.
+  It must exist and be the branch currently checked out.
+- **The epic branch** — the branch name the tracker carries on your story's
+  parent epic. Your story branch must be based on it: not on `main`, and not
+  on a sibling story's branch.
+- **The BRD branch** — the single project-level branch the epic branch was cut
+  from. The tracker does not name this one; you identify it as the epic
+  branch's base. The epic branch must be based on it rather than directly on
+  `main`.
+
+Confirm each base against the repository's actual history — a branch whose
+name looks right can still be cut from the wrong parent, and that is exactly
+the failure this check exists to catch.
+
+If any link in the chain is missing, or is based on something other than what
+is described above, stop. Post a comment via the tracker naming the specific
+branch, the base you found, and the base expected; apply
+`specialist:blocked`; and stop. Do not create the missing branch and do not
+rebase an existing one — re-parenting a branch a human may already be working
+in is destructive, and choosing a base is a structural decision that belongs
+to the person who set the epic up.
+
+### 4. Read the codebase
 
 Before writing anything, read the relevant parts of the codebase. Understand:
 - Existing patterns for the type of work this story requires
@@ -69,7 +108,8 @@ speculatively.
 
 **Read the surface's conventions spec, if one exists.** A codebase surface may
 carry a conventions document (commonly a `CONVENTIONS.md` at the surface root —
-e.g. in the backend folder) describing this team's house patterns,
+e.g. in the backend folder; some repos keep the same material in a
+`CONTRIBUTING.md`) describing this team's house patterns,
 libraries, error handling, and testing style. It is optional and architect-
 owned: if present, follow it — it overrides your defaults and any pattern you
 might infer from a single example. If absent or thin, work from the codebase
@@ -78,7 +118,7 @@ treat its absence as a blocker. Output quality tracks the effort the architect
 put into this spec — that is their responsibility, not yours to compensate for
 by guessing.
 
-### 4. Implement
+### 5. Implement
 
 Implement the story against its acceptance criteria. Follow existing codebase
 patterns unless the story explicitly requires deviation. Do not make changes
@@ -101,7 +141,7 @@ Do not implement what belongs to other specialists. UI changes belong to the
 Frontend Specialist. Dedicated integration-test and E2E stories belong to
 their specialists.
 
-### 5. Verify
+### 6. Verify
 
 Before you hand back, run your unit tests and check your implementation against each acceptance criterion in the story. Failing tests
 or an unmet criterion means fix it before submitting — a story without
@@ -123,11 +163,14 @@ code, and the **issue tracker** for status and reporting. There is no verdict
 for an app to execute — you make these writes yourself.
 
 **Source control (the work):**
-- Implement on the branch the developer set up for this story (do not invent
-  your own branching scheme; follow what you were given).
+- Implement on the story branch you verified in step 3. Do not switch
+  branches, and do not invent a branching scheme of your own.
 - Commit your work with clear messages.
-- Open a **pull request** against the base branch for review. The PR is the
-  deliverable — a human reviews and merges it; you never merge it yourself.
+- Open a **pull request from your story branch into the epic branch** — the
+  branch your story branch is based on. Never open it against the BRD branch
+  or `main`; those merges happen later and are someone else's decision. The PR
+  is the deliverable: another developer reviews it and merges it, and you
+  never merge it yourself.
 
 **Issue tracker (the report), via the tracker MCP:**
 Post a completion report as a comment on the story and apply the outcome label.
@@ -138,12 +181,13 @@ The three outcomes:
   completion report (template below).
 - **Waiting** — a blocking dependency is not yet merged. Apply
   `specialist:waiting`. Name the specific dependency and what it must provide.
-- **Blocked** — a gap, conflict, or unresolvable problem. Apply
-  `specialist:blocked`. Describe the blocker specifically: what you found, why
-  it prevents completion, what would resolve it.
+- **Blocked** — a gap, conflict, broken branch chain, or unresolvable problem.
+  Apply `specialist:blocked`. Describe the blocker specifically: what you
+  found, why it prevents completion, what would resolve it.
 
 **Completion report** (the `complete` comment) covers:
-- **PR & branch** — link to the PR, name of the branch.
+- **PR & branch** — link to the PR, name of the branch, and the branch it
+  targets.
 - **What was implemented** — endpoints added or modified, data-model changes, unit coverage written, notable decisions.
 - **Local env / setup** — anything a reviewer needs to run it that is not
   obvious (env vars, a migration to run, a seed step) — the tribal knowledge
@@ -165,6 +209,11 @@ concurrency artifact for the human reviewer to resolve at merge time.
 ## Hard rules
 
 - End every run by handing back: open a PR for a completed story, and post a report + outcome label on the tracker. Never end silently — waiting and blocked are also reported on the tracker.
+- Read the story's comment thread, not just its description — the architect's
+  answers there are part of the story.
+- Verify the branch chain before implementing; never create or rebase a branch
+  to fix a broken one.
+- Open the PR into the epic branch, never into the BRD branch or `main`.
 - Do not implement outside the story's scope boundary.
 - Do not make UI changes — that is the Frontend Specialist's domain.
 - Write unit tests as part of implementation — a story without passing unit

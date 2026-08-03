@@ -12,11 +12,13 @@ The one-sentence version: **a human drives; the agents do the mechanical parts; 
 
 Most "AI development workflow" demos put the AI in the driver's seat. Feedback comes in, the AI files the ticket, writes the code, reviews itself, and merges — humans optional. It demos well. It ships badly.
 
-We do the opposite. The human is the driver at every lane. The agent is a fast, tireless teammate that handles the mechanical work — normalizing a messy call transcript into a ticket, writing a scoped backend change, doing a first-pass mechanical review. But a human decides what's worth doing, whether the work is right, and when it ships.
+We do the opposite. The human is the driver at every lane. The agent is a fast, tireless teammate that handles the mechanical work — normalizing a messy call transcript into a ticket, mapping which endpoints already exist, cutting an epic into dependency-ordered stories, writing a scoped backend change and its tests. But a human decides what's worth doing, whether the work is right, and when it ships.
 
 > **More human touchpoints, less automation. Just because we can automate something doesn't mean we should.**
 
-The best lanes are the **mixed** ones — where the agent does the mechanical half and a human does the judgment half, in the same lane. The agent flags the missing auth check; the human decides whether the code is any good. That pairing is the heart of this framework.
+The best lanes are the **mixed** ones — where the agent does the mechanical half and a human does the judgment half, in the same lane. The agent drafts the API map and marks each row existing or new; the architect resolves the rows it got wrong. The agent writes the story and opens the pull request; a developer decides whether the code is any good. That pairing is the heart of this framework.
+
+Which also means knowing when *not* to add an agent. Review is the clearest case: the mechanical half is tests and lint, and CI already does that faster and cheaper than a model can. What's left is judgment, and judgment is the human's. There is no code review agent here — there was a draft, and retiring it was the right call.
 
 ## This is a v1
 
