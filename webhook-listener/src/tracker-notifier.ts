@@ -79,6 +79,10 @@ const PATIENCE_QUIPS = [
   "Rome wasn't sliced into epics in a day.",
   "The tortoise reads the whole BRD before it moves.",
   "Patience: the art of watching a status comment update itself.",
+  "A checkpoint rushed is a checkpoint reopened.",
+  "The API map gets read once and drawn once — no shortcuts either way.",
+  "Confirm rows don't resolve themselves, but they will.",
+  "Even a paused activation is still making progress.",
 ];
 
 export function pickPatienceQuip(): string {
