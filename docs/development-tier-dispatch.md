@@ -1,89 +1,135 @@
-# Development tier — dispatching a specialist
+# Running a specialist on a story
 
-The shaping tier ends when the Decompose Agent moves an epic and its stories
-into **To-Do**. From there a human developer picks up a story and engages a
-specialist against it, in Claude Code, in a local checkout of the repo.
+For the developer who just picked up a story in **To-Do**.
 
-Unlike the shaping agents, a specialist is not woken by the app. There is no
-webhook, no routing decision, no template substitution — a person decides this
-story is next and dispatches. That is deliberate: the scarce resource is human
-review throughput, and the person who will have to review the PR is the person
-who should decide when it gets written.
+You do three things: set the branch up, paste a prompt, review what comes back.
+Everything below is the detail behind those three.
 
 ---
 
-## Before you dispatch
+## First time only
 
-**1. Read the story yourself.**
-You are about to review whatever comes back. If the story does not make sense
-to you now, it will not make more sense as a diff.
+### 1. Claude Code, from Claude Desktop, pointed at the workspace folder
 
-**2. Ask the architect your questions in the story's comment thread.**
-Not in chat, not in a call, not in your head. While the story sits in To-Do,
-the thread is where clarification happens, and the specialist reads that thread
-as part of the story. A question you resolve here is a question the specialist
-does not have to guess at, and an answer that lives in Slack is an answer the
-specialist will never see.
+Start a Claude Code session in Claude Desktop and point it at the **workspace
+folder** — the parent directory holding all the repos — not at a single repo.
+The specialist needs to read files, run git, run the tests, and open a pull
+request, and it needs more than one repo in view to do it.
 
-Ask now rather than during review. The whole point of the back-and-forth
-happening before dispatch is that ambiguity gets settled once, in writing,
-where the next person on this story can also read it.
+### 2. Lay the workspace out
 
-**3. Set the branch chain up.**
-The specialist verifies this chain and refuses to work in a broken one. It will
-not create or re-parent branches for you — choosing a base is a structural
-decision, and rebasing a branch someone else may be working in is destructive.
+```
+~/work/<project>/                 ← point Claude Code here
+├── <surface-a>/                  ← a product repo (frontend, backend, …)
+├── <surface-b>/                  ← another product repo
+└── intent-to-production/         ← the framework repo (agent definitions)
+```
+
+Everything in one place because reading across repos matters: a frontend story
+has to check the API the backend actually shipped, not the one the story
+describes.
+
+**Writes go to one repo only.** Every story targets a single surface. That repo
+is where the branch lives, where the code lands, and where the PR opens. The
+prompt names it. The others are read-only.
+
+### 3. Clone `intent-to-production`
+
+The specialist definitions live there, not in the product repos. Note the
+absolute path — the prompt points at it.
+
+`git pull` before each run. A stale clone runs an out-of-date definition and
+you won't notice until the output is wrong.
+
+### 4. Turn on the connectors
+
+- **Linear** — the specialist reads the story and writes its report through it.
+  Without it the run can't report anything.
+- **Source control** — an authenticated `gh`, or the GitHub connector, so it
+  can open the PR.
+
+Git itself runs locally in your checkout.
+
+### 5. Approve tool calls as they come
+
+Claude will ask before running git, the test suite, or `gh pr create`. Approve
+them one at a time rather than pre-approving in `.claude/settings.json`. For
+the first few stories you want to see what it actually does.
+
+---
+
+## Every story
+
+- [ ] Story read, and it makes sense to you
+- [ ] Your questions asked and answered **in the story's comment thread**
+- [ ] Branch chain set up in the target repo, story branch checked out
+- [ ] `git pull` in the framework clone
+- [ ] Claude Code session pointed at the workspace folder
+
+### Read the story
+
+You're going to review whatever comes back. If it doesn't make sense now, it
+won't make more sense as a diff.
+
+### Ask your questions in the story's comment thread
+
+Not in Slack, not in a call. The specialist reads that thread as part of the
+story — anything the architect answers there, it picks up. Anything answered
+anywhere else, it never sees.
+
+Ask before you dispatch, not during review.
+
+### Set the branch chain up
 
 ```
 main
-└── <BRD branch>              one per project/BRD
-    └── <epic branch>          the tracker's branch name on the epic issue
-        └── <story branch>     the tracker's branch name on the story issue
+└── <BRD branch>              one per project
+    └── <epic branch>          the tracker's branch name on the epic
+        └── <story branch>     the tracker's branch name on the story
 ```
 
-Use the branch names the tracker already assigns to the epic and story issues
-— do not make up your own. The BRD branch has no tracker-assigned name; it is
-whatever the project's branch is called, and every epic branch in that project
-must be cut from it rather than from `main`.
+Use the branch names the tracker already assigns to the epic and story — don't
+make up your own. The BRD branch is whatever the project's branch is called;
+epic branches come off it, never off `main`.
 
 Check out the story branch before you dispatch.
 
-**E2E stories are the exception to the timing, not the shape.** An E2E story's
-branch is cut from the epic branch like any other, but it is cut *last* — after
-every implementation and integration story under that epic has merged in.
-Create it early and the specialist will refuse to run, correctly: the code its
-flows traverse is not underneath it yet.
+The specialist checks this chain and stops if it's wrong. It won't create or
+re-parent a branch for you.
 
-**4. Confirm your connectors.**
-The specialist needs the issue tracker over MCP for everything it reads and
-writes on the story, and source-control access to open the PR. Git itself it
-runs locally in your checkout.
+**E2E stories are cut last.** Create the branch only after every other story
+under that epic has merged into the epic branch — otherwise the code its tests
+walk through isn't there yet, and the run will stop.
 
 ---
 
-## The dispatch prompt
+## The prompt
 
-Substitute the seven placeholders. The specialist file is the one matching the
-story's specialist assignment — `specialist-backend.md`,
-`specialist-frontend.md`, `specialist-tests.md`, or `specialist-e2e.md`.
-
-> Read the assignment off the story's labels, but check what the label is
-> actually called before you automate anything against it: live stories carry
-> `specialist:backend`, while `decompose-agent.md` and the evaluation prompt
-> templates say `spec:<specialist>`. Those disagree, and `specialist:*` is also
-> the namespace the agent writes its *outcome* into. Open item in the design
-> ledger — settle it before it costs you a run.
+Pick the specialist file matching the story's assignment label (`backend`,
+`frontend`, `tests`, or `e2e` — the label may read `specialist:backend` or
+`spec:backend` depending on the story).
 
 ```
-You are the <SPECIALIST_NAME> Specialist defined in the attached
-<SPECIALIST_FILE>. Read that definition now, plus your reference skills
-story-contract.md and epic-writing.md.
+Read these three files now — they define your role and the contracts you work
+to:
 
-Assignment: story <STORY_ID> — "<STORY_TITLE>". Its parent epic is <EPIC_ID>.
+- <FRAMEWORK_PATH>/agents/<SPECIALIST_FILE>
+- <FRAMEWORK_PATH>/skills/story-contract/story-contract.md
+- <FRAMEWORK_PATH>/skills/epic-writing/epic-writing.md
 
-Working copy: this repo, currently checked out on <STORY_BRANCH>. The epic
-branch is <EPIC_BRANCH>. Both names come from the tracker; I set the chain up
-before dispatching you.
+You are the <SPECIALIST_NAME> Specialist those files describe. Follow that
+definition; this message only tells you which story and where.
+
+Assignment: story <STORY_ID> — "<STORY_TITLE>", under epic <EPIC_ID>.
+
+Your target surface is ./<SURFACE_REPO>. Every write you make goes there and
+nowhere else. It is checked out on <STORY_BRANCH>; the epic branch is
+<EPIC_BRANCH>. Both names come from the tracker, and I set the chain up before
+dispatching you — verify it, do not repair it.
+
+The other repositories in this workspace are sibling surfaces. Read them when
+you need to confirm what a dependency actually implements rather than what the
+story claims it does. Do not modify them and do not open a PR against them.
 
 Using the Linear connector, read <STORY_ID>'s description and its full comment
 thread, then walk up to <EPIC_ID> for the parent epic, its resolved API map,
@@ -101,31 +147,32 @@ has a gap you cannot resolve from the thread — stop and report it rather than
 deciding for yourself. A blocker you surface is the useful output of this run.
 ```
 
----
-
-## After it hands back
-
-The specialist ends by opening a PR from the story branch into the epic branch
-and posting a report plus one of `specialist:complete`, `specialist:waiting`,
-or `specialist:blocked` on the story.
-
-**Review is CI plus a human.** Unit and integration tests run in CI on the PR;
-a developer other than the one who dispatched reads the diff and decides
-whether the change is right — patterns, structure, whether it actually solves
-the story. That developer merges the story branch into the epic branch. There
-is no review agent in this loop.
-
-**Read the completion report's "Questions & assumptions" section.** Every
-entry there is a place the story was ambiguous enough that an agent had to
-decide something. That is feedback to the shaping tier, and it is the cheapest
-signal you will get about story quality.
-
-When every story under the epic has merged, the epic branch is the architect's
-to review and to open against the BRD branch.
+| Placeholder | Where it comes from |
+|---|---|
+| `<FRAMEWORK_PATH>` | Absolute path to your `intent-to-production` clone |
+| `<SPECIALIST_FILE>` | `specialist-backend.md` / `-frontend.md` / `-tests.md` / `-e2e.md` |
+| `<SPECIALIST_NAME>` | Backend / Frontend / Tests / E2E |
+| `<STORY_ID>`, `<STORY_TITLE>` | The story |
+| `<EPIC_ID>` | The story's parent epic |
+| `<SURFACE_REPO>` | Folder name of the target repo in your workspace |
+| `<STORY_BRANCH>`, `<EPIC_BRANCH>` | The branch names on the story and the epic |
 
 ---
 
-> **Not yet designed:** re-dispatching a specialist after PR review findings.
-> The first runs will show whether that wants its own prompt, a comment on the
-> story, or just a developer fixing it by hand — designing it before then would
-> be guessing.
+## What comes back
+
+A PR from the story branch into the epic branch, and a comment on the story
+with one of three labels:
+
+| Label | Meaning |
+|---|---|
+| `specialist:complete` | Done. PR is open, tests pass. |
+| `specialist:waiting` | A story it depends on isn't merged yet. Nothing was written. |
+| `specialist:blocked` | It hit something it wouldn't guess at — a gap in the story, a wrong branch base, a conflict. Read the comment; it names the specific thing. |
+
+CI runs the tests on the PR. A developer other than you reads the diff and
+merges it into the epic branch. No agent reviews it.
+
+**Read the "Questions & assumptions" section of the report.** Each entry is a
+place the story was vague enough that the agent had to decide something. Those
+are worth passing back to whoever wrote it.

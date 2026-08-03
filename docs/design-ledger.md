@@ -821,7 +821,49 @@ specialist definitions revised against them.
 Artifacts: the four revised definitions in `agents/`, and a new dispatch
 runbook + prompt at `docs/development-tier-dispatch.md` — placed in `docs/`
 rather than `examples/` on purpose, since `examples/` is gitignored and this is
-invariant framework material that has to ship with the published repo.
+invariant framework material that has to ship with the published repo. The
+runbook is written for the developer and deliberately carries none of the
+pipeline's rationale: they do not need to know why dispatch is human or why
+review is CI-plus-a-human, only what to set up, what to paste, and what comes
+back. They run Claude Code through Claude Desktop, pointed at a workspace
+parent holding every surface repo plus their framework clone.
+
+**A `conventions-writing` skill — and why it is not the thing the ledger
+rejected.** Earlier this repo rejected shipping `*-conventions` skills, and that
+still holds: the framework ships no opinions about how to build a backend, and
+conventions remain architect-owned and codebase-resident. What was added is the
+opposite artifact — an authoring skill that *interviews* an architect to extract
+rules they already hold, asserting none of its own. It is a sibling of
+`business-requirements-writing`: human-invoked in a session, one question at a
+time, produces a document, decides nothing. The distinction is content versus
+process, and it is worth stating explicitly because the two read similarly from
+the file listing.
+
+Interview discipline carried over from `business-requirements-writing` and
+sharpened for this case: offer two or three options with the real tradeoff
+rather than a recommendation, because a recommendation gets ratified and a
+ratified convention is not a held one. Never upgrade a habit into a policy — "we
+usually put handlers in the feature folder" and a rule read identically in a
+finished document and are enforced very differently. An omitted section is a
+reported outcome, never a filled one.
+
+Readiness test: **a reviewer could reject a specialist's PR by citing a line in
+it.** Cuts both ways — a likely objection with no line to cite means a rule is
+missing, and a line the architect would not actually reject a PR over is a
+preference wearing a rule's clothes and will produce arguments instead of code.
+Thin and true over thorough and aspirational.
+
+A `docs/templates/CONVENTIONS.template.md` was written first and then folded
+into the skill and deleted. Two artifacts covering the same sections would drift,
+and the framework's existing pattern is that the skill *is* the output spec
+(`story-contract`, `api-map-writing`), not a pointer to a separate template.
+
+Also open, and the reason the LET backend is still blocked: the backend ADR
+deliberately punts on both tech selection (§3, "type, not vendor") and repo
+organization (§7, "code location is out of scope"). Those decisions have to land
+in the surface's `CONVENTIONS.md` before the Specification Agent's
+spec-readiness gate will pass — which is exactly the gap the new skill exists to
+walk the architect through.
 
 **Dispatch is human, not app-driven.** No webhook wakes a specialist. A
 developer decides a story is next, sets up the branch, and dispatches in Claude
@@ -1004,6 +1046,26 @@ being the specification for UI work.
   first run (the specialist's own definition is correct and takes precedence),
   but it will mislead the next person who reads the contract to understand what
   a story owes a specialist.
+- **Branch topology is per-repo, and nothing reconciles across surfaces.**
+  Settled 2026-08-03: the developer starts Claude Code from a workspace parent
+  holding every surface repo plus the framework clone, so cross-surface reads
+  work (a frontend story confirming the real backend contract, an integration
+  story spanning implementations). But `main → BRD → epic → story` exists
+  *within* one repo. An epic with work in two surfaces needs two epic branches
+  cut from two BRD branches, related by naming convention and nothing else.
+  Tolerable while stories stay single-surface — decomposition assigns one
+  specialist per story, so a story has exactly one target repo — and the
+  specialist verifies the chain only in that target. Not a problem yet; it
+  becomes one the first time an epic's surfaces need to merge together.
+- **The framework clone is a silent version dependency.** Specialist
+  definitions and skills are read from the developer's local
+  `intent-to-production` checkout by absolute path — not vendored, not
+  packaged. Chosen for zero packaging overhead and always-current-with-`dev`,
+  at the cost of a prompt that is not literally copy-pasteable between
+  developers and a stale clone that will quietly dispatch a superseded
+  definition. The dispatch runbook says "pull first," which is a convention,
+  not a control. If this bites, the fix is the plugin route (ship agents and
+  skills alongside the Linear MCP the team already installs).
 - **BRD-branch tier: does it get its own E2E, and who reviews it?** E2E is
   settled at the epic level. What happens when epic branches meet at the BRD
   branch — cross-epic flows, a BRD-level suite, who opens the PR to `main` — is
