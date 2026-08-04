@@ -13,6 +13,21 @@ elements with the breakages that shaped them, and entries here should be
 written so they can be lifted into that section with dates and sequence
 intact.
 
+**On `LET-*` identifiers and "the sandbox team" (added 2026-08-03).** These appear
+throughout the entries below as the substrate decisions were worked out against.
+They were a **framework-development sandbox** — a tracker team and a synthetic
+engagement built to exercise the pipeline, not a client and not a deliverable.
+Its issues have since been cleared, so no identifier below resolves any more.
+
+Read them accordingly: an entry saying "found while working through PROJ-24" is
+recording *what forced a rule*, which is exactly what the provenance contract
+above asks for, and it stays. An entry treating a particular LET issue as a
+milestone was a category error and has been rewritten — what matters is the
+mechanism and the preconditions that made a first run possible, never which
+ticket happened to carry it. When an observation is durable but its anchor is
+not, state the finding and note it was confirmed against a live issue before the
+team was cleared; do not cite an identifier a reader cannot open.
+
 ---
 
 ## Entry tier
@@ -810,7 +825,11 @@ renamed to Decompose.
   events, and posting an error comment when a run crashes before the agent can
   narrate it (the two-failure-mode error handler). `code-review-agent.md` is
   still a draft and still carries old framing — the one un-reconciled agent.
-  (Superseded: retired 2026-08-03, see the development-tier session below.)
+  (Superseded 2026-08-03 on both counts: `code-review-agent.md` was retired to
+  `docs/archive/`, and "the one un-reconciled agent" turned out to be wrong —
+  `decompose-agent.md`, `intake-agent.md`, and `specification-agent.md` all still
+  carry app-hands-context phrasing, tracked as an open item. See the
+  development-tier session below.)
 
 ## Development tier — dispatch, branch topology, and review (2026-08-03)
 
@@ -858,12 +877,16 @@ into the skill and deleted. Two artifacts covering the same sections would drift
 and the framework's existing pattern is that the skill *is* the output spec
 (`story-contract`, `api-map-writing`), not a pointer to a separate template.
 
-Also open, and the reason the LET backend is still blocked: the backend ADR
-deliberately punts on both tech selection (§3, "type, not vendor") and repo
-organization (§7, "code location is out of scope"). Those decisions have to land
-in the surface's `CONVENTIONS.md` before the Specification Agent's
-spec-readiness gate will pass — which is exactly the gap the new skill exists to
-walk the architect through.
+Also surfaced, and generalizable beyond the surface it was found on: **an ADR
+can deliberately decline to name the stack, and that silence lands on
+`CONVENTIONS.md`.** The sandbox backend ADR punted on both tech selection (§3,
+"type, not vendor") and repo organization (§7, "code location is out of scope")
+— defensible for an architecture document, since neither is an architecture
+question. But it means the language, the API style, and where the code lives are
+recorded nowhere, and the spec-readiness gate will not pass until they are. So
+the conventions interview is not a companion to standing a surface up; for a
+greenfield surface it is part of standing it up, and the skill should be run
+before anyone expects the pipeline to map that surface.
 
 **Dispatch is human, not app-driven.** No webhook wakes a specialist. A
 developer decides a story is next, sets up the branch, and dispatches in Claude
@@ -894,7 +917,8 @@ resolution stays with the developers who wrote the code.
 
 The specialist **verifies this chain; it does not build it.** Epic and story
 branch names come from the tracker's own `gitBranchName` field (confirmed live
-on PROJ-19 and PROJ-24), so no naming convention is invented. The BRD branch has
+against live epic and story issues before the sandbox tracker was cleared), so
+no naming convention is invented. The BRD branch has
 no tracker-assigned name — the specialist identifies it as the epic branch's
 base and checks only that the epic branch was not cut straight from `main`.
 Bases are confirmed against real history, not inferred from names: a
@@ -909,6 +933,17 @@ Open, deliberately: whether a specialist may self-serve a *missing story
 branch* off an already-verified epic branch. Cheap and safe in isolation, but
 it softens "verify, don't build" for a case the dispatch runbook already
 prevents. Left strict — strict is reversible.
+
+Raised again later the same day: the architect read the developer runbook's "branch
+chain set up in the target repo" checklist line and asked whether the specialist
+was not supposed to be doing that. The answer is that verification was the
+decision — his own words were "looks to see if branching has been initialized …
+and the bases are correct," and "the given story branch," meaning it pre-exists.
+But the question came back unprompted, which is worth recording: the strict
+reading makes a developer do a mechanical step (cut a branch off an epic branch,
+using a name the tracker already supplies) that an agent could do safely,
+because nobody can be working in a branch that does not exist yet. Still
+unresolved — the follow-up never got answered.
 
 **Story-PR review is CI plus a human developer; `code-review-agent.md` is
 retired.** Unit and integration tests run in CI on the PR; a developer other
@@ -942,7 +977,19 @@ contract puts that checklist only on implementation stories — a copy-paste
 error, now acceptance-criteria coverage plus an explicit coverage boundary. The
 conventions-spec paragraph existed only in backend; it is now in all four.
 Frontend did not mention the design issue at all, despite the design asset
-being the specification for UI work.
+being the specification for UI work. `story-contract` still described an
+app-resolved context payload and a decomposition verdict, and was reconciled
+too (see the resolved open item below). Two further passes were needed on
+documentation the specialists do not read but people do: `README.md`'s thesis
+cited "first-pass mechanical review" as an agent lane, and
+`webhook-listener/README.md` listed specialist lanes under "not yet built" when
+their absence is a settled decision rather than pending work.
+
+Verification also surfaced that the shaping tier carries the same drift the
+specialists just had cleaned out — `decompose-agent.md`, `intake-agent.md`,
+`specification-agent.md`, `epic-writing.md`, and `story-decomposition.md` all
+still say "context payload" or "verdict." Left alone deliberately: one tier per
+session, and the specialist tier was this one. Tracked as an open item.
 
 ## Hosting the listener — CDKTN, and why exactly one task (2026-08-04)
 
@@ -1079,8 +1126,9 @@ that will be made again.
   Validate the static prompt-driven specialist first: you cannot build a good
   generator until a real run shows what a specialist actually needs (the
   generator's output is a specialist definition, so its hardest job — composing
-  the right context — is exactly what a run reveals). The static PROJ-24 run is
-  strictly on the path to the generated version, not throwaway. Note: Managed
+  the right context — is exactly what a run reveals). Running the static
+  definitions first is strictly on the path to the generated version, not
+  throwaway work to be discarded once the generator exists. Note: Managed
   Agents (server-hosted stateful agents with Anthropic-managed sandbox, Skills +
   MCP, file mounts — surfaced in the agent-development research) are a plausible
   substrate; a reason to keep specialist definitions clean enough to become a
@@ -1094,12 +1142,38 @@ that will be made again.
   that don't (intent-mapping, decomposition). NOT decided — real trap: a
   "skip to story" path is an exception to every-story-traces-to-intent, and
   exceptions leak quality. Design deliberately later.
-- **The PROJ-24 backend specialist run is the frontier.** First specialist
-  execution ever; answers "does the pipeline produce good code?" and settles
-  the specialist model + decomposition-invariant empirically. Requires the LET
-  backend surface made spec-ready first (C# starter solution + structure + one
-  representative endpoint) per the spec-readiness gate — the same act authors
-  the backend conventions spec.
+- **The frontier is the first specialist run — the preconditions, not the
+  ticket.** Rewritten 2026-08-03: this entry used to name a specific sandbox
+  story as "the frontier," which was a category error. The story it ran against
+  is disposable and the sandbox that held it has been cleared; what has to be
+  preserved is what a first run *requires*, because that list is what a team
+  reproduces.
+
+  A specialist can run when all of these are true:
+
+  1. **The surface is spec-ready.** Real code present at the recorded base —
+     runtime and framework legible, structure seeded, at least one
+     representative pattern. Greenfield surfaces need a human to build this
+     before the Specification Agent will map them; the gate is blocking for
+     exactly this reason.
+  2. **The surface carries a conventions spec** the architect actually authored.
+     Optional to the pipeline, decisive to output quality. This is the same act
+     as (1) in practice — whoever seeds the code is who knows the rules.
+  3. **A resolved API map on the epic**, existence settled by the architect
+     rather than inferred by an agent.
+  4. **A story meeting the story contract**, including enumerated unit-test
+     scenarios and codebase anchors that resolve.
+  5. **A clarification thread** on the story — the developer's questions and the
+     architect's answers, in writing, before dispatch.
+  6. **A verified branch chain** in the target repo, names taken from the
+     tracker.
+  7. **Connectors proven** — tracker and source control, checked before dispatch
+     rather than discovered mid-run.
+
+  What the run answers is unchanged and is the only reason to care about it:
+  does the pipeline produce code worth reviewing, and does the specialist model
+  survive contact with a real story. Both are questions about the mechanism, so
+  either can be answered by whatever story comes next.
 
 - Exhibit redaction depth (per exhibit; reconstructed exhibits weaken the
   reference claim).
@@ -1133,25 +1207,48 @@ that will be made again.
   `decompose-agent.md`'s own text (unlike the `eval:*` labels, which it
   confirms explicitly) — matches the stale code's convention and is
   probably right, but is inherited rather than currently specified.
-  **Sharpened 2026-08-03:** live data disagrees with the docs. PROJ-24 carries
-  `specialist:backend`, `size:medium`, `tier:mid` — but the prompt templates in
+  **Sharpened 2026-08-03:** live data disagreed with the docs. A real decomposed
+  story — read off the sandbox tracker before it was cleared — carried
+  `specialist:backend`, `size:medium`, `tier:mid`, while the prompt templates in
   `examples/` instruct the agent to apply `spec:<specialist>`. One of the two is
-  wrong and nothing currently arbitrates. `specialist:*` is also the prefix the
-  specialist outcome labels use (`specialist:complete` / `:waiting` /
-  `:blocked`), which argues for it as the assignment prefix too — but that is an
-  argument, not a decision. Settle before the PROJ-24 run; a dispatch that
-  can't find its own assignment label is a stupid way to lose the first run.
-- **Story contract still describes the app-hands-context model.**
-  `story-contract.md` says the app "resolves each entry and provides completion
+  wrong and nothing arbitrates. `specialist:*` is also the prefix the outcome
+  labels use (`specialist:complete` / `:waiting` / `:blocked`), which argues for
+  it as the assignment prefix too — but that is an argument, not a decision.
+
+  Two consequences worth keeping separate. The **conflict** is durable: whatever
+  Decompose applies has to match what the dispatch prompt reads, and today the
+  documentation of each disagrees. The **observation** is not re-checkable —
+  the story it came from no longer exists, so confirm against a freshly
+  decomposed one rather than trusting the value recorded here. Settle it before
+  the next dispatch; a run that cannot find its own assignment label is a stupid
+  way to lose one.
+- **RESOLVED 2026-08-03: story contract described the app-hands-context model.**
+  `story-contract.md` said the app "resolves each entry and provides completion
   status in the specialist's context payload" (blocking dependencies) and
   "resolves these pointers into the specialist's context payload at run time"
   (evidence pointers, codebase anchors). No such payload exists — the
-  specialists fetch all of it themselves via MCP, and now that dispatch is
-  human there is no app in the loop at all at this tier. Same reconciliation
-  the four agent definitions just had; the skill was missed. Not blocking the
-  first run (the specialist's own definition is correct and takes precedence),
-  but it will mislead the next person who reads the contract to understand what
-  a story owes a specialist.
+  specialists fetch all of it themselves via MCP, and now that dispatch is human
+  there is no app in the loop at all at this tier. Fixed in the same session
+  that reconciled the four agent definitions: blocking dependencies are rendered
+  by the Decompose Agent and looked up by the specialist itself, pointers must
+  be specific enough for the specialist to retrieve the artifact, anchors
+  resolve against the epic's recorded base, and the `tier` label is described as
+  informing a human's model choice rather than driving app routing (because
+  nothing routes it any more).
+- **Three shaping agents and two skills still carry the retired model.** Found
+  while verifying the specialist reconciliation, not fixed — the specialist tier
+  was the session's scope and these are one tier up. `decompose-agent.md:19`
+  still opens "You receive:"; `intake-agent.md:27` has a "## Context payload"
+  section; `specification-agent.md:34` says "Your context payload:";
+  `epic-writing.md:72` says "the app resolves"; `story-decomposition.md:103`
+  says dependencies are "rendered by the app from the decomposition verdict."
+  All five describe an app that hands context in and applies a verdict out,
+  which the write-path collapse retired. These are lower-risk than the
+  specialist ones were (the shaping agents are still genuinely app-woken, so
+  *something* does hand them an activation) but "context payload" and "verdict"
+  are the wrong words for it, and the phrasing predates the collapse rather than
+  describing what survived it. Worth one pass before the shaping tier is
+  published as reference material.
 - **Branch topology is per-repo, and nothing reconciles across surfaces.**
   Settled 2026-08-03: the developer starts Claude Code from a workspace parent
   holding every surface repo plus the framework clone, so cross-surface reads
