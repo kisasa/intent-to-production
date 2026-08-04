@@ -28,7 +28,7 @@
       "environment-name": "prod",
       "subdomain": "intent",
       "ecr-repository-name": "intent-to-production",
-      "image-tag": "7b35920d0323",
+      "image-tag": "83c609b7afac",
       "port": 8787,
       "cpu": 512,
       "memory": 1024,

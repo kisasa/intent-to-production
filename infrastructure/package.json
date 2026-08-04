@@ -5,9 +5,9 @@
   "description": "CDK Terrain (CDKTN) definition of the AWS infrastructure hosting the webhook listener.",
   "scripts": {
     "synth": "cdktn synth",
-    "diff": "cdktn diff",
-    "deploy": "cdktn deploy",
-    "destroy": "cdktn destroy",
+    "diff": "cdktn diff --skip-synth",
+    "deploy": "cdktn deploy --skip-synth",
+    "destroy": "cdktn destroy --skip-synth",
     "list": "cdktn list",
     "test:unit": "vitest run",
     "typecheck": "tsc --noEmit"
