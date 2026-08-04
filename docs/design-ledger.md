@@ -944,6 +944,112 @@ conventions-spec paragraph existed only in backend; it is now in all four.
 Frontend did not mention the design issue at all, despite the design asset
 being the specification for UI work.
 
+## Hosting the listener — CDKTN, and why exactly one task (2026-08-04)
+
+Session input: the webhook listener had been running under Docker and needed a
+long-lived home. Recorded here after the fact — the work landed in `f2955f8`
+and two ledger sessions passed without capturing it, so the deployment layer
+had no design record at all.
+
+Artifacts: `infrastructure/`, a CDK Terrain (CDKTN) project in TypeScript, plus
+its README carrying the prerequisites and the runbook. Modelled on the C#
+`example-infra.CDKTF` project the architect brought as a reference: context
+as the single configuration source, a base stack owning the provider and
+backend, typed config records with validating factories, named state keys, and
+reusable constructs.
+
+**Two stacks, split by rate of change, and why not three.** `network` (VPC,
+internet gateway, two public subnets) never changes; `listener` (certificate,
+load balancer, DNS record, ECS cluster, task definition, service, roles, log
+group) is re-applied every time an image tag moves. The reference project
+layers Network / Core / per-service, and three was rejected: it reads
+cross-stack outputs by reflecting over a C# record's constructor parameters,
+and TypeScript has no runtime view of a type, so every stack boundary needs a
+hand-written codec instead. That cost is the thing that capped the count at
+two — not a view about how many stacks a deployment should have.
+
+**Exactly one task, and it is not a sizing choice.** `desired_count = 1`, no
+autoscaling target at all, and a deployment configuration (minimum healthy 0,
+maximum 100 percent) that stops the old task before starting the new one so the
+two never overlap. The reason is in `agent-scheduler.ts`: the dedupe set and the
+debounce timers live in process memory, so a second instance splits that state
+and double-fires agents. The reference project's `EcsClusterService` could not
+be reused as-is for exactly this reason — it defaults to two-to-four instances
+behind CPU and memory target tracking and tells Terraform to ignore
+`desired_count` drift, all three of which are wrong here.
+
+**Fargate, because the work outlives the response.** The webhook handler
+dispatches and returns immediately; the activation itself runs up to 30 minutes
+afterwards. That rules out Lambda (15-minute ceiling) and App Runner, which
+suspends an instance between requests unless always-on is paid for and would
+freeze a mid-flight activation. An always-on Fargate task is the shape that
+fits.
+
+**Two accepted gaps, recorded rather than papered over.** (a) A deploy cannot
+drain a 30-minute activation: Fargate's `stopTimeout` caps at 120 seconds, so
+replacing the task mid-activation drops that run — possibly after Claude has
+already written partial comments to the tracker. Mitigation is procedural
+(deploy when the lanes are idle), and the real fix is moving the scheduler's
+state out of process, which is the same change that would allow more than one
+instance. (b) Stopping before starting means a short gap per deploy where
+webhooks arrive at nothing, relying on the tracker's own retries. Both are the
+kind of thing the breakage-log principle exists for: they are cheaper to state
+than to discover.
+
+**Public subnets, no NAT gateway.** The task carries a public address but its
+security group admits nothing except the load balancer's, which is practically
+equivalent to a private tier here. A NAT gateway would have been the single
+largest line item in the deployment (~$33/month) for a service that receives a
+handful of webhooks a day, and buys nothing this workload can use.
+
+**ECR is a prerequisite, read as a data source rather than managed.** The image
+has to exist in the repository before a task can start from it, and the push
+happens in CI independently of any Terraform run — so Terraform owning the
+repository creates a bootstrap ordering problem (create empty repo, then fail to
+pull) for no benefit. It sits with the state bucket and the hosted zone as
+something that exists before the first apply. Corrected mid-session: the first
+instinct was to take it over from the CI workflow, which was wrong on ordering.
+
+**`listener.image-tag` is pinned, never `:latest`.** Terraform then sees a real
+diff and the running version is auditable in git, at the cost of a commit per
+deploy — the same choice the reference project makes with its per-service
+`version` keys. Tracking `:latest` would leave Terraform with nothing to plan
+and the deployed version invisible to it.
+
+**Secrets are SSM parameters created out-of-band, and that project reads no
+environment at all.** Every setting comes from the `context` block of
+`cdktf.json`, collected once in the base stack's constructor and validated by
+`fromContext` factories that throw on a missing key. Secrets are deliberately
+not Terraform variables either — the five parameters are created by hand and
+referenced only by ARN, so no secret value reaches the synthesized JSON or the
+state file. This is stricter than the reference project, which feeds sensitive
+`TerraformVariable`s straight into container definitions where the values are
+visible in the ECS console and land in state. Consequence worth knowing:
+rotating a secret is a `put-parameter` plus a forced new deployment, because
+Terraform has nothing to re-apply — the value is read at task start.
+
+**Two roles, not one reused.** The reference project passes the same
+pre-existing account-level `ecsTaskExecutionRole` as both the execution and the
+task role. They are separated here because they are not the same trust surface:
+the execution role is the ECS agent's identity for pulling the image, writing
+logs, and reading secrets, while the task role is the application's own — and
+the application makes no AWS calls at all.
+
+**Dropped from the reference pattern:** the LocalStack branch, which is a large
+share of that base class's complexity and earns nothing when Docker already
+covers local.
+
+**Three things only building it revealed.** S3-native state locking
+(`use_lockfile`) replaces the reference project's DynamoDB lock table, but synth
+validates it against a declared `targetVersions` — both Terraform and OpenTofu
+floors are 1.10, not the 1.9 assumed. Cross-stack subnet lists arrive from
+remote state as opaque tokens, so `Array.join` on one fails at synth and
+`Fn.join` is required. And AWS's security-group description charset rejects the
+em dash and the apostrophe, which surfaced several minutes into an apply — now a
+`securityGroupDescription` guard that throws at synth with the offending
+characters named, because prose-style punctuation in a description is a mistake
+that will be made again.
+
 ## Open items
 
 - **RESOLVED: design-intent capture.** (Kept here as the trail from problem to
@@ -1071,3 +1177,12 @@ being the specification for UI work.
   branch — cross-epic flows, a BRD-level suite, who opens the PR to `main` — is
   named but not designed. Deliberately deferred: the first epic has not been
   built, let alone a second one to conflict with it.
+- **The listener's single-instance constraint has one known escape, undecided.**
+  `desired_count = 1` follows from the scheduler keeping its dedupe set and
+  debounce timers in process memory, and that constraint is also what makes the
+  no-drain deploy gap unfixable — a task replaced mid-activation drops the run.
+  Moving that state to a shared store would lift both at once, and the function
+  signatures in `agent-scheduler.ts` were written not to change if it happens.
+  Not scheduled: one instance is honest for a single engagement, and the gap has
+  not yet cost a real run. Revisit when it does, or when deploy frequency rises
+  enough that the gap stops being theoretical.
