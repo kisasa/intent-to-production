@@ -797,7 +797,14 @@ renamed to Decompose.
   present. Validated in reasoning (not yet a run) by PROJ-24's self-containment:
   the story carried its own why + the architect's map ruling + exact anchors, so
   a lean specialist can execute it — which is the evidence that decomposition
-  thoroughness is what makes lean specialists possible.
+  thoroughness is what makes lean specialists possible. (Superseded in part,
+  2026-08-04: this remains correct as the specialist's own behavior and
+  orientation logic. "A Claude Code agent driven by a developer prompt"
+  described manual dispatch specifically — with dispatch now app-triggered, the
+  execution surface is the Claude Agent SDK, the library form of the same
+  engine, meant to be embedded in the app's own orchestration rather than run
+  interactively from a developer's terminal. See the automated-dispatch session
+  below.)
 
 - **Decomposition is invariant; only the band VALUE is tunable (resolves the
   general-vs-rich framing).** "General agent fed skills" and "rich specialist"
@@ -894,7 +901,11 @@ Code against a local checkout. The rationale is the standing one: the scarce
 resource is human review throughput, so the person who will review the PR
 decides when it gets written. Consequence for the specialist definitions —
 they run with local git plus tracker MCP, unlike the shaping agents, which
-never touch a working copy.
+never touch a working copy. (Superseded 2026-08-04 — see the automated-dispatch
+session below: dispatch moved to a status-move trigger, keeping the human act
+but relocating it from a local terminal to the tracker; the reviewer-commitment
+property this paragraph protects is preserved by recording the status-mover as
+reviewer-of-record, not by requiring manual dispatch.)
 
 **The comment thread is context, and it is the point.** While a story sits in
 To-Do the developer reads it and asks the architect questions *in the story's
@@ -942,8 +953,11 @@ and the bases are correct," and "the given story branch," meaning it pre-exists.
 But the question came back unprompted, which is worth recording: the strict
 reading makes a developer do a mechanical step (cut a branch off an epic branch,
 using a name the tracker already supplies) that an agent could do safely,
-because nobody can be working in a branch that does not exist yet. Still
-unresolved — the follow-up never got answered.
+because nobody can be working in a branch that does not exist yet. RESOLVED
+2026-08-04: the instinct behind the question was right, but the answer wasn't
+"let the specialist do it" — it went to the app instead, since matching a
+recorded field to a git operation is mechanical, not the specialist's judgment
+to make. See the automated-dispatch session below.
 
 **Story-PR review is CI plus a human developer; `code-review-agent.md` is
 retired.** Unit and integration tests run in CI on the PR; a developer other
@@ -1086,16 +1100,415 @@ the application makes no AWS calls at all.
 share of that base class's complexity and earns nothing when Docker already
 covers local.
 
-**Three things only building it revealed.** S3-native state locking
-(`use_lockfile`) replaces the reference project's DynamoDB lock table, but synth
-validates it against a declared `targetVersions` — both Terraform and OpenTofu
-floors are 1.10, not the 1.9 assumed. Cross-stack subnet lists arrive from
-remote state as opaque tokens, so `Array.join` on one fails at synth and
-`Fn.join` is required. And AWS's security-group description charset rejects the
-em dash and the apostrophe, which surfaced several minutes into an apply — now a
+**Two things only building it revealed** (corrected 2026-08-04 from three — see
+below). S3-native state locking (`use_lockfile`) replaces the reference
+project's DynamoDB lock table, but synth validates it against a declared
+`targetVersions` — both Terraform and OpenTofu floors are 1.10, not the 1.9
+assumed. And AWS's security-group description charset rejects the em dash and
+the apostrophe, which surfaced several minutes into an apply — now a
 `securityGroupDescription` guard that throws at synth with the offending
 characters named, because prose-style punctuation in a description is a mistake
 that will be made again.
+
+**Correction (2026-08-04, code audit against `infrastructure/`):** this entry
+originally also claimed a third finding — that cross-stack subnet lists arrive
+from remote state as opaque tokens, so `Array.join` on one fails at synth and
+`Fn.join` is required. No `Fn.join` call exists anywhere in the shipped code:
+`network-stack-output.ts` hands `publicSubnetIds` through as a plain `string[]`
+straight into the `subnets`/`subnetIds` props on the load balancer and the
+service, with no stringification of the list anywhere. Whatever prompted the
+original note either got resolved by removing the join rather than switching
+to `Fn.join`, or never reproduced in the code that shipped — either way, the
+claim didn't survive contact with the actual file, so it's struck rather than
+carried forward unverified. If a synth-time failure on a remote-state list
+recurs, capture the real repro then.
+
+## Development tier — automated dispatch and BRD closure (2026-08-04)
+
+Session input: replacing the developer-manual dispatch settled in the prior
+development-tier session with an app-triggered pipeline, for the same story
+tier, plus designing everything from an epic's completion through to a BRD
+merging into `main` — the two gaps the prior session and the open items both
+flagged directly. No code written this session; this is the design the
+webhook-listener extension and a new CDKTN construct should be built against.
+
+**Supersedes, explicitly: "Dispatch is human, not app-driven."** That rule
+solved a real problem — the scarce resource is human review throughput, so the
+person who reviews decides when it gets written — and this session does not
+discard the problem, it re-solves it under a different trigger. What changes:
+the developer's act of opening Claude Code against a local checkout is
+replaced by moving the story `To-Do` → `In-Process` on the tracker. What's
+preserved: it's still a human, still deliberate, still visible on the board.
+Two consequences fall out of removing the local terminal from the sequence,
+each with its own fix below rather than being waved past: the branch used to
+get created as part of the same manual act, and the reviewer used to be
+whoever was sitting at that terminal.
+
+**The app creates the branch, mechanically, before dispatch.** This resolves
+the item the prior session left "left strict — strict is reversible" and its
+same-day, never-answered follow-up both at once, and it resolves them the same
+way: not "the developer does it" (there's no developer act to hang it on
+anymore) and not "the specialist self-serves it" (the layering principle
+already draws this line — matching a tracker's `gitBranchName` field to a `git
+branch` command is mechanical, no judgment involved, so it's the app's job,
+not an agent's). The specialist's own behavior is unchanged: it still verifies
+the chain against real git history rather than trusting the name, and a
+mismatch is still `specialist:blocked`. What's new is that by the time the
+specialist runs, the branch already exists, created by the app in the same
+action that dispatches.
+
+**Reviewer-of-record replaces "whoever dispatched."** The app records whoever
+moved the status as the requested reviewer on the specialist's eventual PR
+(a mechanical git-host call, same category as branch creation). This is the
+literal re-implementation of the property the old rule protected — the person
+who will review decides when it gets written — just moved from an implicit
+binding (you're at the terminal, so it's you) to an explicit one (you moved
+the status, so it's you).
+
+**A pre-dispatch dependency check, generalized across every tier the app
+wakes, not written yet anywhere.** Before creating a branch and dispatching —
+a specialist for a story, or Specification for an epic — the app reads that
+issue's `dependsOn` and confirms every entry is Done. This is a plain tracker
+read, not agent judgment, which is why it belongs in the app and why it runs
+before the Anthropic call rather than being left for the dispatched agent to
+discover mid-run (today, a premature dispatch burns a real activation before
+anything notices — moving the check earlier is strictly better, since it's
+free to run and prevents the spend instead of wasting it). On failure the app
+does not touch status — humans move statuses, the app doesn't get to undo
+one — it declines to dispatch and posts a comment naming which dependency
+isn't Done, leaving the issue visibly inert rather than silently stuck. This
+is a third comment case alongside the two the write-path collapse already
+named (infra failure, tool failure): **dependency not satisfied**, caught
+deterministically, never a crash. Proposed label for board visibility,
+parallel to the specialist's own `specialist:blocked`: `dispatch:blocked` —
+distinguishes "the app declined to fire" from "the specialist ran and found a
+broken chain." One implementation note that matters: "Done" is relative to
+the dependency's own tier — a story's dependency is Done when it merges into
+the epic branch; an epic's dependency (the closing epic's case, below) is
+Done when it merges into the BRD branch. The check is the same shape at every
+tier; the definition of Done it resolves against is not, and the code should
+not hardcode one.
+
+**Execution surface: Claude Agent SDK, not Claude Code.** Same correction as
+the dispatch rule, same reason. "A Claude Code agent driven by a developer
+prompt" described the CLI, built for a human driving it interactively. With
+dispatch app-triggered, the correct surface is the Agent SDK — the library
+form of the same engine, meant to be embedded in the app's own orchestration.
+Nothing about the specialist's own definition changes: same two MCPs, same
+orientation logic, same PR-not-merge handoff. Only how it gets woken and what
+process embeds it changes.
+
+**Isolation: a custom container on the team's existing ECS Fargate, distinct
+from the listener's Fargate service.** Worth stating as its own line because
+the name is shared and the shape isn't: the webhook listener is a single
+always-on task (`desired_count = 1`, in-memory dedupe and debounce state, per
+the hosting session above) — the specialist sandbox is the opposite shape,
+one ephemeral task per dispatch, as many concurrent as there are stories being
+worked. They should not share a task definition or a scaling policy; whether
+they share a cluster is an infrastructure convenience question, not a design
+one. Unit tests run in this same sandbox — mocked, no nested Docker needed.
+Standard container isolation per Anthropic's own documented tiers; nothing
+exotic required here.
+
+**Integration and E2E run in GitHub Actions, not a new AWS service.** Fargate
+cannot run the team's docker-compose stack — no privileged mode, no Docker
+socket mount, by AWS's own design, not a workaround-with-effort gap. GitHub
+Actions runners are full VMs and ship with Docker and Compose already, which
+is what the team's existing CI already runs on. Reuses infrastructure and
+tooling already in place rather than introducing a second CI system to do the
+same job. The dedicated integration-test story's PR and the E2E story's PR are
+what trigger this stage; every other story's PR stays on the Fargate sandbox's
+unit runner.
+
+**Cross-repo checkout policy for any docker-compose run, three cases.** The
+point of docker-compose — everyone runs the same services the same way,
+every time — only holds if every service is checked out at the right ref, and
+"the right ref" has three answers depending on the service's relationship to
+what's under test: a surface this epic touches → that epic's branch; a
+surface this BRD touches but this epic doesn't → that surface's current BRD
+branch, so a running epic's tests reflect the BRD's actual in-flight state and
+can catch a cross-epic break before the closing epic's suite is the only
+thing looking for it; a surface this BRD doesn't touch at all → `main`.
+`actions/checkout`'s native support for multiple repos at multiple refs into
+named subdirectories is a direct match for this, mirroring the developer
+workspace layout already in place (sibling surface repos plus the framework
+clone).
+
+**Temporal, not a new AWS orchestration service, sequences the multi-stage
+async flow.** Dispatch → wait for the specialist → trigger CI → wait for the
+result → gate on human review → proceed is exactly the shape of a long-running,
+human-gated, durable workflow, and it's infrastructure the team already
+operates. Exact workflow/activity boundaries are implementation, not design,
+and belong to whichever session writes the code — the design commitment is
+only that this orchestration lives in Temporal rather than being built new.
+
+**Carried over unchanged from earlier in this design conversation, restated
+here because this is the section a future session will read for the full
+picture:** the specialist never holds a raw GitHub, Linear, or gateway-processor
+credential directly — a proxy outside its sandbox injects them into requests.
+Network egress is allowlisted to the Anthropic API (or configured provider),
+GitHub, Linear, and the specific gateway-processor test endpoints the
+integration suite reaches — nothing broader, and this needs verifying as
+sandbox-only credentials, separate from anything with production reach, not
+assumed. `maxTurns` is set on every Agent SDK session, since sessions do not
+time out on their own. The specialist has no write access to test files during
+the integration/E2E stage, and no write access to whatever environment/gateway
+configuration determines which endpoint or credential set gets used; a diff
+that touches either anyway is a mandatory-human-review flag on the resulting
+PR regardless of what else passed.
+
+**BRD closure, the second half of this session.** A fourth epic, created at
+slice time alongside the design and evidence issues, not added by the
+architect after the fact. The original idea — have the architect author a
+cross-epic epic once the real ones are visibly built — asks too much from a
+blank issue, exactly the "empty box gets ignored" failure the seed-don't-blank
+principle already exists to prevent. Creating it at Intake time, in the same
+slice action as the other epics, also resolves a mechanical problem that a
+later-created epic wouldn't have solved as cleanly: `gitBranchName` is
+assigned by the tracker the instant an issue exists, independent of repo
+coordinates (those arrive later, at Specification), so Intake already holds
+every sibling epic's branch name at the moment it creates this one and can
+seed the closing epic's description with them as literal text — no
+placeholder, no forward reference. Same `dependsOn` mechanic that already
+orders every other slice handles the blocking (closing epic depends on all
+three others); nothing new to build there. **Inherited, not fixed:** an epic
+spanning two surfaces still gets two epic branches "related by naming
+convention and nothing else" (open item, prior session) — the closing epic's
+seed is only as reliable as that convention already is, and a wrong pairing
+there now also produces a wrong seed here.
+
+**The dependency block gates any epic's Specification pass, not just
+Decompose — a general rule the closing epic merely was first to force, not a
+special case of it.** Every epic's Specification runs against the codebase as
+it stands when Specification wakes; if that epic's own `dependsOn` names
+another epic that hasn't merged yet, Specification is reading that
+dependency's *plan*, not its *code* — the same map-fiction risk the
+specialist model already rejected at the story tier ("read the dependency's
+actual merged code, not the story's description of it"), one tier up. The
+pre-dispatch dependency check already covers this generically at the
+mechanism level; what changes here is recognizing the rule applies to every
+epic-to-epic dependency the slice map records, not only the closing epic's
+dependency on the other three — that dependency was simply the first one to
+exist and force the question. (the architect's question, generalizing the
+closing-epic case: shouldn't a dependent epic not be sliced or shaped until
+its dependency is actually ready, since cross-cutting things a dependency
+introduces can only be picked up once it's real?)
+
+**Consequence for release, not just Specification: the human release
+decision stays as-is, and the mechanical check is the backstop, not a
+redesign of metering.** An epic still only reaches Evaluation when a human
+releases it from Backlog — release remains deliberate and human, unchanged.
+What's new is only that releasing a downstream epic before its dependency
+has merged no longer silently produces a bad map: the pre-dispatch check
+catches it and posts the same dependency-not-satisfied comment as any other
+case, rather than requiring whoever decides release to already hold the
+dependency graph in their head.
+
+**Real cost, named rather than absorbed silently: this trades shaping-tier
+parallelism for correctness, and that's worth someone noticing before it's
+felt.** Previously only a dependent epic's *story execution* waited on its
+dependency merging; gating Specification too means the dependent epic's
+whole shaping tier — architect and designer review time included — now
+waits as well. For a BRD with a real dependency chain across epics, that
+stretches elapsed time beyond what the current design assumed — the same
+throughput-for-correctness trade the spec-readiness gate and release
+metering already make elsewhere in this system. Mapping fiction is worse
+than mapping late, so the trade stands, but it should be visible, not
+discovered.
+
+**Open, not decided: dependency granularity.** As recorded today, an
+epic-to-epic dependency appears to block on the *whole* upstream epic, so a
+downstream epic waits for everything in it to merge even when only one
+story's output is actually depended on. Recording the dependency at the
+story or capability grain instead would let Specification start the moment
+the specific depended-on thing is real, without waiting on unrelated work in
+the same upstream epic. More precise, more to build; worth revisiting once
+it's clear how often epic-to-epic dependencies are narrow versus genuinely
+epic-wide in practice, rather than guessed at now.
+
+**Consequence worth being explicit about, flagged rather than smoothed over:
+this epic's Specification pass asks a different question than every other
+epic's.** Every other epic's architect/designer gate is existence — does this
+endpoint, this field, this behavior already exist or need building. Nothing
+in the closing epic is newly built; everything it references was already
+classified by whichever epic built it. What the architect and designer are
+actually confirming here is closer to "are these the right anchors for this
+cross-epic flow" than "does this exist yet." Same two-reviewer mechanism,
+genuinely different verification underneath it. **Decided 2026-08-04: leave
+`specification-agent.md` unmodified for now** (the architect). Generic phrasing runs
+against the closing epic as-is — every row it produces should simply resolve
+`existing`, which is a faster gate, not a broken one. Consistent with this
+ledger's standing practice of fixing what a real run shows rather than what a
+session anticipates: revisit only if an actual closing-epic run produces a
+confused map or a checkpoint that reads like the wrong question, per the two
+options weighed above.
+
+**No new product code is written here — but new test code is, and that's
+worth being precise about rather than saying "no code" flatly.** The closing
+epic's stories are E2E-type only; nothing implementation-tier belongs in it.
+But a cross-epic flow by definition has zero existing coverage anywhere — no
+single epic's own E2E story could have tested it, since that story only ever
+exercised what its one epic delivered. The design issue's cross-cutting
+experience rules (the artifact already established as the one place such
+rules live) and the BRD's capability map are what Intake seeds this epic's
+scenarios from — marked inferred, same surmised/confirm discipline as
+everywhere else this pattern is used, not authoritative until whoever reviews
+confirms or corrects it.
+
+**Three-way sign-off, on the closing epic issue, not the BRD project.** Not a
+style preference — the project object can't host it. A comment on a Linear
+project doesn't fire the webhook; only project updates do, and the entire
+ask/checkpoint/reply mechanism every agent in this pipeline already leans on
+depends on replies waking an agent, which requires an issue. Confirmed
+separately: Linear projects do carry labels, but not the same label set as
+issues, so even if the webhook problem didn't exist, the label vocabulary
+wouldn't transfer cleanly either. Labels, same AND-gate shape as the spec
+tier's: `brd:awaiting-architect`, `brd:awaiting-pm`, `brd:awaiting-designer`,
+each cleared independently the moment that reviewer signs off, in any order;
+`brd:resolved` once all three are clear.
+
+**Each reviewer is checking something different, and the PM's check is a
+different verification mode than anything else in this pipeline.** Architect:
+technical completeness — every epic merged into BRD branch, cross-epic E2E
+green, no open blockers. Designer: the cross-cutting experience rules from the
+design issue actually hold once epics are merged together — the first point
+in the whole pipeline where that's even checkable, since no single epic could
+verify it alone. PM: not a technical or artifact-comparison judgment at all —
+sees what shipped, confirms it works, can speak to it. Deliberately kept
+low-ceremony: no capability-row rollup, no recorded walkthrough, no required
+artifact — if the PM says it's good, it's good. Verified against the
+redeployed environment, not a report; the same environment already being
+stood up for the closing epic's own E2E suite, redeployed on demand rather
+than kept running, so nothing new needs building to host this. **Not pinned
+down:** what actually triggers the on-demand redeploy for this specific
+walkthrough — app-triggered the moment the closing epic's gates open, or a
+manual act by whoever's reviewing. Implementation detail, not a design gap,
+but a real one to close before this is coded.
+
+**`brd:resolved` is a pure human-to-human signal — the only resolved-label in
+this pipeline that doesn't wake anything.** Every other `*:resolved` label is
+an agent trigger (`spec:resolved` wakes Decompose). This one isn't, because
+there's no tier above the BRD for anything to wake into. The architect sees
+all three approvals landed and merges BRD branch into `main` directly in
+GitHub — no webhook, no automation, a single terminal action per BRD that
+isn't worth building a trigger for.
+
+**Project → Done is a separate, manual, asymmetric act — confirmed, not a
+gap.** Every issue underneath a BRD reaches Done as a side effect of a PR
+merge (stories into their epic branch, epics including the closing one into
+BRD branch), which Linear already manages without the app doing anything.
+The project itself doesn't get this for free: Linear doesn't tie project
+status to PR merges the way it does issues, so there's no event for the app
+to hang a move-to-Done on, and by the time it would fire every child issue
+is already Done anyway — nothing to race or reconcile. The architect moves
+the project to Done by hand, right after the `main` merge. This is
+deliberately asymmetric with the project's other end: Backlog → In Progress
+is app-executed, authorized by the slice checkpoint approval, because
+something downstream needed a legible signal at that end. Nothing downstream
+needs one at Done, so it isn't built, and that's a design choice, not an
+oversight to fix later.
+
+**Managed Agents, resurfaced and set aside a second time.** Came up early in
+this design conversation as the Anthropic-hosted alternative to everything
+above, and never explicitly closed out — worth recording honestly as
+considered, not silently dropped. Set aside again on the same non-technical
+grounds as the first time: the specialist sandbox lands on infrastructure the
+team already operates, and a payment-processing client engagement puts real
+weight on being able to state precisely where its code executes.
+
+## Specialist-sandbox infra, first PR — two scoped-down gaps (2026-08-04)
+
+The automated-dispatch session above committed to a specialist sandbox with
+egress allowlisted to Anthropic/GitHub/Linear/gateway-processor-test endpoints
+only, and a credential-injection proxy so the specialist container never
+holds a raw external credential directly. Building the CDKTN infra
+(`infrastructure/constructs/specialist-task.ts`,
+`infrastructure/stacks/specialist-sandbox.ts`) surfaced that neither is a
+same-session build, and both were narrowed rather than silently dropped —
+recorded here per this document's own provenance contract.
+
+- **Egress is unrestricted (`0.0.0.0/0`), not allowlisted, in this first PR.**
+  Security groups filter by CIDR/prefix list only, and none of Anthropic,
+  GitHub, or Linear publish IP ranges stable enough to allowlist that way —
+  unlike AWS's own services, which is what makes prefix-list rules workable
+  elsewhere in this project. Real domain-level filtering needs a NAT gateway
+  plus a forward proxy, or AWS Network Firewall's domain-name rules, either of
+  which is its own design and build. Narrowed, not dropped: recorded as a
+  Known gap in `infrastructure/README.md`, same treatment as the listener's
+  own two accepted gaps, so it stays visible rather than reading as done.
+- **Secrets are direct, sandbox-scoped SSM parameters, not a
+  credential-injection proxy.** The proxy has its own unsettled design
+  questions — where it runs, how it authenticates a sandbox task, its
+  request-signing story — none of which are answered yet. What's preserved is
+  the substance of "never a production credential": the sandbox reads its own
+  parameters under a prefix distinct from the listener's
+  (`specialist-sandbox.parameter-prefix`), through the same
+  execution-role-scoped-`ssm:GetParameters` mechanism the listener already
+  uses. The proxy remains the target design; this is the interim that keeps
+  the sandbox buildable without it.
+- **The task definition has no caller yet.** Nothing calls `ecs:RunTask`
+  against it — that's the Temporal-workers piece, not built this session.
+  This stack only registers the task definition and publishes its outputs
+  (cluster arn, task definition arn/family, role arns) via remote state, the
+  same handoff shape `network` already uses for `listener`.
+- **The specialist's ECR repository and container image do not exist.** No
+  Dockerfile, no application code, no CI push target — `specialist-sandbox`
+  reads the repository as a data source exactly like `listener` does, but
+  unlike the listener's, this one will not successfully apply until something
+  populates it. Recorded as a prerequisite, not a bug.
+- **The secret parameter list (`ANTHROPIC_API_KEY`, `LINEAR_AGENT_API_KEY`,
+  `GITHUB_TOKEN`) is provisional.** No specialist entrypoint exists to define
+  a real `.env.example` the way the listener's parameter list mirrors
+  `webhook-listener`'s — this is the minimum the automated-dispatch design
+  names, not a verified contract. Revisit once the specialist's own code
+  exists.
+
+## Temporal-workers infra, first PR — PrivateLink, infra-only, and a real tooling gap (2026-08-04)
+
+Second piece of the automated-dispatch design, following the specialist
+sandbox above. Three decisions confirmed with the architect before designing:
+Temporal Cloud account and admin API key already exist (out-of-band
+prerequisite, same category as the AWS account itself); connect via
+PrivateLink rather than Temporal Cloud's public endpoint (an Interface VPC
+Endpoint doesn't need a NAT gateway, so it doesn't reopen the no-NAT decision
+the `network` stack already made — cheaper than the NAT gateway rejected
+there, and matches the Example Payments reference project's own
+`CloudPrivateLink`/`NamespaceWithApikey` constructs); infra only, no worker
+application code, same scoping precedent as the specialist sandbox.
+
+- **A genuine verification gap, surfaced by the tooling itself, not by
+  choice.** Unlike `@cdktn/provider-aws`, there is no prebuilt
+  `@cdktn/provider-temporalcloud` npm package (confirmed via `npm view`) —
+  the Example Payments reference project generates its bindings locally via
+  `cdktn get`, which shells out to the Terraform CLI. This session has
+  neither `terraform` nor `tofu` on PATH, so `constructs/temporal-namespace.ts`
+  and `stacks/temporal-workers.ts` are written against the conventional
+  generated import path and property casing, inferred from the reference
+  project's C# namespace rather than confirmed against real bindings. This is
+  a different category of gap than "not yet applyable" (the specialist
+  sandbox's ECR repo, or this stack's own): it's "not yet typecheckable in
+  this session." Recorded rather than glossed over — `npx cdktn get` needs to
+  run once, on a machine with Terraform installed, before this stack's code
+  can even be trusted to compile.
+- **Two secret values reach Terraform state here, the one exception to this
+  project's "only an ARN reaches synth" rule established across every other
+  stack.** The `temporalcloud` provider authenticates with an admin API key
+  that has to be a literal string at synth time — Terraform providers don't
+  support the ARN-indirection ECS container secrets use, so that one value
+  (read from its own out-of-band SSM parameter) is unavoidably in state. The
+  namespace's generated worker API key has the same shape from the other
+  direction: the provider hands back a token as a resource attribute rather
+  than something already in SSM, so the stack writes it into a new SSM
+  parameter itself before handing it to the worker service the normal way.
+  Both flagged in the class comment and README, not hidden.
+- **A worker service, not a task definition, unlike the specialist
+  sandbox.** A Temporal worker is a long-lived poller; `desiredCount` is a
+  plain config value rather than an asserted singleton, since Temporal
+  workers are safely concurrent with no in-process shared state to split —
+  the opposite constraint from the listener.
+- **The worker's own ECR repository, Dockerfile, and application code don't
+  exist**, same posture as the specialist sandbox's own not-yet-populated
+  repository.
 
 ## Open items
 
@@ -1132,7 +1545,12 @@ that will be made again.
   Agents (server-hosted stateful agents with Anthropic-managed sandbox, Skills +
   MCP, file mounts — surfaced in the agent-development research) are a plausible
   substrate; a reason to keep specialist definitions clean enough to become a
-  managed-agent spec later.
+  managed-agent spec later. Resurfaced 2026-08-04 when designing automated
+  dispatch and set aside again — not on technical grounds, but because the
+  specialist sandbox landed on infrastructure the team already operates, and a
+  payment-processing client engagement puts weight on being able to state
+  precisely where code executes. Recorded as considered twice now, not
+  rejected once.
 - **PARKED: right-sized pipeline entry (bug fixes).** Not all work should enter
   at the top (BRD). A small bug fix has no intent to map or epic to slice —
   forcing it through five gates would discredit the framework. Likely shape:
@@ -1260,6 +1678,9 @@ that will be made again.
   specialist per story, so a story has exactly one target repo — and the
   specialist verifies the chain only in that target. Not a problem yet; it
   becomes one the first time an epic's surfaces need to merge together.
+  Inherited, not fixed, by the closing epic added 2026-08-04: its seeded
+  description names sibling epic branches by this same naming convention, so a
+  wrong pairing here now also produces a wrong seed at BRD closure.
 - **The framework clone is a silent version dependency.** Specialist
   definitions and skills are read from the developer's local
   `intent-to-production` checkout by absolute path — not vendored, not
@@ -1269,11 +1690,14 @@ that will be made again.
   definition. The dispatch runbook says "pull first," which is a convention,
   not a control. If this bites, the fix is the plugin route (ship agents and
   skills alongside the Linear MCP the team already installs).
-- **BRD-branch tier: does it get its own E2E, and who reviews it?** E2E is
-  settled at the epic level. What happens when epic branches meet at the BRD
-  branch — cross-epic flows, a BRD-level suite, who opens the PR to `main` — is
-  named but not designed. Deliberately deferred: the first epic has not been
-  built, let alone a second one to conflict with it.
+- **RESOLVED 2026-08-04: BRD-branch tier gets its own E2E, via a fourth epic,
+  and review is a three-way sign-off.** (Kept here as the trail from open
+  question to fix; the resolution is the automated-dispatch session above.)
+  Cross-epic flows are covered by a closing epic — blocked-by every other epic
+  in the BRD, containing only E2E-type stories, created by Intake at slice time
+  rather than added after the fact. The PR to `main` is opened and merged by
+  the architect, directly in GitHub, once the closing epic's own three-way
+  sign-off (`brd:resolved`) has landed.
 - **The listener's single-instance constraint has one known escape, undecided.**
   `desired_count = 1` follows from the scheduler keeping its dedupe set and
   debounce timers in process memory, and that constraint is also what makes the
