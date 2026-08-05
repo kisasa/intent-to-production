@@ -281,7 +281,12 @@ common.ts                Name formatting and state keys
 cdktf.json               Project config; the context block is all the settings
 models/                  Typed configuration and stack outputs, with fromContext factories
 constructs/              Reusable pieces: VPC, certificate, load balancer, single-instance service,
-                         specialist task, Temporal PrivateLink/namespace/worker service
+                         specialist task, Temporal PrivateLink/namespace/worker service. Every
+                         construct with real branching logic or a security-relevant invariant
+                         (region guards, AZ-count guard, singleton desiredCount, ingress scoping,
+                         the container_definitions JSON/token double-encoding gotcha) has a
+                         `Testing.synthScope`-based test — see `testing/synth-assertions.ts` for
+                         the shared container_definitions check
 stacks/                  base-stack.ts (base) plus network.ts, listener.ts, specialist-sandbox.ts,
                          temporal-workers.ts
 .gen/                    Locally generated `temporalcloud` provider bindings (gitignored) — run

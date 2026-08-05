@@ -1784,6 +1784,63 @@ than assumed.
   trigger remains a separate, tracked follow-up, deliberately kept apart
   from webhook-listener's own already-flagged column→label routing rebuild.
 
+## Ad-hoc synth checks became real tests (2026-08-05)
+
+the architect's correction: the previous entry's verification — one-off `node -e`
+scripts parsing `cdktf.out/` JSON by hand, run once and thrown away — caught
+a real bug but left nothing behind to catch a regression. "All of these
+little checks you are doing at each change should be tests. You should make
+a change, run the tests and catch things that break." Also asked whether the
+`cdkterrain` skill had been consulted for this infra work, the same question
+already asked of the `temporal-developer` skill earlier — it hadn't been.
+
+- **`infrastructure/testing/synth-assertions.ts`** — a shared
+  `assertSafeContainerDefinitions` helper encoding the exact check the `node
+  -e` scripts did by hand: every `aws_ecs_task_definition`'s
+  `container_definitions` must either parse as plain JSON (no token) or be
+  wrapped in exactly one `Fn.jsonencode(...)` (a token present). Reused
+  across every construct test below rather than re-implemented per file.
+- **Construct test files added**, one per construct with either real
+  branching logic or a security-relevant invariant worth locking down:
+  `specialist-task.test.ts`, `temporal-worker-service.test.ts` (plus a
+  regression test using a real `Fn.join` token — not a hand-typed
+  lookalike string, which can't reproduce the bug — verified by temporarily
+  reverting the `Fn.jsonencode` fix and confirming the test actually fails
+  before restoring it), `single-instance-service.test.ts` (the listener's
+  own construct, live production infrastructure with zero prior coverage —
+  asserts `desiredCount === 1` as a check, not just a config value, plus the
+  stop-before-start deployment percentages and the one place ingress is
+  *not* empty, unlike the other two constructs), `network-vpc.test.ts` (the
+  `availabilityZoneCount < 2` guard, one subnet per AZ, no NAT gateway ever
+  appears), `temporal-privatelink.test.ts` and `temporal-namespace.test.ts`
+  (each construct's own unsupported-region guard — two different, narrower-
+  than-you'd-guess region tables, confirmed they throw for a region the
+  *other* construct supports). 35 tests total across 7 files, all passing;
+  `application-load-balancer.ts` and `domain-certificate.ts` were read and
+  left untested — pure declarative resource wiring, no branching logic to
+  regress.
+- **cdkterrain skill audit — two findings, not applied.** The skill's own
+  checklist item ("test constructs with unit tests if they contain logic")
+  is what this entry acted on directly. Two other gotchas it names conflict
+  with decisions already made and documented in this repo, so they were
+  surfaced rather than silently overridden:
+  - *"Never read secrets directly from environment variables... use
+    `TerraformVariable` with `sensitive: true` instead."* This project
+    already made the opposite call, deliberately: `base-stack.ts`'s own
+    class comment states secrets are SSM parameters created out-of-band and
+    injected by the ECS agent at task start, not Terraform variables. The
+    one exception — the `temporalcloud` provider's admin API key, read via
+    `DataAwsSsmParameter` with `withDecryption: true` — is itself already
+    flagged in `infrastructure/README.md`'s Known gaps.
+  - *"`.gen/` should typically be committed to version control."* This
+    repo's `.gitignore` ignores `.gen/`; `infrastructure/README.md`
+    documents running `npx cdktn get` after cloning instead, same as `npm
+    install`. Pre-dates this session's work.
+  Neither has been changed — both are considered tradeoffs already on
+  record, not oversights this pass should quietly correct.
+- **Verified for real:** `npm run typecheck` and the full `npx vitest run`
+  (35 tests, 7 files) after every new test file, not just at the end.
+
 ## Open items
 
 - **RESOLVED: design-intent capture.** (Kept here as the trail from problem to
