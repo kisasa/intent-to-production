@@ -1841,6 +1841,105 @@ already asked of the `temporal-developer` skill earlier — it hadn't been.
 - **Verified for real:** `npm run typecheck` and the full `npx vitest run`
   (35 tests, 7 files) after every new test file, not just at the end.
 
+## The webhook-listener dispatch trigger — automated dispatch actually fires (2026-08-05)
+
+The piece named as deferred in both "`dispatch-worker`" and "Finishing the
+wiring" above: nothing called `WorkflowClient.start(dispatchStoryWorkflow,
+...)`. This session builds that caller — a fourth swim lane,
+`specialist-dispatch`, closing the loop the "automated dispatch and BRD
+closure" design (2026-08-04) described but didn't yet wire end to end.
+
+Two questions that session's own text left open, both settled here rather
+than assumed, since this pass is literally "the next dispatch" the earlier
+open item said to settle them before:
+
+- **`specialist:<type>` vs `spec:<type>`** — settled as `specialist:<type>`,
+  matching the already-built outcome-label prefix. `story-contract.md`'s
+  assignment-metadata section now states the literal prefix;
+  `decompose-agent.md`'s write-sequence step and
+  `docs/development-tier-dispatch.md`'s runbook (both still citing or
+  hedging the stale form) are corrected to match. See the resolved note
+  inline at this conflict's original observation, above.
+- **Reviewer-of-record** — deliberately *not* built this pass. Wiring it
+  needs a Linear webhook field (who moved the story's status) not yet
+  confirmed against a live payload, and would thread a value through three
+  packages (the trigger → the workflow input → `dispatch-specialist` →
+  `specialist-runner`'s dispatch context → its prompt). Named explicitly in
+  `webhook-listener/src/dispatch-trigger.ts`'s own docstring and in
+  `CLAUDE.md`'s Agent Roster, not silently dropped — same category as this
+  session's own precedent of naming what's deferred rather than building
+  against unconfirmed inputs.
+
+**Design: a fourth lane, not a new architecture — confirmed by trying it.**
+`swim-lanes.ts`'s own header comment claims adding a lane is "a registration,
+not a rearchitecture." Held here too, but with one small, real addition:
+`LaneConfig.agent` only has to satisfy `AgentFn`'s signature, and nothing
+requires going through `createActivationRunner`/`AgentLaneConfig` (built
+around an Anthropic-calling lane's shape — `agentFile`, `skills`, `model`,
+`templates`). `specialist-dispatch.ts` exports a plain `LaneConfig` directly
+instead, whose `agent` (`dispatch-trigger.ts`'s `createDispatchTrigger`)
+starts a Temporal workflow. `swim-lane-routing.ts` gained one small,
+symmetric addition — `requireLabelsPresentPrefix`, the mirror image of
+Specification's own `requireLabelsAbsentPrefix` — needed because both epics
+and stories are `entityType: "issue"` sharing one status workflow; only a
+story carries a `specialist:*` label, and that's already present
+synchronously on the event (no extra I/O, keeping `route()`'s "no I/O"
+property intact).
+
+**No dependency-check duplication.** `checkDependencies` already runs as
+`dispatchStoryWorkflow`'s own first activity and already posts its own
+"Dispatch blocked" comment on failure — confirmed by re-reading
+`check-dependencies.ts` before assuming otherwise. The trigger's only job is
+gathering input (`webhook-listener/src/story-context.ts`, a small direct
+Linear read: the story's `branchName`, its `specialist:*` label, its parent
+epic's `id`/`branchName` — mirroring `tracker-notifier.ts`'s own raw-fetch
+GraphQL pattern rather than importing `dispatch-worker/src/tracker.ts`
+directly, since the two are separate npm packages with no shared lib) and
+starting the workflow. `dispatchStoryWorkflow` itself is referenced by its
+string type name, `"dispatchStoryWorkflow"`, not imported — same
+separate-packages reasoning.
+
+**A real correctness question surfaced and resolved during the build, not
+assumed away:** should `webhook-listener/src/temporal-client.ts` read its
+four `TEMPORAL_*` env vars eagerly, at module load, and throw if any is
+missing — matching `server.ts`'s own `required()`/`process.exit(1)` posture
+for `AGENT_USER_ID`? Tried that first, then reversed it: `AGENT_USER_ID` is
+needed by every lane, but Temporal is needed by exactly one of four, and
+`temporal-workers` is independently documented elsewhere as "registered but
+not yet applyable" — a webhook-listener deployed before it exists would
+otherwise crash at startup and take Intake/Specification/Decompose down with
+it. Fixed to match `tracker-notifier.ts`'s own precedent instead: env read
+once at module load (still satisfying the "read env only at module init"
+rule), validated lazily on first real use (`getClient()`), so a missing
+Temporal config only fails the one dispatch that needed it.
+
+Also handled, once observed to matter: `WorkflowExecutionAlreadyStartedError`
+(a duplicate webhook delivery, or a story bounced back into `In-Process`
+while its own dispatch is still running) is caught and treated as a benign
+no-op — not surfaced as a failure comment, since starting the same
+`workflowId` twice is expected, not exceptional.
+
+**Cross-stack change:** `listener.ts` now reads `temporal-workers`'s remote
+state (namespace address/id, task queue name) and a second read (not a
+second SSM parameter — the same one `temporal-workers.ts` already creates)
+of `${temporal.parameterPrefix}TEMPORAL_API_KEY`, under `temporal`'s own
+prefix, not `listener`'s (deliberately distinct per-stack values, same point
+`specialist-sandbox-configuration.ts` already makes about its own prefix).
+Real deploy-ordering consequence, documented in `infrastructure/README.md`:
+on a from-scratch stand-up, `temporal-workers` now deploys before
+`listener`, where the two used to be independent.
+
+- **Verified for real:** `npm run typecheck` and `npx vitest run` in both
+  `webhook-listener/` (83 tests, 9 files) and `infrastructure/` (38 tests, 8
+  files, including a new stack-level test —
+  `infrastructure/stacks/listener.test.ts`, using `Testing.app({context})` +
+  `Testing.synth(stack)` rather than a construct-level test, since the
+  change under test is in `listener.ts` itself, not a construct) — plus a
+  full `npm run synth` across all four stacks.
+- **What's still missing:** the reviewer-of-record thread (above), and
+  Tests/E2E specialist dispatch (still the human-in-Claude-Code model,
+  `docs/development-tier-dispatch.md`).
+
 ## Open items
 
 - **RESOLVED: design-intent capture.** (Kept here as the trail from problem to
@@ -1971,6 +2070,18 @@ already asked of the `temporal-developer` skill earlier — it hadn't been.
   decomposed one rather than trusting the value recorded here. Settle it before
   the next dispatch; a run that cannot find its own assignment label is a stupid
   way to lose one.
+
+  **RESOLVED 2026-08-05, building the next dispatch (the webhook-listener
+  trigger):** `specialist:<type>` — confirmed with the architect. Matches the
+  outcome-label prefix, which was always the stronger argument.
+  `story-contract.md`'s assignment-metadata section now states the literal
+  prefix explicitly; `decompose-agent.md`'s own write-sequence step (was
+  citing the stale `spec:<specialist>` form) and
+  `docs/development-tier-dispatch.md`'s runbook (was hedging both spellings)
+  are both corrected to match. `webhook-listener/src/story-context.ts`'s
+  `parseSpecialistType` is the first mechanical reader of this label —
+  confirmed there is no other code in the repo reading either prefix today,
+  so this is a clean settling, not a migration.
 - **RESOLVED 2026-08-03: story contract described the app-hands-context model.**
   `story-contract.md` said the app "resolves each entry and provides completion
   status in the specialist's context payload" (blocking dependencies) and

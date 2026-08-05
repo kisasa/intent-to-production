@@ -4,9 +4,13 @@
  * rules are a routing concern and live here, not in the agent's own config,
  * since they encode which label/status names this deployment's tracker uses.
  *
- * To add a lane: implement the agent's AgentLaneConfig under lanes/, then add
- * one entry below. No other file changes — this is what makes a fourth
- * (specialist) lane a registration, not a rearchitecture.
+ * To add an Anthropic-calling lane: implement the agent's AgentLaneConfig
+ * under lanes/, then add one entry below built via createActivationRunner.
+ * specialist-dispatch is the one exception — its `agent` starts a Temporal
+ * workflow, not an activation, so it exports a full `LaneConfig` directly
+ * from its own lanes/ file and is spread in as-is. Either way: no other file
+ * changes — this is what makes a new lane a registration, not a
+ * rearchitecture.
  */
 
 import type { LaneConfig } from "./swim-lane-routing.js";
@@ -14,6 +18,7 @@ import { createActivationRunner } from "./activation-runner.js";
 import { config as intakeConfig } from "./lanes/intake.js";
 import { config as specificationConfig } from "./lanes/specification.js";
 import { config as decomposeConfig } from "./lanes/decompose.js";
+import { config as specialistDispatchConfig } from "./lanes/specialist-dispatch.js";
 
 export const lanes: LaneConfig[] = [
   {
@@ -57,4 +62,5 @@ export const lanes: LaneConfig[] = [
     awaitingLabels: ["eval:awaiting-answers", "eval:awaiting-approval"],
     statusRequiredForFollowUp: "Evaluation",
   },
+  specialistDispatchConfig,
 ];

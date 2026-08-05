@@ -14,16 +14,19 @@ import {
 } from "../constructs/single-instance-service";
 import type { ListenerStackOutput } from "../models/listener-stack-output";
 import { networkStackOutputFromRemoteState } from "../models/network-stack-output";
+import { type TemporalStackOutput, temporalStackOutputFromRemoteState } from "../models/temporal-stack-output";
 import { BaseStack } from "./base-stack";
 
 /**
  * Environment variables the application reads at module load, and where each one
  * comes from. Names must match webhook-listener's `.env.example` exactly.
  *
- * The five secret-backed values are SSM parameters created out-of-band (see the
- * README) and read here only for their arns. AGENT_USER_ID is not itself
+ * The five secret-backed values here are SSM parameters created out-of-band (see
+ * the README) and read here only for their arns. AGENT_USER_ID is not itself
  * sensitive, but it lives alongside the others so that provisioning the service's
- * credentials is one step rather than two.
+ * credentials is one step rather than two. TEMPORAL_API_KEY is a sixth
+ * secret-backed value, handled separately below (not in this list) because its
+ * parameter lives under `temporal.parameterPrefix`, not `listener.parameterPrefix`.
  */
 const SECRET_PARAMETER_NAMES: string[] = [
   "LINEAR_WEBHOOK_SECRET",
@@ -40,6 +43,7 @@ export class ListenerStack extends BaseStack {
     const environmentName = this.listener.environmentName;
     const tags = { ...this.globalTags, stack: `listener-${environmentName}` };
     const network = networkStackOutputFromRemoteState(this.remoteState(tfStateKeys.network));
+    const temporal = temporalStackOutputFromRemoteState(this.remoteState(tfStateKeys.temporalWorkers));
 
     const hostname = formatName(`${this.listener.subdomain}.${environmentName}.${this.domainName}`, 253);
 
@@ -66,6 +70,17 @@ export class ListenerStack extends BaseStack {
       const parameter = parameters[index];
       if (parameter === undefined) throw new Error(`No SSM parameter resolved for ${name}`);
       return { name: name, valueFrom: parameter.arn };
+    });
+
+    // Not part of the generic loop above: this parameter lives under
+    // `temporal.parameterPrefix`, not `listener.parameterPrefix` — the two
+    // are deliberately distinct per-stack values (see
+    // specialist-sandbox-configuration.ts's own note on the same point).
+    // Reads the parameter `temporal-workers.ts` itself already creates; does
+    // not create a second one.
+    const temporalApiKeyParameter = new DataAwsSsmParameter(this, "ssm-temporal-api-key", {
+      name: `${this.temporal.parameterPrefix}TEMPORAL_API_KEY`,
+      withDecryption: false,
     });
 
     const certificate = new DomainCertificate(this, "certificate", {
@@ -105,9 +120,9 @@ export class ListenerStack extends BaseStack {
       containerPort: this.listener.port,
       cpu: this.listener.cpu,
       memory: this.listener.memory,
-      environment: this.containerEnvironment(),
-      secrets: secrets,
-      secretParameterArns: parameters.map((parameter) => parameter.arn),
+      environment: this.containerEnvironment(temporal),
+      secrets: [...secrets, { name: "TEMPORAL_API_KEY", valueFrom: temporalApiKeyParameter.arn }],
+      secretParameterArns: [...parameters.map((parameter) => parameter.arn), temporalApiKeyParameter.arn],
       awsRegion: this.aws.region,
       logRetentionDays: this.listener.logRetentionDays,
       loadBalancerSecurityGroupId: loadBalancer.securityGroupId,
@@ -131,13 +146,25 @@ export class ListenerStack extends BaseStack {
    * omitted rather than set empty: webhook-listener's `envOr` treats an empty
    * string as absent already, but leaving them out keeps the task definition
    * honest about which values are actually pinned by this deployment.
+   *
+   * `temporal` is passed in rather than read from `this` a second time — it's
+   * already resolved once in the constructor via remote state, and threading
+   * it through keeps that a single read rather than two independent ones
+   * that could in principle observe different remote state.
    */
-  private containerEnvironment(): ContainerEnvironmentVariable[] {
+  private containerEnvironment(temporal: TemporalStackOutput): ContainerEnvironmentVariable[] {
     const environment: ContainerEnvironmentVariable[] = [
       { name: "NODE_ENV", value: "production" },
       { name: "PORT", value: String(this.listener.port) },
       { name: "DEBOUNCE_MS", value: String(this.listener.debounceMs) },
       { name: "LOG_LEVEL", value: this.listener.logLevel },
+
+      // The webhook listener's own Temporal client — starts a dispatch
+      // workflow on the specialist-dispatch lane's trigger, never a
+      // NativeConnection/Worker (that's temporal-workers.ts's own service).
+      { name: "TEMPORAL_HOST", value: temporal.namespaceClusterAddress },
+      { name: "TEMPORAL_NAMESPACE", value: temporal.namespaceId },
+      { name: "TEMPORAL_TASK_QUEUE", value: temporal.taskQueueName },
     ];
 
     const optional: Record<string, string | undefined> = {

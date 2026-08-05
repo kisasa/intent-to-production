@@ -14,7 +14,13 @@
  *                     (`requireLabelsAbsentPrefix`) rather than presence — its
  *                     first touch is an epic entering Evaluation with no
  *                     `spec:*` label yet. Every other trigger in this file
- *                     matches on presence.
+ *                     matches on presence. The specialist-dispatch lane uses
+ *                     the symmetric `requireLabelsPresentPrefix` to scope its
+ *                     own status_entered trigger to stories (which carry a
+ *                     `specialist:*` label) and exclude epics (which share
+ *                     the same status workflow but never carry one) — a pure,
+ *                     synchronous check against the event's own label set, no
+ *                     extra I/O.
  *
  * Follow-up is uniform across lanes: a human comment while any of the lane's
  * `awaitingLabels` is present. The self-comment guard applies only here — an
@@ -29,7 +35,12 @@ import type { AgentFn, EntityType, Pass, TrackerEvent } from "./tracker-event.js
 
 export type FirstPassTrigger =
   | { on: "label_added"; label: string; statusRequired?: string }
-  | { on: "status_entered"; status: string; requireLabelsAbsentPrefix?: string };
+  | {
+      on: "status_entered";
+      status: string;
+      requireLabelsAbsentPrefix?: string;
+      requireLabelsPresentPrefix?: string;
+    };
 
 export interface LaneConfig {
   name: string;
@@ -106,6 +117,10 @@ export function route(event: TrackerEvent, cfg: SwimLaneRoutingConfig): RouteDec
       if (l.firstPass.status !== event.status) return false;
       const requireAbsentPrefix = l.firstPass.requireLabelsAbsentPrefix;
       if (requireAbsentPrefix && event.labels.some((name) => name.startsWith(requireAbsentPrefix))) {
+        return false;
+      }
+      const requirePresentPrefix = l.firstPass.requireLabelsPresentPrefix;
+      if (requirePresentPrefix && !event.labels.some((name) => name.startsWith(requirePresentPrefix))) {
         return false;
       }
       return true;

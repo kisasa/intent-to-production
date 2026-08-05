@@ -79,15 +79,13 @@ All five `SPECIALIST_*` vars are now wired into
 worker's task role carries the matching `ecs:RunTask`/`ecs:DescribeTasks`/
 `iam:PassRole` permission (see `constructs/temporal-worker-service.ts`'s
 `dispatchTarget` config) — `temporal-workers` can now actually dispatch
-against `specialist-sandbox`. What's still missing is a caller: nothing
-invokes `WorkflowClient.start(dispatchStoryWorkflow, ...)` yet.
+against `specialist-sandbox`. The caller now exists too:
+`webhook-listener/src/dispatch-trigger.ts`'s `specialist-dispatch` lane calls
+`client.workflow.start("dispatchStoryWorkflow", ...)` when a story enters
+`In-Process` — see `webhook-listener/README.md`'s own lane table.
 
 ## What this does NOT do
 
-- No webhook-listener trigger. Nothing calls
-  `WorkflowClient.start(dispatchStoryWorkflow, ...)` yet — that's a separate
-  follow-up, deliberately kept apart from webhook-listener's own already-
-  flagged column→label routing rebuild.
 - No CI-wait or human-review-gate (see above).
 - No `dispatch:blocked` label — `check-dependencies.ts` posts a comment
   naming the incomplete blocker, but doesn't apply the label, since Linear's

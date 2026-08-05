@@ -239,17 +239,12 @@ npm run synth
 ```
 
 ```bash
-npx cdktn diff --skip-synth network && npx cdktn diff --skip-synth listener
+npx cdktn diff --skip-synth network
+npx cdktn deploy --skip-synth --auto-approve network
 ```
-
-```bash
-npx cdktn deploy --skip-synth --auto-approve network listener
-```
-
-The first deploy blocks while ACM validates the certificate through DNS — several minutes is normal.
 
 `specialist-sandbox` synths and diffs the same way, but deploying it will fail until its ECR repository
-and first image exist (see Prerequisites) — it isn't included in the command above for that reason:
+and first image exist (see Prerequisites):
 
 ```bash
 npx cdktn diff --skip-synth specialist-sandbox
@@ -265,6 +260,21 @@ npx cdktn get
 npx cdktn diff --skip-synth temporal-workers
 npx cdktn deploy --skip-synth --auto-approve temporal-workers
 ```
+
+**`listener` now depends on `temporal-workers` having deployed first** — it reads that stack's remote
+state (namespace address, namespace id, task queue name) for the webhook listener's own Temporal client,
+plus the `TEMPORAL_API_KEY` SSM parameter `temporal-workers.ts` creates (read, not created again, under
+`temporal.parameter-prefix`, not `listener.parameter-prefix` — the two are deliberately distinct
+per-stack values). On a from-scratch stand-up, deploy `temporal-workers` before `listener`, not the two
+together the way `network`+`listener` used to be a single step:
+
+```bash
+npx cdktn diff --skip-synth listener
+npx cdktn deploy --skip-synth --auto-approve listener
+```
+
+The first `listener` deploy blocks while ACM validates the certificate through DNS — several minutes is
+normal.
 
 `npx cdktn output listener` reports the webhook URL to register with the tracker, the service name,
 the log group, and the exact image URI running.

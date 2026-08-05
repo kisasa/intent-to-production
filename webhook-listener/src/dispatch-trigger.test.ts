@@ -1,0 +1,128 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+const postErrorComment = vi.fn();
+vi.mock("./tracker-notifier.js", () => ({
+  default: { postErrorComment: (...args: unknown[]) => postErrorComment(...args) },
+}));
+
+const fetchStoryDispatchContext = vi.fn();
+vi.mock("./story-context.js", () => ({
+  fetchStoryDispatchContext: (...args: unknown[]) => fetchStoryDispatchContext(...args),
+}));
+
+class FakeAlreadyStartedError extends Error {}
+vi.mock("@temporalio/client", () => ({
+  WorkflowExecutionAlreadyStartedError: FakeAlreadyStartedError,
+}));
+
+const { createDispatchTrigger } = await import("./dispatch-trigger.js");
+
+const WELL_FORMED_CONTEXT = {
+  ok: true,
+  context: {
+    storyId: "story-1",
+    storyBranch: "story/story-1",
+    specialistType: "backend",
+    epicId: "epic-1",
+    epicBranch: "epic/epic-1",
+  },
+};
+
+function makeConfig(startImpl: (...args: unknown[]) => unknown) {
+  const start = vi.fn(startImpl);
+  const client = { workflow: { start: start } };
+  return {
+    config: {
+      linearAgentApiKey: "test-api-key",
+      linearApiUrl: "https://api.linear.app/graphql",
+      getClient: vi.fn().mockResolvedValue(client),
+      taskQueue: () => "dispatch-task-queue",
+    },
+    start: start,
+  };
+}
+
+beforeEach(() => {
+  postErrorComment.mockReset();
+  fetchStoryDispatchContext.mockReset();
+});
+
+describe("createDispatchTrigger", () => {
+  it("starts the workflow with a full input built from the story's dispatch context", async () => {
+    fetchStoryDispatchContext.mockResolvedValue(WELL_FORMED_CONTEXT);
+    const { config, start } = makeConfig(() => ({ workflowId: "dispatch-story-1" }));
+    const trigger = createDispatchTrigger(config);
+
+    await trigger("story-1", "first", "Add refund data model", "trace-1");
+
+    expect(start).toHaveBeenCalledWith("dispatchStoryWorkflow", {
+      workflowId: "dispatch-story-1",
+      taskQueue: "dispatch-task-queue",
+      args: [
+        {
+          storyId: "story-1",
+          storyTitle: "Add refund data model",
+          epicId: "epic-1",
+          specialistType: "backend",
+          storyBranch: "story/story-1",
+          epicBranch: "epic/epic-1",
+          maxTurns: 80,
+        },
+      ],
+    });
+    expect(postErrorComment).not.toHaveBeenCalled();
+  });
+
+  it("uses a fallback title when entityTitle is null", async () => {
+    fetchStoryDispatchContext.mockResolvedValue(WELL_FORMED_CONTEXT);
+    const { config, start } = makeConfig(() => ({ workflowId: "dispatch-story-1" }));
+    const trigger = createDispatchTrigger(config);
+
+    await trigger("story-1", "first", null, "trace-1");
+
+    expect(start).toHaveBeenCalledWith(
+      "dispatchStoryWorkflow",
+      expect.objectContaining({ args: [expect.objectContaining({ storyTitle: "(untitled)" })] }),
+    );
+  });
+
+  it("posts an error comment and does not start a workflow when the story isn't dispatchable", async () => {
+    fetchStoryDispatchContext.mockResolvedValue({ ok: false, reason: "no specialist:<type> label found" });
+    const { config, start } = makeConfig(() => ({}));
+    const trigger = createDispatchTrigger(config);
+
+    await trigger("story-1", "first", "Some story", "trace-1");
+
+    expect(start).not.toHaveBeenCalled();
+    expect(postErrorComment).toHaveBeenCalledWith(
+      "story-1",
+      "issue",
+      "trace-1",
+      "This story could not be dispatched: no specialist:<type> label found.",
+    );
+  });
+
+  it("treats an already-started workflow as a benign no-op, not an error comment", async () => {
+    fetchStoryDispatchContext.mockResolvedValue(WELL_FORMED_CONTEXT);
+    const { config } = makeConfig(() => {
+      throw new FakeAlreadyStartedError("already started");
+    });
+    const trigger = createDispatchTrigger(config);
+
+    await trigger("story-1", "first", "Some story", "trace-1");
+
+    expect(postErrorComment).not.toHaveBeenCalled();
+  });
+
+  it("posts an error comment when the workflow fails to start for any other reason", async () => {
+    fetchStoryDispatchContext.mockResolvedValue(WELL_FORMED_CONTEXT);
+    const { config } = makeConfig(() => {
+      throw new Error("connection refused");
+    });
+    const trigger = createDispatchTrigger(config);
+
+    await trigger("story-1", "first", "Some story", "trace-1");
+
+    expect(postErrorComment).toHaveBeenCalledWith("story-1", "issue", "trace-1", "Dispatch could not start: connection refused");
+  });
+});

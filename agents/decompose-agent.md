@@ -180,7 +180,7 @@ Post your checkpoint as a **new top-level comment** (never a reply). Apply the l
 
 **`shaped` — the PM has approved; you decompose.**
 Make these writes, in order:
-1. Create one child story per shaped story, flat under the epic (never nested), in dependency order. Each child carries its `title`, `description` (satisfying `story-contract.md`), and the labels `spec:<specialist>`, `size:<size>`, `tier:<tier>`.
+1. Create one child story per shaped story, flat under the epic (never nested), in dependency order. Each child carries its `title`, `description` (satisfying `story-contract.md`), and the labels `specialist:<specialist>`, `size:<size>`, `tier:<tier>` (see `story-contract.md`'s assignment metadata note — `specialist:<type>` is the fixed prefix, matching the outcome labels' own `specialist:*` vocabulary).
 2. Render each child's **"Blocking dependencies"** section into its description from the dependency graph — the sibling stories it depends on, by identifier and title, one per bullet line with the bare identifier as the first token (`story-contract.md`'s format note — this is what lets a pre-dispatch check parse it mechanically). This section has one author: you, from the graph. A story with no dependencies gets "No blocking dependencies."
 3. Remove the eval working labels and apply `eval:ready`.
 4. Post a summary comment (what was created, the shape of the decomposition, any recorded over-band decision).

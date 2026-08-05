@@ -1,17 +1,25 @@
 # webhook-listener
 
-An always-on worker implementing the shaping tier of the Kisasa AI PM pipeline
-— see [`../Docs/design-ledger.md`](../Docs/design-ledger.md) for the design
-this code follows, and [`../CLAUDE.md`](../CLAUDE.md) for the current
-architecture summary. It receives Linear webhooks, routes them to the agent
-lane whose trigger matches, and runs that lane's activation. Claude reads and
-writes the tracker itself during the run, and reads the product codebase
-itself for lanes that need it — both via MCP servers attached to the
-Anthropic call. This worker declares no tools of its own; its own tracker
-writes are kept to a "working on it" comment posted right before opening
-the Anthropic call, that same comment refreshed in place every couple of
-minutes for however long the run actually takes, and a fail-fast error
-comment on failure (`src/tracker-notifier.ts`).
+An always-on worker implementing the shaping tier — and, as of the
+specialist-dispatch lane, the entry point into the development tier — of the
+Kisasa AI PM pipeline. See [`../Docs/design-ledger.md`](../Docs/design-ledger.md)
+for the design this code follows, and [`../CLAUDE.md`](../CLAUDE.md) for the
+current architecture summary. It receives Linear webhooks, routes them to the
+lane whose trigger matches, and runs that lane's agent function.
+
+Three lanes (Intake, Specification, Decompose) run an Anthropic activation:
+Claude reads and writes the tracker itself during the run, and reads the
+product codebase itself for lanes that need it — both via MCP servers
+attached to the Anthropic call. This worker declares no tools of its own for
+those lanes; its own tracker writes are kept to a "working on it" comment
+posted right before opening the Anthropic call, that same comment refreshed
+in place every couple of minutes for however long the run actually takes, and
+a fail-fast error comment on failure (`src/tracker-notifier.ts`).
+
+The fourth lane, specialist-dispatch, calls no Anthropic activation at all —
+it starts a Temporal workflow (`dispatch-worker/`) that dispatches a
+specialist against the specialist-sandbox. See "The lanes and their
+triggers" below.
 
 ```
 Linear webhook ──▶ adapters/linear.ts   parse the payload into a TrackerEvent
@@ -44,11 +52,18 @@ first-pass trigger and the label(s) that mark its thread "awaiting a reply":
 | Intake | Project | `ready for intake` applied while status = Backlog | a Project Update ("status update") post while `ready for intake` is present |
 | Specification | Issue (epic) | status enters Evaluation **and no** `spec:*` label exists yet | human comment while `spec:awaiting-architect` or `spec:awaiting-designer` is present |
 | Decompose | Issue (epic) | `spec:resolved` applied | human comment while `eval:awaiting-answers` or `eval:awaiting-approval` is present |
+| specialist-dispatch | Issue (story) | status enters In-Process **and** a `specialist:*` label is present | — (no follow-up state; a dispatch either starts or it doesn't) |
 
 Specification's first-pass trigger is the one case gated on label *absence*
-rather than presence. The self-comment guard (routing ignores the agent's own
-comments) applies only to comments — an agent's own label change is exactly
-how one lane hands off to the next, and must never be filtered.
+rather than presence; specialist-dispatch's is the symmetric case gated on
+label *presence* via the same mechanism
+(`requireLabelsPresentPrefix`/`requireLabelsAbsentPrefix` in
+`swim-lane-routing.ts`) — both epics and stories are Issues sharing one status
+workflow, so presence of a `specialist:*` label is what tells the router
+this is a story, not an epic, entering that status. The self-comment guard
+(routing ignores the agent's own comments) applies only to comments — an
+agent's own label change is exactly how one lane hands off to the next, and
+must never be filtered.
 
 Intake's follow-up is the one case that isn't a comment reply: confirmed
 against a live payload (2026-07-16), Linear does not emit a webhook for
@@ -140,6 +155,10 @@ one request's entire path through the system.
 | `src/agent-scheduler.ts` | In-memory dedupe + per-entity debounce |
 | `src/agent-lane.ts` | The `AgentLaneConfig` shape every lane's config satisfies |
 | `src/lanes/{intake,specification,decompose}.ts` | Per-lane identity: agent file, skills, codebase access, templates, placeholders |
+| `src/lanes/specialist-dispatch.ts` | The one lane exporting a plain `LaneConfig` directly (not `AgentLaneConfig`) — its `agent` starts a Temporal workflow, not an activation |
+| `src/dispatch-trigger.ts` | Gathers a story's dispatch context, starts `dispatchStoryWorkflow` on `dispatch-worker`'s task queue, posts an error comment on a malformed story or a start failure |
+| `src/story-context.ts` | Reads a story's `branchName`, `specialist:<type>` label, and parent epic (`id`/`branchName`) from Linear directly — this lane's own small GraphQL client, same pattern as `tracker-notifier.ts` |
+| `src/temporal-client.ts` | This process's `@temporalio/client` connection for *starting* workflows — distinct from `dispatch-worker`'s own `NativeConnection`, which executes them |
 | `src/prompt-assembly.ts` + `src/prompt-templates/*.md` | Template lookup, placeholder substitution, system-block assembly |
 | `src/activation-runner.ts` | Generic runner: assembles the prompt, attaches the Linear MCP server (+ GitHub's for codebase-access lanes), posts + refreshes "working on it", makes the Anthropic call (resuming past a paused server-side MCP tool-call loop, up to `maxPauseContinuations`), error-reports |
 | `src/activation-config.ts` | Shared token/content/timing limits, effort, and the pause-continuation cap |
@@ -159,15 +178,19 @@ crash-survival — the function signatures in `agent-scheduler.ts` don't change.
 
 ## Not yet built
 
-- **Specialist lanes** (backend/frontend/tests/e2e) — **and deliberately so.**
-  The four specialist definitions exist (`agents/specialist-*.md`), as does a
-  dispatch prompt (`docs/development-tier-dispatch.md`), but
-  they are not webhook lanes and are not queued to become ones. Specialists are
-  dispatched by a human developer in Claude Code against a local checkout: the
-  scarce resource is human review throughput, so the person who will review the
-  pull request decides when it gets written. The registration point is still
-  here — one `AgentLaneConfig` under `src/lanes/` plus one entry in
-  `swim-lanes.ts` — if that decision ever reverses.
+- **Reviewer-of-record.** The automated-dispatch redesign
+  (`docs/design-ledger.md`, "automated dispatch and BRD closure") names
+  recording whoever moved the story to In-Process as the requested reviewer
+  on the specialist's eventual PR as the property this whole redesign has to
+  preserve — deliberately deferred, not forgotten. It needs a Linear webhook
+  field (who moved the status) not yet confirmed against a live payload, and
+  threading it through would touch three packages
+  (`dispatch-trigger.ts` → the workflow input → `specialist-runner`'s own PR
+  step). `dispatch-trigger.ts`'s docstring names this explicitly.
+- **Tests/E2E specialist lanes.** `specialist-dispatch` only dispatches
+  backend/frontend (`story-context.ts`'s `SpecialistType`, matching
+  `dispatch-worker`'s and `specialist-runner`'s own scoping) — dedicated
+  Tests/E2E dispatch is a tracked follow-up, not built here.
 - **A second issue tracker.** The write path is Linear-specific (MCP) — a
   Jira or GitHub Issues adapter would need its own MCP server to reach the
   same architecture, not just a webhook parser. (GitHub is already wired in,

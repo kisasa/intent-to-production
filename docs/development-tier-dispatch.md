@@ -105,9 +105,9 @@ walk through isn't there yet, and the run will stop.
 
 ## The prompt
 
-Pick the specialist file matching the story's assignment label (`backend`,
-`frontend`, `tests`, or `e2e` — the label may read `specialist:backend` or
-`spec:backend` depending on the story).
+Pick the specialist file matching the story's assignment label —
+`specialist:backend`, `specialist:frontend`, `specialist:tests`, or
+`specialist:e2e`.
 
 ```
 Read these three files now — they define your role and the contracts you work
