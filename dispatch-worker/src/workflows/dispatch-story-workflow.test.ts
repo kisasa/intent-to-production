@@ -59,6 +59,8 @@ describe("dispatchStoryWorkflow", () => {
         dispatchSpecialist: unexpectedCall("dispatchSpecialist"),
         awaitSpecialistTask: unexpectedCall("awaitSpecialistTask"),
         readSpecialistOutcome: unexpectedCall("readSpecialistOutcome"),
+        findPullRequest: unexpectedCall("findPullRequest"),
+        awaitPullRequestOutcome: unexpectedCall("awaitPullRequestOutcome"),
       },
     });
 
@@ -69,6 +71,36 @@ describe("dispatchStoryWorkflow", () => {
         args: [baseInput],
       });
       expect(result).toEqual({ outcome: "not-ready", blockedBy: ["PROJ-42"] });
+    });
+  }, 30_000);
+
+  it("skips PR-watching entirely when the specialist's outcome isn't complete", async () => {
+    const { client, nativeConnection } = testEnv;
+    const taskQueue = "test-not-complete";
+
+    const worker = await Worker.create({
+      connection: nativeConnection,
+      taskQueue: taskQueue,
+      workflowsPath: WORKFLOWS_PATH,
+      activities: {
+        checkDependencies: async () => ({ ready: true, blockedBy: [] }),
+        resolveRepoBase: async () => ({ host: "github", org: "example-org", repo: "example-api", ref: "main" }),
+        createStoryBranch: async () => {},
+        dispatchSpecialist: async () => "arn:aws:ecs:us-east-1:123:task/example-specialist-prod/abc123",
+        awaitSpecialistTask: async () => {},
+        readSpecialistOutcome: async () => "waiting",
+        findPullRequest: unexpectedCall("findPullRequest"),
+        awaitPullRequestOutcome: unexpectedCall("awaitPullRequestOutcome"),
+      },
+    });
+
+    await worker.runUntil(async () => {
+      const result = await client.workflow.execute(dispatchStoryWorkflow, {
+        workflowId: "test-not-complete-1",
+        taskQueue: taskQueue,
+        args: [baseInput],
+      });
+      expect(result).toEqual({ outcome: "waiting" });
     });
   }, 30_000);
 
@@ -104,6 +136,14 @@ describe("dispatchStoryWorkflow", () => {
           calls.push("readSpecialistOutcome");
           return "complete";
         },
+        findPullRequest: async () => {
+          calls.push("findPullRequest");
+          return { number: 42, url: "https://github.com/example-org/example-api/pull/42" };
+        },
+        awaitPullRequestOutcome: async () => {
+          calls.push("awaitPullRequestOutcome");
+          return "merged";
+        },
       },
     });
 
@@ -113,7 +153,10 @@ describe("dispatchStoryWorkflow", () => {
         taskQueue: taskQueue,
         args: [baseInput],
       });
-      expect(result).toEqual({ outcome: "complete" });
+      expect(result).toEqual({
+        outcome: "complete",
+        pullRequest: { number: 42, url: "https://github.com/example-org/example-api/pull/42", merged: true },
+      });
     });
 
     expect(calls).toEqual([
@@ -123,6 +166,8 @@ describe("dispatchStoryWorkflow", () => {
       "dispatchSpecialist",
       "awaitSpecialistTask",
       "readSpecialistOutcome",
+      "findPullRequest",
+      "awaitPullRequestOutcome",
     ]);
   }, 30_000);
 });

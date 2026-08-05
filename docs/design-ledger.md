@@ -1940,6 +1940,80 @@ on a from-scratch stand-up, `temporal-workers` now deploys before
   Tests/E2E specialist dispatch (still the human-in-Claude-Code model,
   `docs/development-tier-dispatch.md`).
 
+## `dispatch-worker` — CI-wait and human-review-gate (2026-08-05)
+
+Closes the last link in the ledger's own stated chain — *dispatch → wait for
+the specialist → trigger CI → wait for the result → gate on human review →
+proceed* — for the one case it applies to: outcome `"complete"` (a PR
+exists). Session input: the architect confirmed the review gate is "wait for merged,
+full stop," settling the one real design fork this needed.
+
+**Two decisions, both settled rather than assumed:**
+
+- **Review-gate model: merged, not a separate tracked approval.** GitHub REST
+  has no clean single "review decision" field the way GraphQL does, and
+  CLAUDE.md already frames review as one human act ("a human developer...
+  who merges"), not approve-then-merge as two. Confirmed with the architect: model it
+  as a single wait for merged (success) or closed-without-merging
+  (rejected). A separate approval-tracking activity wouldn't have fully
+  solved anything anyway — merge can lag well behind approval, or happen
+  without one at all if branch protection isn't configured to require it.
+- **CI-wait and review-gate collapse into one activity, not two — a design
+  call, not asked, because it followed directly from the answer above.** A
+  red CI check on the PR's current head isn't a terminal state either: a
+  human can push a fix and CI goes green later. A two-activity split
+  (`awaitCiResult` then `awaitReview`) would have to decide what a CI
+  *failure* even returns, and would hit a real correctness trap doing it: the
+  PR's head sha can change (force-push, new commits), so an activity that
+  captured the sha once up front would silently stop tracking the right
+  commit's CI after a push. `await-pull-request-outcome.ts` avoids both
+  problems by re-fetching the PR (and therefore its current head sha) every
+  poll and only returning once it's genuinely terminal — merged or
+  closed-without-merging — heartbeating a CI/status summary
+  (`summarizeCheckRuns`) at every intermediate poll purely for observability.
+
+**How the PR is found: mechanically, not by parsing a comment.** The
+specialist's own "PR & branch" completion-report line
+(`agents/specialist-backend.md`/`-frontend.md`) is free prose — the same
+class of problem `story-contract.md` and `specification-agent.md` already
+solved twice by tightening a recording *format*. Not needed a third time
+here: the workflow already knows the exact story/epic branch names before it
+ever dispatches the specialist, so `find-pull-request.ts` just asks GitHub
+directly (`GET /repos/{owner}/{repo}/pulls?head=...&base=...&state=open`) —
+strictly more robust than parsing, and doesn't touch either agent
+definition's own prose.
+
+**A real, load-bearing consequence of "status is human-moved, always,"
+named rather than silently fixed.** Once `await-pull-request-outcome.ts`
+sees the PR merged, the workflow's job ends — it does not advance the
+story's Linear status to Done. `check-dependencies.ts`'s own
+`stateType !== "completed"` check (built in the original `dispatch-worker`
+session) already means every *other* story depending on this one stays
+blocked until a human notices the merge and moves the status by hand. This
+was surfaced while designing this pass, not fixed, because fixing it would
+mean the workflow itself moving a status — exactly the invariant CLAUDE.md
+states twice as a first-class primitive of this whole framework. Worth
+carrying forward as a real gap in the automated-dispatch story, not
+forgotten.
+
+**Small shared refactor:** `create-story-branch.ts`'s private `githubRequest`
+helper moved out to `dispatch-worker/src/github-request.ts` once a second and
+third activity needed the identical shape — three call sites is where this
+session's own construct-test work already drew the same extract-vs-duplicate
+line.
+
+- **Verified for real:** `npm run typecheck` and `npm run test:unit` in
+  `dispatch-worker/` — including the workflow-level test, which spins up a
+  real local Temporal test server (`TestWorkflowEnvironment.createLocal()`)
+  and now covers three paths (not-ready, not-complete, and the full
+  eight-activity sequence ending in a merged PR), and the new
+  `await-pull-request-outcome.test.ts`, which specifically confirms a
+  failing CI conclusion on an intermediate poll does not end the loop.
+- **What's still missing:** no live GitHub PR or Temporal Cloud execution is
+  possible or claimed — same standing caveat as every prior `dispatch-worker`
+  pass. Reviewer-of-record and Tests/E2E dispatch remain exactly as named in
+  the previous two entries above.
+
 ## Open items
 
 - **RESOLVED: design-intent capture.** (Kept here as the trail from problem to

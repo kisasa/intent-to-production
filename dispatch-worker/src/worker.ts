@@ -9,10 +9,12 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { Worker } from "@temporalio/worker";
+import { createAwaitPullRequestOutcomeActivity } from "./activities/await-pull-request-outcome.js";
 import { createAwaitSpecialistTaskActivity } from "./activities/await-specialist-task.js";
 import { createCheckDependenciesActivity } from "./activities/check-dependencies.js";
 import { createStoryBranch } from "./activities/create-story-branch.js";
 import { createDispatchSpecialistActivity } from "./activities/dispatch-specialist.js";
+import { createFindPullRequestActivity } from "./activities/find-pull-request.js";
 import { createReadSpecialistOutcomeActivity } from "./activities/read-specialist-outcome.js";
 import { createResolveRepoBaseActivity } from "./activities/resolve-repo-base.js";
 import { createLogger } from "./logger.js";
@@ -62,6 +64,8 @@ async function main(): Promise<void> {
       dispatchSpecialist: createDispatchSpecialistActivity(config),
       awaitSpecialistTask: createAwaitSpecialistTaskActivity(config),
       readSpecialistOutcome: createReadSpecialistOutcomeActivity(config),
+      findPullRequest: createFindPullRequestActivity(config),
+      awaitPullRequestOutcome: createAwaitPullRequestOutcomeActivity(config),
     },
   });
 

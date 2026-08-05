@@ -7,12 +7,14 @@ process that gives that service something to run, and the caller
 [`specialist-sandbox`](../infrastructure/README.md) has been missing since it
 was built.
 
-Covers the design ledger's "Dispatch → wait for the specialist" — the rest of
-its stated flow ("trigger CI → wait for the result → gate on human review →
-proceed") is a deliberate stop, not an oversight: CI already runs
-automatically once the specialist opens a PR, and a human developer already
-owns review and merge as reviewer-of-record. There's no automation gap there,
-just an event this workflow doesn't block on for v1.
+Covers the design ledger's full "dispatch → wait for the specialist →
+trigger CI → wait for the result → gate on human review → proceed" chain.
+"Trigger CI" needs no code of its own — it already runs automatically once
+the specialist opens a PR; "wait for the result" and "gate on human review"
+are collapsed into one long-poll activity (see step 8 below) rather than two,
+since a red CI check isn't a terminal state either (a human can push a fix
+and CI goes green later) — the only two states that actually end a story's
+dispatch are merged and closed-without-merging.
 
 ## What it does
 
@@ -39,7 +41,22 @@ just an event this workflow doesn't block on for v1.
 6. **Read the outcome** — the specialist's own `specialist:complete
    /:waiting/:blocked` label, once the task has stopped. This workflow never
    decides the outcome itself; it only reports what the specialist already
-   decided and wrote via its own Linear MCP calls.
+   decided and wrote via its own Linear MCP calls. Anything other than
+   `complete` (waiting/blocked/unknown) ends the workflow here — there's no
+   PR to watch.
+7. **Find the PR** — mechanically, via GitHub's own head/base filter (`GET
+   /repos/{owner}/{repo}/pulls?head=...&base=...&state=open`), not by parsing
+   the specialist's free-prose "PR & branch" completion-report line. The
+   workflow already knows the exact story/epic branch names before it ever
+   dispatches the specialist, so no new recording format was needed here (see
+   Two tightened content formats, below, for the two cases where one was).
+   No matching open PR is a real specialist-compliance gap — posts a comment
+   naming it and fails the workflow, non-retryable.
+8. **Wait for merged, full stop** — polls the PR (re-reading its current head
+   sha every poll, so a force-push can't leave it tracking a stale commit)
+   until it's merged or closed without merging, heartbeating a CI/status
+   summary each poll. Posts the final "PR merged" / "PR closed without
+   merging" comment itself.
 
 ## Two tightened content formats — why they exist
 
@@ -86,7 +103,15 @@ against `specialist-sandbox`. The caller now exists too:
 
 ## What this does NOT do
 
-- No CI-wait or human-review-gate (see above).
+- **Does not advance the story's Linear status to Done on merge.** CLAUDE.md
+  states status is human-moved, always — this workflow doesn't relax that
+  for a seemingly-mechanical case. Its own job ends at "merged"; a human
+  still has to move the story to Done, the same way
+  `check-dependencies.ts`'s `stateType !== "completed"` check already
+  expects for every *other* story that depends on this one. A real,
+  load-bearing consequence of that invariant, not a bug: a dependent
+  story's own dispatch waits until a human notices the merge and moves the
+  status.
 - No `dispatch:blocked` label — `check-dependencies.ts` posts a comment
   naming the incomplete blocker, but doesn't apply the label, since Linear's
   label-write API replaces an issue's entire label set and applying one
@@ -114,28 +139,39 @@ build step.
 against a real (local, in-memory) Temporal test server —
 `TestWorkflowEnvironment.createLocal()` plus a `Worker` with every activity
 mocked — not just unit tests of the activities' own pure helper functions.
-Covers the not-ready short-circuit and the full six-activity sequence,
-asserting both the returned result and the exact call order. `createLocal()`
-over `createTimeSkipping()`: this workflow has no workflow-level timers to
-skip through (the only sleep lives inside `awaitSpecialistTask`'s activity
-code, invisible to the workflow sandbox), so time-skipping buys nothing here.
+Covers the not-ready short-circuit, the not-complete short-circuit (waiting/
+blocked/unknown never reaches `findPullRequest`/`awaitPullRequestOutcome`),
+and the full eight-activity sequence ending in a merged PR, asserting both
+the returned result and the exact call order. `createLocal()` over
+`createTimeSkipping()`: this workflow has no workflow-level timers to skip
+through (the only sleeps live inside `awaitSpecialistTask`'s and
+`awaitPullRequestOutcome`'s activity code, invisible to the workflow
+sandbox), so time-skipping buys nothing here.
 
-`activities/await-specialist-task.test.ts` tests the one activity that calls
-`heartbeat()`/`sleep()` from `@temporalio/activity` — both need a real
+`activities/await-specialist-task.test.ts` and
+`activities/await-pull-request-outcome.test.ts` test the two activities that
+call `heartbeat()`/`sleep()` from `@temporalio/activity` — both need a real
 Activity Context to do anything (heartbeat emits an event only a Context
 provides; `sleep()` is cancellation-aware and needs one to reject through).
 Uses `@temporalio/testing`'s `MockActivityEnvironment` — confirmed its shape
 by reading that package's own source
 (`mocking-activity-environment.ts`) rather than assuming it: `env.run(fn,
 ...args)` runs `fn` inside a real Context, `env.on('heartbeat', ...)`
-observes heartbeat calls, `env.cancel()` drives cancellation. Covers polling
-to `STOPPED` with the right heartbeat sequence, resolving immediately when
-already stopped, an undefined ECS status heartbeating as `"unknown"`, and
-mid-poll cancellation actually rejecting the activity. The activity itself
-takes its ECS lookup as an injected function (`DescribeTaskStatus`) rather
-than constructing a client internally, specifically so tests can substitute
-a fake one — same "explicit parameter, not read internally" discipline
+observes heartbeat calls, `env.cancel()` drives cancellation. Both cover
+polling to their terminal state with the right heartbeat sequence, resolving
+immediately when already terminal, and mid-poll cancellation actually
+rejecting the activity; `await-pull-request-outcome.test.ts` additionally
+confirms a failing CI conclusion on an intermediate poll doesn't end the
+loop — only merged/closed does. Each activity takes its own lookup as an
+injected function (`DescribeTaskStatus` / `GetPullRequestState`) rather than
+constructing a client internally, specifically so tests can substitute a
+fake one — same "explicit parameter, not read internally" discipline
 `create-story-branch.ts` already uses for its GitHub token.
+
+`activities/find-pull-request.test.ts` tests `pickPullRequest` only — the
+pure selection logic, not the fetch call around it, same "parse/select is
+pure and tested, the IO wrapper isn't" split `parseRepoBase`/
+`parseBlockingDependencyIds` already established.
 
 Retry classification also matters, and isn't left to defaults everywhere:
 `resolveRepoBase`'s missing-base case and `createStoryBranch`'s permanent
@@ -143,10 +179,14 @@ failures (an unsupported host, a 4xx from GitHub) throw
 `ApplicationFailure.nonRetryable` rather than a plain `Error` — Temporal's
 default retry policy is generous (up to 100 attempts), and retrying a
 config problem would just re-fetch and re-post the same "dispatch blocked"
-comment on every attempt. The four quick activities also get a
+comment on every attempt. `findPullRequest`'s missing-PR case is the same
+category, for the same reason. The six quick activities also get a
 domain-specific `retry: { maximumAttempts: 3 }` in the workflow's
 `proxyActivities` call, so a persistent failure against Linear/GitHub/AWS
 surfaces as a failed workflow rather than hammering those APIs for hours.
+`awaitPullRequestOutcome` gets its own, much longer `startToCloseTimeout`
+(14 days, vs. `awaitSpecialistTask`'s 4 hours) — a PR can sit unreviewed for
+days in a way an ECS task never sits unfinished.
 
 ## Working with it
 

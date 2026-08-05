@@ -9,9 +9,11 @@
  * real implementations and binds them to these same names.
  */
 
+import type { PullRequestOutcome } from "./await-pull-request-outcome.js";
 import type { DependencyCheckResult } from "./check-dependencies.js";
 import type { CreateStoryBranchInput } from "./create-story-branch.js";
 import type { DispatchSpecialistInput } from "./dispatch-specialist.js";
+import type { PullRequestReference } from "./find-pull-request.js";
 import type { SpecialistOutcome } from "./read-specialist-outcome.js";
 import type { RepoBase } from "./resolve-repo-base.js";
 import type { SpecialistType } from "./types.js";
@@ -23,4 +25,6 @@ export interface DispatchActivities {
   dispatchSpecialist(input: DispatchSpecialistInput): Promise<string>;
   awaitSpecialistTask(taskArn: string): Promise<void>;
   readSpecialistOutcome(storyId: string): Promise<SpecialistOutcome>;
+  findPullRequest(storyId: string, repoBase: RepoBase, headBranch: string, baseBranch: string): Promise<PullRequestReference>;
+  awaitPullRequestOutcome(storyId: string, repoBase: RepoBase, prNumber: number, prUrl: string): Promise<PullRequestOutcome>;
 }

@@ -1,9 +1,11 @@
 /**
  * The workflow: checks dependencies, resolves the target surface's repo
  * base, creates the story branch, dispatches the specialist, waits for it,
- * and reads back its outcome. Covers the ledger's "Dispatch → wait for the
- * specialist" — CI-wait and human-review-gate are a deliberate stop, not an
- * oversight (see dispatch-worker/README.md).
+ * reads back its outcome, and — when that outcome is "complete" — finds the
+ * PR the specialist opened and waits for it to merge or close. Covers the
+ * ledger's full "dispatch → wait for the specialist → trigger CI → wait for
+ * the result → gate on human review → proceed" chain now; "trigger CI" is a
+ * no-op here since it already runs automatically on the PR's own push.
  *
  * Runs in Temporal's deterministic workflow sandbox: no fetch, no AWS SDK, no
  * filesystem here — every real IO call goes through `proxyActivities`, which
@@ -16,17 +18,23 @@ import type { SpecialistOutcome } from "../activities/read-specialist-outcome.js
 import type { SpecialistType } from "../activities/types.js";
 
 // Domain-specific reason for a non-default retry policy (the SDK default is
-// generous — up to 100 attempts): these four all call external, rate-limited
+// generous — up to 100 attempts): these six all call external, rate-limited
 // APIs (Linear, GitHub, AWS ECS). A persistent failure after 3 attempts
 // should surface as a failed workflow rather than hammer those APIs for
 // the better part of a day. Permanent errors (an unsupported host, a
-// missing repo base) skip retries entirely — see each activity's own use of
-// `ApplicationFailure.nonRetryable`.
-const { checkDependencies, resolveRepoBase, createStoryBranch, dispatchSpecialist, readSpecialistOutcome } =
-  proxyActivities<DispatchActivities>({
-    startToCloseTimeout: "5 minutes",
-    retry: { maximumAttempts: 3 },
-  });
+// missing repo base, no matching PR) skip retries entirely — see each
+// activity's own use of `ApplicationFailure.nonRetryable`.
+const {
+  checkDependencies,
+  resolveRepoBase,
+  createStoryBranch,
+  dispatchSpecialist,
+  readSpecialistOutcome,
+  findPullRequest,
+} = proxyActivities<DispatchActivities>({
+  startToCloseTimeout: "5 minutes",
+  retry: { maximumAttempts: 3 },
+});
 
 // A specialist run can take a long time — the ledger's own "maxTurns is set
 // ... since sessions do not time out on their own" applies here too, one
@@ -36,6 +44,14 @@ const { checkDependencies, resolveRepoBase, createStoryBranch, dispatchSpecialis
 const { awaitSpecialistTask } = proxyActivities<DispatchActivities>({
   startToCloseTimeout: "4 hours",
   heartbeatTimeout: "1 minute",
+});
+
+// A PR can sit unreviewed for days — a much longer ceiling than the
+// specialist's own run, and its own separate proxyActivities call for the
+// same reason: a different activity, a different realistic wait.
+const { awaitPullRequestOutcome } = proxyActivities<DispatchActivities>({
+  startToCloseTimeout: "14 days",
+  heartbeatTimeout: "5 minutes",
 });
 
 export interface DispatchStoryWorkflowInput {
@@ -52,6 +68,8 @@ export interface DispatchStoryWorkflowResult {
   readonly outcome: SpecialistOutcome | "not-ready";
   /** Only set when `outcome` is "not-ready" — the blocking dependencies that aren't Done yet. */
   readonly blockedBy?: string[];
+  /** Only set when `outcome` is "complete" — the PR this story's dispatch was watching. */
+  readonly pullRequest?: { readonly number: number; readonly url: string; readonly merged: boolean };
 }
 
 export async function dispatchStoryWorkflow(input: DispatchStoryWorkflowInput): Promise<DispatchStoryWorkflowResult> {
@@ -82,5 +100,16 @@ export async function dispatchStoryWorkflow(input: DispatchStoryWorkflowInput): 
   await awaitSpecialistTask(taskArn);
 
   const outcome = await readSpecialistOutcome(input.storyId);
-  return { outcome: outcome };
+  if (outcome !== "complete") {
+    // waiting/blocked/unknown: no PR exists to watch.
+    return { outcome: outcome };
+  }
+
+  const pr = await findPullRequest(input.storyId, repoBase, input.storyBranch, input.epicBranch);
+  const prOutcome = await awaitPullRequestOutcome(input.storyId, repoBase, pr.number, pr.url);
+
+  return {
+    outcome: outcome,
+    pullRequest: { number: pr.number, url: pr.url, merged: prOutcome === "merged" },
+  };
 }
