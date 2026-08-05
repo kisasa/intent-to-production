@@ -1,3 +1,4 @@
+import { Fn } from "cdktn";
 import { Construct } from "constructs";
 import { CloudwatchLogGroup } from "@cdktn/provider-aws/lib/cloudwatch-log-group";
 import { EcsService } from "@cdktn/provider-aws/lib/ecs-service";
@@ -38,6 +39,22 @@ export interface TemporalWorkerServiceConfig {
   readonly awsRegion: string;
   readonly logRetentionDays: number;
   readonly globalTags: Record<string, string>;
+
+  /**
+   * What this worker is allowed to dispatch against — the specialist-sandbox
+   * stack's own outputs, read via remote state by the caller. Without this,
+   * the worker's `RunTaskCommand`/`DescribeTasksCommand` calls (in
+   * dispatch-worker's own activities) fail with AccessDenied: registering the
+   * task definition and running the worker doesn't imply permission to
+   * dispatch against it, and `ecs:RunTask` additionally requires
+   * `iam:PassRole` on both roles the target task definition references.
+   */
+  readonly dispatchTarget: {
+    readonly clusterArn: string;
+    readonly taskDefinitionArn: string;
+    readonly executionRoleArn: string;
+    readonly taskRoleArn: string;
+  };
 }
 
 const ECS_TASKS_ASSUME_ROLE_POLICY: string = JSON.stringify({
@@ -104,9 +121,9 @@ export class TemporalWorkerService extends Construct {
       }),
     });
 
-    // The task role is the worker's own — real AWS calls, if any, are added
-    // here as the worker's actual activities are implemented. Empty today
-    // (execute-command only) because no worker application code exists yet.
+    // The task role is the worker's own — the AWS calls its actual
+    // activities make (execute-command, plus dispatching the specialist
+    // below) are what it's scoped to, nothing broader.
     const taskRole = new IamRole(this, "task-role", {
       name: formatName(`${config.name}-task-role`, 64),
       assumeRolePolicy: ECS_TASKS_ASSUME_ROLE_POLICY,
@@ -128,6 +145,48 @@ export class TemporalWorkerService extends Construct {
               "ssmmessages:OpenDataChannel",
             ],
             Resource: "*",
+          },
+        ],
+      }),
+    });
+
+    // RunTask's resource is the task definition; DescribeTasks has no
+    // resource type to scope to a specific task ahead of time (task ARNs are
+    // only known after RunTask creates one), so it's scoped by the
+    // `ecs:cluster` condition key instead — both actions restricted to
+    // exactly the specialist-sandbox cluster/task-definition, not "any ECS
+    // resource in this account." RunTask separately requires `iam:PassRole`
+    // on every role the target task definition references — omitting it is
+    // the single most common cause of RunTask failing with AccessDenied.
+    new IamRolePolicy(this, "task-role-dispatch-specialist", {
+      name: formatName(`${config.name}-dispatch-specialist`, 128),
+      role: taskRole.id,
+      policy: JSON.stringify({
+        Version: "2012-10-17",
+        Statement: [
+          {
+            Sid: "RunSpecialistTask",
+            Effect: "Allow",
+            Action: "ecs:RunTask",
+            Resource: config.dispatchTarget.taskDefinitionArn,
+            Condition: {
+              ArnEquals: { "ecs:cluster": config.dispatchTarget.clusterArn },
+            },
+          },
+          {
+            Sid: "DescribeSpecialistTasks",
+            Effect: "Allow",
+            Action: "ecs:DescribeTasks",
+            Resource: "*",
+            Condition: {
+              ArnEquals: { "ecs:cluster": config.dispatchTarget.clusterArn },
+            },
+          },
+          {
+            Sid: "PassSpecialistRoles",
+            Effect: "Allow",
+            Action: "iam:PassRole",
+            Resource: [config.dispatchTarget.executionRoleArn, config.dispatchTarget.taskRoleArn],
           },
         ],
       }),
@@ -157,7 +216,17 @@ export class TemporalWorkerService extends Construct {
       memory: String(config.memory),
       executionRoleArn: executionRole.arn,
       taskRoleArn: taskRole.arn,
-      containerDefinitions: JSON.stringify([containerDefinition]),
+      // Fn.jsonencode, not JSON.stringify: SPECIALIST_SUBNET_IDS carries an
+      // Fn.join token, and join()'s own HCL call syntax embeds literal quote
+      // characters (its separator argument, `","`). CDKTF substitutes a
+      // token's resolved HCL text into wherever it's referenced as a raw
+      // splice, not JSON-aware — inside a JS-side JSON.stringify'd blob,
+      // those unescaped quotes corrupt the surrounding JSON structure
+      // (confirmed by inspecting the synthesized output directly: the
+      // container_definitions string was not valid JSON). Fn.jsonencode
+      // makes Terraform itself do the encoding, after all tokens resolve —
+      // no double-encoding.
+      containerDefinitions: Fn.jsonencode([containerDefinition]),
       runtimePlatform: {
         cpuArchitecture: "X86_64",
         operatingSystemFamily: "LINUX",

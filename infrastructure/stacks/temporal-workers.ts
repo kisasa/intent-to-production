@@ -1,3 +1,4 @@
+import { Fn } from "cdktn";
 import type { Construct } from "constructs";
 import { DataAwsEcrRepository } from "@cdktn/provider-aws/lib/data-aws-ecr-repository";
 import { DataAwsSsmParameter } from "@cdktn/provider-aws/lib/data-aws-ssm-parameter";
@@ -14,6 +15,7 @@ import { TemporalNamespace } from "../constructs/temporal-namespace";
 import { TemporalPrivateLink } from "../constructs/temporal-privatelink";
 import { TemporalWorkerService } from "../constructs/temporal-worker-service";
 import { networkStackOutputFromRemoteState } from "../models/network-stack-output";
+import { specialistSandboxStackOutputFromRemoteState } from "../models/specialist-sandbox-stack-output";
 import type { TemporalStackOutput } from "../models/temporal-stack-output";
 import { BaseStack } from "./base-stack";
 
@@ -51,6 +53,9 @@ export class TemporalWorkersStack extends BaseStack {
     const config = this.temporal;
     const tags = { ...this.globalTags, stack: `temporal-workers-${config.environmentName}` };
     const network = networkStackOutputFromRemoteState(this.remoteState(tfStateKeys.network));
+    const specialistSandbox = specialistSandboxStackOutputFromRemoteState(
+      this.remoteState(tfStateKeys.specialistSandbox),
+    );
 
     const adminApiKeyParameter = new DataAwsSsmParameter(this, "ssm-temporal-admin-api-key", {
       name: "/example/prod/temporal-admin/API_KEY",
@@ -136,12 +141,34 @@ export class TemporalWorkersStack extends BaseStack {
         { name: "TEMPORAL_HOST", value: namespace.namespaceClusterAddress },
         { name: "TEMPORAL_NAMESPACE", value: namespace.namespaceId },
         { name: "TEMPORAL_TASK_QUEUE", value: TASK_QUEUE_NAME },
+        { name: "SPECIALIST_CLUSTER_ARN", value: specialistSandbox.clusterArn },
+        { name: "SPECIALIST_TASK_DEFINITION_ARN", value: specialistSandbox.taskDefinitionArn },
+        // specialist-task.ts derives the container name the same way it derives
+        // the task definition family — formatName(config.name) — so the two are
+        // always identical; no separate output needed for this.
+        { name: "SPECIALIST_CONTAINER_NAME", value: specialistSandbox.taskDefinitionFamily },
+        { name: "SPECIALIST_SECURITY_GROUP_ID", value: specialistSandbox.securityGroupId },
+        // network.publicSubnetIds is a remote-state token list, not a real JS
+        // array at synth time — a plain `.join()` call on it is exactly the
+        // Array.join-on-a-token-list failure the design ledger once claimed
+        // (then struck as unverified, since nothing in the codebase actually
+        // did this yet). This is the first real instance, so it gets the fix
+        // that claim originally described: Fn.join, Terraform's own list-join
+        // resolved at apply time — same as network-vpc.ts already uses Fn for
+        // its own token math.
+        { name: "SPECIALIST_SUBNET_IDS", value: Fn.join(",", network.publicSubnetIds) },
       ],
       secrets: [...secrets, { name: "TEMPORAL_API_KEY", valueFrom: temporalApiKeyParameter.arn }],
       secretParameterArns: [...parameters.map((parameter) => parameter.arn), temporalApiKeyParameter.arn],
       awsRegion: this.aws.region,
       logRetentionDays: config.logRetentionDays,
       globalTags: tags,
+      dispatchTarget: {
+        clusterArn: specialistSandbox.clusterArn,
+        taskDefinitionArn: specialistSandbox.taskDefinitionArn,
+        executionRoleArn: specialistSandbox.executionRoleArn,
+        taskRoleArn: specialistSandbox.taskRoleArn,
+      },
     });
 
     const outputs: TemporalStackOutput = {

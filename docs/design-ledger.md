@@ -1727,6 +1727,63 @@ actually matters most — mid-poll cancellation genuinely rejecting the
 activity, confirmed rather than assumed. All 24 tests pass; a fresh
 `docker build` after the refactor still succeeds.
 
+## Finishing the wiring — `temporal-workers` can now actually dispatch (2026-08-05)
+
+The smallest remaining piece connecting what's already built: `temporal-
+workers.ts` reads `specialist-sandbox`'s outputs via remote state (a new
+`specialistSandboxStackOutputFromRemoteState`, mirroring the existing
+`network` reader) and passes `dispatch-worker` the five `SPECIALIST_*` env
+vars it already documented as its contract. `SPECIALIST_CONTAINER_NAME`
+needed no new output: `specialist-task.ts` derives the container name and
+the task definition family from the same `formatName(config.name)` call, so
+they're identical by construction — confirmed by re-reading that file rather
+than assumed.
+
+- **The worker's task role had zero IAM permission to dispatch anything —
+  caught before this was called "done," not after.** Registering the ECS
+  service and passing env vars isn't the same as being allowed to act on
+  them: `ecs:RunTask` and `ecs:DescribeTasks` need explicit permission
+  scoped to the specialist-sandbox cluster/task-definition, and `RunTask`
+  additionally requires `iam:PassRole` on both roles the target task
+  definition references — omitting that is the single most common cause of
+  `RunTask` failing with AccessDenied. Added a `dispatchTarget` config field
+  to `TemporalWorkerService` and a scoped policy (`ArnEquals` on
+  `ecs:cluster` for both actions, since `DescribeTasks` has no static
+  resource to scope to before a task exists) — confirmed by inspecting the
+  synthesized IAM policy JSON directly, not assumed correct from the code.
+- **A real synth-passes-but-apply-breaks bug, caught by inspecting the
+  actual synthesized output rather than trusting a clean `npm run synth`.**
+  `SPECIALIST_SUBNET_IDS` needed `network.publicSubnetIds` joined into one
+  string — this is precisely the "Array.join on a remote-state token list"
+  failure this ledger's own "Three things only building it revealed" entry
+  once claimed and then struck as unverified, since nothing in the shipped
+  code had ever actually attempted it. This is the first real instance.
+  `Fn.join` (Terraform's own join, not JS's) fixed the token-list problem,
+  but its own call syntax embeds literal quote characters (`join(",", ...)`)
+  which broke a level up: `temporal-worker-service.ts`'s
+  `container_definitions` field was built with plain `JSON.stringify`, and
+  CDKTF's token substitution splices a token's resolved HCL text in raw,
+  without JSON-escaping it — corrupting the surrounding JSON the moment any
+  embedded token contains a quote character. Confirmed by parsing the
+  synthesized `container_definitions` string a second time and watching it
+  fail; would have reached Terraform state as invalid JSON, which ECS itself
+  would have rejected at apply. Fixed with `Fn.jsonencode` for that one
+  construct's container definitions (Terraform does the JSON encoding after
+  all tokens resolve, no double-encoding) — scoped to
+  `temporal-worker-service.ts` only, since `single-instance-service.ts` and
+  `specialist-task.ts` don't currently carry any quote-containing tokens in
+  their own environment lists and aren't broken today; the same latent risk
+  exists there if one is ever added.
+- **Verified for real:** typecheck, all 10 infra unit tests, a full
+  `npm run synth` across all four stacks, and the synthesized JSON inspected
+  directly twice — once to catch the `container_definitions` corruption,
+  once more after the fix to confirm the resulting HCL (`jsonencode([{...}])`
+  with real expression references, not string literals) is now correct.
+- **What's still missing:** nothing calls
+  `WorkflowClient.start(dispatchStoryWorkflow, ...)` — the webhook-listener
+  trigger remains a separate, tracked follow-up, deliberately kept apart
+  from webhook-listener's own already-flagged column→label routing rebuild.
+
 ## Open items
 
 - **RESOLVED: design-intent capture.** (Kept here as the trail from problem to

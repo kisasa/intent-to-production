@@ -66,19 +66,21 @@ reader can trust it.
 | Var | Wired into infra today? | Meaning |
 |---|---|---|
 | `TEMPORAL_HOST`, `TEMPORAL_NAMESPACE`, `TEMPORAL_TASK_QUEUE`, `TEMPORAL_API_KEY` | yes | Connection to the namespace `infrastructure/constructs/temporal-namespace.ts` creates |
-| `SPECIALIST_CLUSTER_ARN` | no — new | From `specialist-sandbox`'s `clusterArn` output |
-| `SPECIALIST_TASK_DEFINITION_ARN` | no — new | From `specialist-sandbox`'s `taskDefinitionArn` output |
-| `SPECIALIST_CONTAINER_NAME` | no — new | The container name inside that task definition (`specialist-${environmentName}`) |
-| `SPECIALIST_SECURITY_GROUP_ID` | no — new | From `specialist-sandbox`'s `securityGroupId` output |
-| `SPECIALIST_SUBNET_IDS` | no — new | Comma-separated; from `network`'s `publicSubnetIds` output |
+| `SPECIALIST_CLUSTER_ARN` | yes | From `specialist-sandbox`'s `clusterArn` output |
+| `SPECIALIST_TASK_DEFINITION_ARN` | yes | From `specialist-sandbox`'s `taskDefinitionArn` output |
+| `SPECIALIST_CONTAINER_NAME` | yes | From `specialist-sandbox`'s `taskDefinitionFamily` output — identical to the container name by construction (`specialist-task.ts` derives both from `formatName(config.name)`) |
+| `SPECIALIST_SECURITY_GROUP_ID` | yes | From `specialist-sandbox`'s `securityGroupId` output |
+| `SPECIALIST_SUBNET_IDS` | yes | Comma-separated (via Terraform's own `Fn.join`, not a JS-side join — see `temporal-worker-service.ts`); from `network`'s `publicSubnetIds` output |
 | `GITHUB_TOKEN`, `LINEAR_AGENT_API_KEY` | yes (already in `temporal.parameter-prefix`) | Same secrets, same mechanism as every other container in this project |
 | `LINEAR_API_URL` | no (optional) | Default `https://api.linear.app/graphql` |
 
-The four new `SPECIALIST_*` vars are **not yet wired** into
-`infrastructure/stacks/temporal-workers.ts`'s container environment — this
-package defines the contract; connecting it to the real Terraform outputs is
-a tracked follow-up. Until then, `temporal-workers` registers a service with
-nothing correctly configured to dispatch against.
+All five `SPECIALIST_*` vars are now wired into
+`infrastructure/stacks/temporal-workers.ts`'s container environment, and the
+worker's task role carries the matching `ecs:RunTask`/`ecs:DescribeTasks`/
+`iam:PassRole` permission (see `constructs/temporal-worker-service.ts`'s
+`dispatchTarget` config) — `temporal-workers` can now actually dispatch
+against `specialist-sandbox`. What's still missing is a caller: nothing
+invokes `WorkflowClient.start(dispatchStoryWorkflow, ...)` yet.
 
 ## What this does NOT do
 

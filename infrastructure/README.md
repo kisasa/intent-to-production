@@ -57,9 +57,12 @@ key has the same shape: the `temporalcloud` provider hands back a token as a res
 something already living in SSM, so `temporal-workers.ts` writes it into a new SSM parameter itself before
 handing it to the worker service the normal ARN-based way. Both are recorded in Known gaps, not hidden.
 
-**No worker application code exists yet** — same scoping as the specialist sandbox. This stack registers
-the ECS service and points it at an image that doesn't exist yet; the Temporal TypeScript SDK client and
-the workflow/activity definitions for the dispatch sequence are a tracked follow-up.
+**The worker application code, and the wiring to dispatch against `specialist-sandbox`, both exist now** —
+[`dispatch-worker/`](../dispatch-worker) is the Temporal workflow/activities/worker; this stack passes it
+the `SPECIALIST_*` env vars it needs and grants its task role the `ecs:RunTask`/`ecs:DescribeTasks`/
+`iam:PassRole` permission to actually dispatch (see `constructs/temporal-worker-service.ts`'s
+`dispatchTarget` config). What's still missing: nothing calls `WorkflowClient.start(...)` yet, so no story
+actually gets dispatched — see Known gaps.
 
 ## Why a Fargate service, and why exactly one task
 
@@ -92,7 +95,7 @@ process outside it.
 | ECR repository (specialist sandbox) | Same posture as the listener's — the application code, Dockerfile, and CI workflow now exist ([`specialist-runner/`](../specialist-runner), [`build-and-push-specialist-ecr.yml`](../.github/workflows/build-and-push-specialist-ecr.yml)), so this repository gets created and populated the same idempotent way the listener's is. `specialist-sandbox` still won't apply until the first merge to `main` under `specialist-runner/` actually runs that workflow. |
 | The listener's five SSM parameters | See below — keeping creation out-of-band is what keeps secret values out of state |
 | The specialist sandbox's SSM parameters | Same mechanism, separate prefix (`specialist-sandbox.parameter-prefix`) — provisioned separately from the listener's so a specialist run never has access to production credentials |
-| ECR repository (Temporal worker) | Same posture as the other two — nothing creates it yet, no worker application code or Dockerfile exists |
+| ECR repository (Temporal worker) | Same posture as the other two — the application code, Dockerfile, and CI workflow now exist ([`dispatch-worker/`](../dispatch-worker), [`build-and-push-dispatch-worker-ecr.yml`](../.github/workflows/build-and-push-dispatch-worker-ecr.yml)). `temporal-workers` still won't apply until the first merge to `main` under `dispatch-worker/` actually runs that workflow. |
 | The temporal-workers stack's SSM parameters | Same mechanism, `temporal.parameter-prefix` |
 | A Temporal Cloud account, with an admin API key | Out-of-band, same category as the AWS account itself — the `temporalcloud` provider creates namespaces *within* an existing account, it doesn't create the account. The admin key goes in its own SSM parameter (`/example/prod/temporal-admin/API_KEY`), read directly (not by ARN) at synth — see the Temporal workers section above and Known gaps |
 | The `temporalcloud` provider's generated bindings | No prebuilt `@cdktn/provider-temporalcloud` package exists — run `npx cdktn get` locally (needs Terraform on PATH) before this stack will typecheck or synth. See Known gaps |
@@ -342,7 +345,13 @@ Honest about what this does not do.
   already living there) both break this project's otherwise-universal "only an ARN reaches synth" rule —
   unavoidable, since Terraform provider authentication doesn't support the ARN-indirection ECS container
   secrets use. See the Temporal workers section above.
-- **No Temporal worker application code.** This stack registers the ECS service and points it at an image
-  that doesn't exist — the Temporal TypeScript SDK client and the workflow/activity definitions for
-  dispatch → wait-for-specialist → CI → human-review-gate are a tracked follow-up, not built here.
 - **Temporal worker egress is unrestricted**, same reasoning and same gap as the specialist sandbox's.
+- **No webhook-listener trigger for the dispatch workflow.** `temporal-workers.ts` now wires the worker's
+  task role with the IAM permission to call `ecs:RunTask`/`ecs:DescribeTasks` against `specialist-sandbox`
+  (scoped to that cluster/task-definition, plus `iam:PassRole` on its two roles — see
+  `constructs/temporal-worker-service.ts`'s `dispatchTarget` config) and passes it the
+  `SPECIALIST_CLUSTER_ARN`/`SPECIALIST_TASK_DEFINITION_ARN`/`SPECIALIST_CONTAINER_NAME`/
+  `SPECIALIST_SECURITY_GROUP_ID`/`SPECIALIST_SUBNET_IDS` env vars [`dispatch-worker/`](../dispatch-worker)
+  expects. But nothing calls `WorkflowClient.start(dispatchStoryWorkflow, ...)` yet — that trigger is a
+  separate, tracked follow-up, deliberately kept apart from webhook-listener's own already-flagged
+  column→label routing rebuild.

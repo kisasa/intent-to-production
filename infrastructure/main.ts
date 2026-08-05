@@ -16,9 +16,11 @@ const temporalWorkersStack = new TemporalWorkersStack(app);
 // DEPENDENCIES
 // The listener, the specialist sandbox, and the Temporal workers all read the
 // network's outputs through remote state, which Terraform cannot see as a
-// dependency on its own — the ordering has to be declared.
+// dependency on its own — the ordering has to be declared. Temporal workers
+// also reads the specialist sandbox's outputs, to dispatch against it.
 listenerStack.addDependency(networkStack);
 specialistSandboxStack.addDependency(networkStack);
 temporalWorkersStack.addDependency(networkStack);
+temporalWorkersStack.addDependency(specialistSandboxStack);
 
 app.synth();
