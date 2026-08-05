@@ -89,7 +89,7 @@ process outside it.
 | S3 state bucket, versioned | Cannot live in the state it holds |
 | Route53 hosted zone for the domain | Usually predates the project; the certificate and DNS record attach to it |
 | ECR repository (listener) | The image must exist before a task can start from it, and CI pushes it independently of any Terraform run — see [`build-and-push-ecr.yml`](../.github/workflows/build-and-push-ecr.yml), which creates the repository idempotently. Read here as a data source. |
-| ECR repository (specialist sandbox) | Same posture as the listener's, but nothing creates it yet — the specialist's application code and Dockerfile don't exist. `specialist-sandbox` will not successfully apply until this repository exists and holds at least one image. |
+| ECR repository (specialist sandbox) | Same posture as the listener's — the application code, Dockerfile, and CI workflow now exist ([`specialist-runner/`](../specialist-runner), [`build-and-push-specialist-ecr.yml`](../.github/workflows/build-and-push-specialist-ecr.yml)), so this repository gets created and populated the same idempotent way the listener's is. `specialist-sandbox` still won't apply until the first merge to `main` under `specialist-runner/` actually runs that workflow. |
 | The listener's five SSM parameters | See below — keeping creation out-of-band is what keeps secret values out of state |
 | The specialist sandbox's SSM parameters | Same mechanism, separate prefix (`specialist-sandbox.parameter-prefix`) — provisioned separately from the listener's so a specialist run never has access to production credentials |
 | ECR repository (Temporal worker) | Same posture as the other two — nothing creates it yet, no worker application code or Dockerfile exists |
@@ -144,10 +144,10 @@ for name in ANTHROPIC_API_KEY LINEAR_AGENT_API_KEY GITHUB_TOKEN; do
 done
 ```
 
-This list is provisional — no specialist application code exists yet, so it names the minimum the
-automated-dispatch design commits to (Anthropic, the tracker MCP, source control) rather than mirroring a
-real `.env.example` the way the listener's parameter list mirrors `webhook-listener`'s. Revisit once the
-specialist's own entrypoint exists.
+Confirmed against `specialist-runner/`'s own env var reads — same three names, same mechanism as the
+listener's parameter list mirroring `webhook-listener`'s. (No longer provisional: this used to name the
+minimum the automated-dispatch design committed to before the application code existed; it now matches
+the actual reads in `specialist-runner/src/run.ts` and `mcp-servers.ts`.)
 
 ### Creating the Temporal admin API key parameter
 

@@ -1514,6 +1514,66 @@ application code, same scoping precedent as the specialist sandbox.
   exist**, same posture as the specialist sandbox's own not-yet-populated
   repository.
 
+## `specialist-runner` — the first specialist application code (2026-08-04)
+
+Third piece of the automated-dispatch design, and the first that isn't pure
+infra: the program that actually runs inside the `specialist-sandbox` ECS
+task. Confirmed with the architect: backend and frontend specialists only (tests/e2e
+need the GitHub Actions cross-repo checkout this session already deferred);
+also ships a Dockerfile and CI workflow so `intent-to-production-specialist`
+(the ECR repo `specialist-sandbox` has read as an empty data source since it
+was built) finally gets an image.
+
+- **A real ambiguity in the specialist definitions, resolved rather than
+  guessed past.** `agents/specialist-backend.md` and `-frontend.md` both say
+  "you work in a local checkout... run git directly" in one section and "you
+  touch two systems, each through its own MCP: source control... and the
+  issue tracker" in another. Resolved as: local git handles
+  clone/checkout/commit/push (unavoidable — the definition requires running
+  the actual test suite and verifying acceptance criteria against real
+  output, which no MCP tool can do, and step 3's branch-ancestry check needs
+  real repository history a shallow clone doesn't carry). GitHub's MCP server
+  is attached specifically for opening the pull request — the one action
+  local git without `gh` can't do. Flagged with the same "VERIFY before
+  relying on this in production" honesty `activation-runner.ts` already
+  applies to its own MCP assumptions, not presented as confirmed.
+- **The framework clone's staleness gap (flagged as an open item under the
+  manual dispatch session) is closed by construction, not by discipline.**
+  `workspace.ts` clones `intent-to-production` fresh every run rather than
+  baking `agents/`/`skills/` into the image — a per-run clone cannot go stale
+  the way a human's forgotten `git pull` could.
+- **Execution surface confirmed: `@anthropic-ai/claude-agent-sdk` is a real,
+  installable package** (checked `npm view`, then inspected its shipped
+  `sdk.d.ts` directly — `query()`, `McpHttpServerConfig`, `permissionMode:
+  'bypassPermissions'` paired with `allowDangerouslySkipPermissions: true`,
+  `maxTurns` — rather than guessing at the API the way the `temporalcloud`
+  provider bindings had to be guessed at before `cdktn get` confirmed them).
+- **This runner does not decide complete/waiting/blocked.** Same posture as
+  the shaping tier's `activation-runner.ts`: the specialist's own Linear MCP
+  writes are the outcome record. The one direct tracker write this package
+  makes (`tracker-fallback.ts`) exists only for the case the specialist's own
+  writes can't cover — a startup failure before Claude gets a turn at all —
+  mirroring exactly why `postErrorComment` exists in `tracker-notifier.ts`.
+- **Named limitations, not solved here:** Node-only target surfaces (the
+  image ships `node` + `git` only); no sibling-repo reads (a full-stack
+  epic's frontend story confirming the real backend contract needs the app to
+  know which sibling repos exist for a given epic — nothing does yet); no
+  caller (`RunTask` invocation is the Temporal worker's job, not built this
+  session).
+- **RESOLVED same day: the image build itself.** Docker Desktop's engine
+  wasn't reachable when this was first written; once it was up, `docker build
+  -f specialist-runner/Dockerfile specialist-runner` succeeded clean. Spot-
+  checked further: `git` and `node` are present, and `npm ci` resolved the
+  Agent SDK's platform-specific native binary
+  (`@anthropic-ai/claude-agent-sdk-linux-x64`) automatically via its own
+  optional dependencies — no special Dockerfile handling needed, confirming
+  that assumption rather than leaving it open. Ran the image with no dispatch
+  context set: it failed in under a second naming the first missing var
+  (`SPECIALIST_TYPE`) and exited `1` — the fail-fast behavior working exactly
+  as designed, not just as written. What's still unverified: a live dispatch
+  against real credentials and an actual story/epic/branch chain, which
+  needs a target repo and tracker state that don't exist yet.
+
 ## Open items
 
 - **RESOLVED: design-intent capture.** (Kept here as the trail from problem to
