@@ -1586,6 +1586,147 @@ was built) finally gets an image.
   this project that calls a Claude API/SDK should set model and effort
   explicitly, never rely on a default.
 
+## `dispatch-worker` — the Temporal workflow that dispatches specialists (2026-08-05)
+
+Fourth piece of the automated-dispatch design, and the one that connects the
+previous three: `temporal-workers` (infra) had nothing running in it, and
+`specialist-sandbox` (infra) had no caller. Confirmed with the architect: stop at
+"dispatch → wait for the specialist" (CI-wait/human-review-gate deferred —
+no automation gap there, just an event this workflow doesn't block on for
+v1); build the workflow/worker only, not the webhook-listener trigger (a
+separate piece, kept apart from webhook-listener's own already-flagged
+routing rebuild); source the ECS RunTask target config from env vars the
+worker reads at startup, wiring those into `temporal-workers.ts`'s container
+environment deferred to whenever that stack is next touched.
+
+- **A real gap surfaced during design, not assumed away, tightened rather
+  than worked around.** Two things this workflow needs to read mechanically
+  — a story's blocking dependencies, and a surface's repo base — were
+  recorded as free-form prose by the shaping-tier agents, format-by-example
+  only. Confirmed with the architect: tighten both, surgically, same pass.
+  `skills/story-contract/story-contract.md` and `agents/decompose-agent.md`
+  now require each blocking-dependency entry to be its own bullet line with
+  the bare identifier as the first token. `agents/specification-agent.md`
+  now requires a fixed-form line per surface when a repo base is recorded
+  (`Repo base — <surface>: <host>/<org>/<repo>/<ref>`). Neither edit
+  relocates where the data lives — still a story description section, still
+  an epic thread comment — only the format, so `activities/check-
+  dependencies.ts` and `activities/resolve-repo-base.ts` can parse them
+  without depending on any particular wording around the fixed part.
+- **Package layout mirrors the reasoning already established for
+  `specialist-runner`:** activities are plain async functions doing real IO
+  (Linear GraphQL, GitHub REST, the AWS ECS SDK); the workflow
+  (`workflows/dispatch-story-workflow.ts`) runs in Temporal's deterministic
+  sandbox and imports only a type-only `activities/interface.ts`, never the
+  real implementations — `worker.ts` is the one module that imports both and
+  binds config-injected activity closures to the names the workflow calls.
+- **Confirmed, not guessed: `NativeConnection.connect({ address, tls,
+  apiKey })`** (`@temporalio/worker`, distinct from `@temporalio/client`'s
+  `Connection` — this process executes workflows, it doesn't start them) —
+  read directly from the installed package's own `connection-options.d.ts`.
+  Matches the container env vars `temporal-workers.ts` already sets
+  (`TEMPORAL_HOST`, `TEMPORAL_API_KEY`).
+- **Confirmed, not assumed: Temporal's own workflow bundler compiles the
+  `.ts` workflow file directly.** Ran `bundleWorkflowCode()` standalone
+  against `dispatch-story-workflow.ts` before trusting `Worker.create` to do
+  it implicitly — webpack compiled it into a 1.47MB bundle with no `ts-node`
+  step, confirming this works under `tsx` (no separate build step) the same
+  way it does for every other package here.
+- **`await-specialist-task.ts` is a long-running, heartbeating activity, not
+  a single call with a short timeout** — a specialist run can take a long
+  time, the same "does not time out on its own" property `maxTurns` exists
+  for one level down. Polls `ecs:DescribeTasks` until `STOPPED`, heartbeats
+  every poll so Temporal doesn't mistake a long-but-alive run for a hung one.
+- **The workflow never decides complete/waiting/blocked itself** — same
+  posture as the shaping tier's own activation runner. It reads the
+  specialist's own outcome label once the ECS task stops; `"unknown"` is a
+  real, named fourth outcome (the container could exit with no label at all
+  — a crash `specialist-runner`'s own fallback comment couldn't reach), never
+  silently folded into one of the three real ones.
+- **Named gaps, not silently dropped:** no `dispatch:blocked` label (a
+  comment carries the same information; applying the label correctly needs
+  the issue's current labels read first — Linear's label-write API replaces
+  the whole set — a small subsystem not built for the marginal gain); only
+  `github` supported as a repo-base host; the four new `SPECIALIST_*` env
+  vars aren't wired into `temporal-workers.ts` yet; no webhook-listener
+  trigger exists to actually start this workflow.
+- **Verified for real, not claimed:** typecheck, all 18 unit tests
+  (dependency/repo-base parsers, RunTask container-override construction,
+  outcome-label resolution), a real `docker build`, and running the built
+  image with no env vars set — failed in under a second naming
+  `TEMPORAL_HOST` as the first missing var, exit code 1. No live workflow
+  execution is possible or claimed — needs a real Temporal Cloud connection,
+  AWS credentials, and an actual story/epic/branch chain against live
+  tracker and GitHub state.
+
+**Correction, same day: this session didn't use the `temporal-developer`
+skill, and it should have.** the architect asked directly whether it had been —
+answer was no, this was built from general Temporal knowledge plus reading
+the installed SDK's own type definitions. Loading the skill's TypeScript
+reference afterward surfaced three real gaps, not stylistic ones:
+
+- **`worker.ts` used `workflowsPath` unconditionally** — the skill's own
+  gotchas doc calls this out by name: "runs the bundler at Worker startup,
+  which is slow and not suitable for production." Fixed: a new
+  `scripts/build-workflow-bundle.mjs` pre-builds `dist/workflow-bundle.js`
+  (the Dockerfile now runs it at image build time), and `worker.ts` prefers
+  that bundle when present, falling back to `workflowsPath` only when
+  running from source without a build step. Re-verified: a real
+  `docker build` produces the bundle at build time, and it's present in the
+  final image.
+- **No workflow-level test existed** — only the activities' pure helper
+  functions were tested; `dispatch-story-workflow.ts`'s actual sequencing
+  and branching were never exercised. Fixed:
+  `workflows/dispatch-story-workflow.test.ts` runs the real workflow code
+  against a real local Temporal test server
+  (`TestWorkflowEnvironment.createLocal()`) with every activity mocked —
+  covers the not-ready short-circuit and the full six-activity sequence,
+  asserting exact call order. This actually ran, downloading and starting a
+  real Temporal CLI dev server in this session — not a claim, both tests
+  passed.
+- **`resolveRepoBase`'s missing-base error and `createStoryBranch`'s
+  permanent failures threw a plain `Error`**, which Temporal retries
+  generously by default (up to 100 attempts) — for a config problem
+  (missing repo base, unsupported host, a 4xx from GitHub), that would have
+  kept re-fetching and re-posting the same "dispatch blocked" comment on
+  every retry, forever, since retrying can't fix a human-recording gap.
+  Fixed: both now throw `ApplicationFailure.nonRetryable`. Also added a
+  domain-specific `retry: { maximumAttempts: 3 }` to the workflow's four
+  quick activities (Linear/GitHub/AWS calls) — the skill's own advice is
+  "only set retry options if you have a domain-specific reason to," and
+  bounding retries against paid, rate-limited external APIs is one.
+
+What held up on review: the type-only activity import
+(`activities/interface.ts`), no Node.js modules in the workflow file, the
+workflows/activities file split, and the heartbeating long-running activity
+all already matched the skill's own patterns — arrived at independently,
+not by luck, but worth having the skill confirm rather than assume.
+
+**Same-day follow-up: "matched the pattern" wasn't the same as "was
+tested."** the architect asked to focus specifically on testing and pointed at the
+Temporal TypeScript SDK's own GitHub repo for examples rather than the
+skill's docs alone. Reading `temporalio/samples-typescript`'s `hello-world`
+sample confirmed the workflow test already written
+(`TestWorkflowEnvironment.createLocal()` + `Worker` + `worker.runUntil`)
+matches their own canonical pattern almost exactly. But it also surfaced
+that `await-specialist-task.ts` — the one activity calling
+`heartbeat()`/`sleep()` from `@temporalio/activity`, both of which need a
+real Activity Context to mean anything — had zero test coverage; only the
+activities with pure, context-free logic had tests. Reading
+`@temporalio/testing`'s own source
+(`packages/testing/src/mocking-activity-environment.ts`) directly (not
+guessing at its API) confirmed `MockActivityEnvironment` runs a function
+inside a real Context and exposes `heartbeat`/`cancel` as events/methods —
+exactly what this activity needed. Refactored it to take its ECS lookup as
+an injected function rather than constructing a client internally (same
+"explicit parameter" discipline as `create-story-branch.ts`'s `githubToken`
+already), added `await-specialist-task.test.ts`: polling-to-STOPPED with the
+right heartbeat sequence, already-stopped resolving immediately, an
+undefined ECS status heartbeating as `"unknown"`, and — the one that
+actually matters most — mid-poll cancellation genuinely rejecting the
+activity, confirmed rather than assumed. All 24 tests pass; a fresh
+`docker build` after the refactor still succeeds.
+
 ## Open items
 
 - **RESOLVED: design-intent capture.** (Kept here as the trail from problem to

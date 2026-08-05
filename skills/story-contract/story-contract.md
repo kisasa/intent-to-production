@@ -126,6 +126,13 @@ renders it from its own dependency graph, in dependency order so identifiers
 exist at render time. The specialist honors it, and looks each entry's state up
 itself through the tracker — completion status is never handed to it.
 
+Format, one requirement added for mechanical readability: each entry is its
+own bullet line, and the blocker's bare issue identifier is the first token
+on that line — e.g. `- PROJ-42 — Add refund data model`. Whatever prose
+follows the identifier is free; the identifier's position is the only fixed
+part, and it's what lets a pre-dispatch check confirm every blocker is Done
+without depending on any particular wording after it.
+
 **Assignment metadata**
 Every story carries three assignment fields, applied as labels at
 decomposition time:

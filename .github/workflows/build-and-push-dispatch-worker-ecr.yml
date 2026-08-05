@@ -1,16 +1,16 @@
-name: Build and push specialist-runner image to ECR
+name: Build and push dispatch-worker image to ECR
 
 # Mirrors build-and-push-webhook-listener-ecr.yml's shape (see that file for the reasoning
-# behind each step) with two differences: a different ECR repository, and a
+# behind each step) with two differences: a different ECR repository, matching
+# `temporal.ecr-repository-name` already in infrastructure/cdktf.json, and a
 # path filter — this package's build context is self-contained
-# (specialist-runner/ only, no repo-root agents/skills the way
-# webhook-listener/Dockerfile needs), so an unrelated webhook-listener or
-# infra-only change should not rebuild this image.
+# (dispatch-worker/ only), so an unrelated webhook-listener/infra/
+# specialist-runner change should not rebuild this image.
 on:
   pull_request:
     types: [closed]
     paths:
-      - "specialist-runner/**"
+      - "dispatch-worker/**"
   workflow_dispatch:
     inputs:
       ref:
@@ -22,7 +22,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ecr-push-specialist-${{ github.workflow }}
+  group: ecr-push-dispatch-worker-${{ github.workflow }}
   cancel-in-progress: false
 
 jobs:
@@ -36,7 +36,7 @@ jobs:
         github.event.pull_request.base.ref == 'main'
       )
     env:
-      ECR_REPOSITORY: intent-to-production-specialist
+      ECR_REPOSITORY: intent-to-production-temporal-worker
     steps:
       - name: Resolve which commit to build
         id: resolve
@@ -89,14 +89,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Build context is specialist-runner/ itself, unlike webhook-listener's
-      # repo-root context — this image clones agents/skills at runtime instead
-      # of baking them in (see specialist-runner/Dockerfile's own comment).
+      # Build context is dispatch-worker/ itself, self-contained.
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: specialist-runner
-          file: specialist-runner/Dockerfile
+          context: dispatch-worker
+          file: dispatch-worker/Dockerfile
           push: true
           tags: ${{ steps.tags.outputs.tags }}
           cache-from: type=gha

@@ -88,7 +88,7 @@ process outside it.
 |---|---|
 | S3 state bucket, versioned | Cannot live in the state it holds |
 | Route53 hosted zone for the domain | Usually predates the project; the certificate and DNS record attach to it |
-| ECR repository (listener) | The image must exist before a task can start from it, and CI pushes it independently of any Terraform run — see [`build-and-push-ecr.yml`](../.github/workflows/build-and-push-ecr.yml), which creates the repository idempotently. Read here as a data source. |
+| ECR repository (listener) | The image must exist before a task can start from it, and CI pushes it independently of any Terraform run — see [`build-and-push-webhook-listener-ecr.yml`](../.github/workflows/build-and-push-webhook-listener-ecr.yml), which creates the repository idempotently. Read here as a data source. |
 | ECR repository (specialist sandbox) | Same posture as the listener's — the application code, Dockerfile, and CI workflow now exist ([`specialist-runner/`](../specialist-runner), [`build-and-push-specialist-ecr.yml`](../.github/workflows/build-and-push-specialist-ecr.yml)), so this repository gets created and populated the same idempotent way the listener's is. `specialist-sandbox` still won't apply until the first merge to `main` under `specialist-runner/` actually runs that workflow. |
 | The listener's five SSM parameters | See below — keeping creation out-of-band is what keeps secret values out of state |
 | The specialist sandbox's SSM parameters | Same mechanism, separate prefix (`specialist-sandbox.parameter-prefix`) — provisioned separately from the listener's so a specialist run never has access to production credentials |
