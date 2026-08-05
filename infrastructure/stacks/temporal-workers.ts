@@ -5,8 +5,7 @@ import { EcsCluster } from "@cdktn/provider-aws/lib/ecs-cluster";
 import { EcsClusterCapacityProviders } from "@cdktn/provider-aws/lib/ecs-cluster-capacity-providers";
 import { SsmParameter } from "@cdktn/provider-aws/lib/ssm-parameter";
 
-// See temporal-namespace.ts's own note: locally generated bindings, unverified
-// in this session (no Terraform CLI on PATH to run `cdktn get`).
+// Locally generated bindings — see temporal-namespace.ts's own note.
 import { TemporalcloudProvider } from "../.gen/providers/temporalcloud/provider";
 
 import { formatName, tfStateKeys } from "../common";

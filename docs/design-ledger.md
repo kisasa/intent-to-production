@@ -1476,20 +1476,24 @@ there, and matches the Example Payments reference project's own
 `CloudPrivateLink`/`NamespaceWithApikey` constructs); infra only, no worker
 application code, same scoping precedent as the specialist sandbox.
 
-- **A genuine verification gap, surfaced by the tooling itself, not by
-  choice.** Unlike `@cdktn/provider-aws`, there is no prebuilt
+- **RESOLVED same day: a genuine verification gap, surfaced by the tooling
+  itself, not by choice.** Unlike `@cdktn/provider-aws`, there is no prebuilt
   `@cdktn/provider-temporalcloud` npm package (confirmed via `npm view`) —
   the Example Payments reference project generates its bindings locally via
-  `cdktn get`, which shells out to the Terraform CLI. This session has
-  neither `terraform` nor `tofu` on PATH, so `constructs/temporal-namespace.ts`
-  and `stacks/temporal-workers.ts` are written against the conventional
+  `cdktn get`, which shells out to the Terraform CLI, and this session had
+  neither `terraform` nor `tofu` on PATH. `constructs/temporal-namespace.ts`
+  and `stacks/temporal-workers.ts` were written against the conventional
   generated import path and property casing, inferred from the reference
-  project's C# namespace rather than confirmed against real bindings. This is
-  a different category of gap than "not yet applyable" (the specialist
-  sandbox's ECR repo, or this stack's own): it's "not yet typecheckable in
-  this session." Recorded rather than glossed over — `npx cdktn get` needs to
-  run once, on a machine with Terraform installed, before this stack's code
-  can even be trusted to compile.
+  project's C# namespace rather than confirmed against real bindings —
+  recorded as "not yet typecheckable in this session," a different category
+  of gap than "not yet applyable." the architect ran `npx cdktn get` on his own
+  machine the same day: every inferred import path and property name was
+  correct on the first try — `npm run typecheck`, `npm run test:unit`, and
+  `npm run synth` all pass clean, and the synthesized JSON confirms the real
+  resource types (`temporalcloud_namespace`, `temporalcloud_service_account`,
+  `temporalcloud_apikey`, `temporalcloud_connectivity_rule`, plus a real
+  `aws_ecs_service`). The gap was real while it lasted; it didn't cost a
+  rewrite.
 - **Two secret values reach Terraform state here, the one exception to this
   project's "only an ARN reaches synth" rule established across every other
   stack.** The `temporalcloud` provider authenticates with an admin API key

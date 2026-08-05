@@ -2,13 +2,9 @@ import { Construct } from "constructs";
 import { Route53Record } from "@cdktn/provider-aws/lib/route53-record";
 
 // Locally generated bindings — no prebuilt `@cdktn/provider-temporalcloud` package
-// exists (confirmed via `npm view`), so these paths follow `cdktn get`'s default
-// TypeScript output convention (`.gen/providers/<provider-name>/<resource>`),
-// mirrored from the Example Payments reference project's generated C# namespace
-// (`temporalcloud.Namespace`, `temporalcloud.ServiceAccount`, etc.). UNVERIFIED:
-// this session has no Terraform/OpenTofu CLI on PATH, so `cdktn get` has not
-// actually been run against these paths — confirm the exact folder layout and
-// property casing once it has (see infrastructure/README.md's Known gaps).
+// exists (confirmed via `npm view`), so run `npx cdktn get` once before this
+// typechecks (see infrastructure/README.md's Generating the `temporalcloud`
+// provider bindings section).
 import { ConnectivityRule } from "../.gen/providers/temporalcloud/connectivity-rule";
 import { Namespace } from "../.gen/providers/temporalcloud/namespace";
 import { ServiceAccount } from "../.gen/providers/temporalcloud/service-account";

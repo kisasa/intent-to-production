@@ -336,13 +336,6 @@ Honest about what this does not do.
   settled. For now the task reads its own sandbox-scoped SSM parameters directly via its execution role,
   same mechanism the listener already uses, just under a separate prefix — so a specialist run is never
   holding a *production* credential, even though it is still holding a raw one.
-- **The `temporalcloud` provider's bindings were never actually generated or verified in this project.**
-  Written against the conventional `cdktn get` TypeScript output path
-  (`.gen/providers/temporalcloud/<resource>`) and property casing inferred from the Example Payments reference
-  project's C# namespace, but no session working on this repo has had Terraform or OpenTofu on PATH to run
-  `cdktn get` itself. Confirm the exact folder layout and property names the first time it's run for real,
-  and expect to adjust `constructs/temporal-namespace.ts` and `stacks/temporal-workers.ts`'s imports if they
-  differ.
 - **Two secret values reach Terraform state in `temporal-workers`, not just an ARN.** The `temporalcloud`
   provider's admin API key (read directly from SSM) and the namespace's generated worker API key (written
   into SSM by this stack, since the provider hands it back as a resource attribute rather than something
