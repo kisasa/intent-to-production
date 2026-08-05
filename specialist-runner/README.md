@@ -26,9 +26,10 @@ only knows `backend` and `frontend`.
    user message naming the story, epic, and branches.
 4. Runs one [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-typescript)
    session (`@anthropic-ai/claude-agent-sdk`) with the Linear and GitHub MCP
-   servers attached, local Read/Write/Edit/Bash/Grep/Glob tools, and
+   servers attached, local Read/Write/Edit/Bash/Grep/Glob tools,
    `permissionMode: "bypassPermissions"` (unattended container, no human to
-   approve tool calls).
+   approve tool calls), and an explicit model + effort (see below — never the
+   SDK's own default).
 5. Exits. **This runner does not decide complete/waiting/blocked** — that's
    the specialist's own tracker write, through its own Linear MCP calls, per
    its definition. This process only guarantees the container doesn't hang
@@ -57,6 +58,18 @@ injected by the ECS agent — see `infrastructure/README.md`):
 `ANTHROPIC_API_KEY`, `LINEAR_AGENT_API_KEY`, `GITHUB_TOKEN`. Optional URL
 overrides: `LINEAR_MCP_URL`, `GITHUB_MCP_URL`, `LINEAR_API_URL` (used only by
 the fallback-comment path).
+
+## Model and effort — always explicit, never the SDK's own default
+
+`src/claude-config.ts` reads `CLAUDE_MODEL` (default `claude-sonnet-5`) and
+`CLAUDE_EFFORT` (default `high`, validated against the SDK's own
+`low`/`medium`/`high`/`xhigh`/`max`) and passes both to every `query()` call.
+Deliberately not left unset: an unset `model`/`effort` would silently track
+whatever the Agent SDK's CLI default happens to be on a given build, drifting
+the specialist's behavior out from under this codebase without a line
+changing here. Mirrors `webhook-listener/src/activation-config.ts`'s own
+uniform-knobs-are-explicit convention (that module's `effort: "high"` is the
+same default, for the same reason).
 
 ## A real ambiguity, resolved and flagged
 

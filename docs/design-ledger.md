@@ -1573,6 +1573,18 @@ was built) finally gets an image.
   as designed, not just as written. What's still unverified: a live dispatch
   against real credentials and an actual story/epic/branch chain, which
   needs a target repo and tracker state that don't exist yet.
+- **Model and effort made explicit, same day (the architect's correction).** The
+  first cut of `run.ts` left `model`/`effort` unset on the `query()` call,
+  relying on the Agent SDK's own default. the architect's rule: never default these —
+  an unset value silently tracks whatever the CLI's default happens to be on
+  a given build, drifting behavior out from under this codebase without a
+  line changing here. Fixed via a new `claude-config.ts`
+  (`CLAUDE_MODEL`/`CLAUDE_EFFORT` env vars, defaults `claude-sonnet-5`/`high`,
+  effort validated against the SDK's own five levels), mirroring
+  `activation-config.ts`'s existing separation of uniform tuning knobs from
+  per-dispatch identity. Generalizes beyond this one file: any future code in
+  this project that calls a Claude API/SDK should set model and effort
+  explicitly, never rely on a default.
 
 ## Open items
 

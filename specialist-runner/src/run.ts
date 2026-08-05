@@ -11,6 +11,7 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { query } from "@anthropic-ai/claude-agent-sdk";
+import { loadClaudeConfig } from "./claude-config.js";
 import { loadDispatchContext } from "./dispatch-context.js";
 import { prepareWorkspace } from "./workspace.js";
 import { buildSystemPrompt, buildUserMessage } from "./prompt.js";
@@ -25,6 +26,7 @@ const LINEAR_AGENT_API_KEY = process.env.LINEAR_AGENT_API_KEY ?? "";
 
 async function main(): Promise<void> {
   const context = loadDispatchContext();
+  const claudeConfig = loadClaudeConfig();
   const runId = randomUUID();
   const runLog = log.child(`${context.storyId}:${runId.slice(0, 8)}`);
   runLog.info(`starting ${context.specialistType} specialist run for ${context.storyId} — "${context.storyTitle}"`);
@@ -40,7 +42,10 @@ async function main(): Promise<void> {
   const systemPrompt = await buildSystemPrompt(frameworkPath, context);
   const userMessage = buildUserMessage(context);
 
-  runLog.info(`invoking Agent SDK — maxTurns=${context.maxTurns}, cwd=${surfaceRepoPath}`);
+  runLog.info(
+    `invoking Agent SDK — model=${claudeConfig.model} effort=${claudeConfig.effort} maxTurns=${context.maxTurns} ` +
+      `cwd=${surfaceRepoPath}`,
+  );
 
   const stream = query({
     prompt: userMessage,
@@ -48,6 +53,12 @@ async function main(): Promise<void> {
       cwd: surfaceRepoPath,
       systemPrompt: systemPrompt,
       mcpServers: mcpServersFromEnv(),
+
+      // Explicit, not left to the SDK's own default — an unset model/effort
+      // would silently track whatever the CLI's default happens to be on a
+      // given build. See claude-config.ts.
+      model: claudeConfig.model,
+      effort: claudeConfig.effort,
 
       // No WebFetch/WebSearch, no wider tool surface — keeps the sandbox's
       // blast radius to reading/writing/testing the one cloned repo.
@@ -62,6 +73,7 @@ async function main(): Promise<void> {
       // The ledger is explicit that a session "does not time out on its own" —
       // this must be set deliberately, not left to a default.
       maxTurns: context.maxTurns,
+
     },
   });
 
