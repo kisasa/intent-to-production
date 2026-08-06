@@ -29,9 +29,31 @@ export interface WorkspacePaths {
   readonly surfaceRepoPath: string;
 }
 
-async function runGit(args: string[], cwd: string | undefined, log: Logger): Promise<void> {
-  log.trace(`git ${args.join(" ")}`);
-  await execFileAsync("git", args, { cwd });
+/**
+ * Redacts the GitHub token from any string before it can reach a log line or
+ * a tracker comment. Necessary, not optional: confirmed live (2026-08-06)
+ * that a failed `git clone` on the authenticated URL leaks the token
+ * straight through, because Node's own `child_process` error message embeds
+ * the full argv (including the URL) verbatim — `execFileAsync`'s rejection
+ * is "Command failed: git clone ... https://x-access-token:<token>@...",
+ * regardless of what git's own stderr says. That message is exactly what
+ * `run.ts`'s top-level catch hands to `postFallbackComment`, so an
+ * unredacted failure here posts the real token to Linear, not just a local
+ * log — worse than a log leak, since the comment is visible to anyone with
+ * access to the story.
+ */
+export function redact(text: string, token: string): string {
+  return token ? text.split(token).join("***") : text;
+}
+
+async function runGit(args: string[], cwd: string | undefined, log: Logger, githubToken: string): Promise<void> {
+  log.trace(`git ${redact(args.join(" "), githubToken)}`);
+  try {
+    await execFileAsync("git", args, { cwd });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(redact(message, githubToken));
+  }
 }
 
 function authenticatedCloneUrl(repo: string, githubToken: string): string {
@@ -73,6 +95,7 @@ export async function prepareWorkspace(
     ],
     undefined,
     log,
+    githubToken,
   );
 
   log.info(`cloning surface repo ${context.surfaceRepo}`);
@@ -80,16 +103,17 @@ export async function prepareWorkspace(
     ["clone", "--filter=blob:none", authenticatedCloneUrl(context.surfaceRepo, githubToken), surfaceRepoPath],
     undefined,
     log,
+    githubToken,
   );
 
   // If the branch doesn't exist, this throws — that's the broken-chain case
   // the specialist's own definition already handles (post `specialist:blocked`
   // and stop), not this module's job to paper over or repair.
   log.info(`checking out story branch ${context.storyBranch}`);
-  await runGit(["checkout", context.storyBranch], surfaceRepoPath, log);
+  await runGit(["checkout", context.storyBranch], surfaceRepoPath, log, githubToken);
 
-  await runGit(["config", "user.name", GIT_AUTHOR_NAME], surfaceRepoPath, log);
-  await runGit(["config", "user.email", GIT_AUTHOR_EMAIL], surfaceRepoPath, log);
+  await runGit(["config", "user.name", GIT_AUTHOR_NAME], surfaceRepoPath, log, githubToken);
+  await runGit(["config", "user.email", GIT_AUTHOR_EMAIL], surfaceRepoPath, log, githubToken);
 
   return { frameworkPath, surfaceRepoPath };
 }
