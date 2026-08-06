@@ -265,7 +265,7 @@ End every activation with exactly one structured response:
 | `decision` | `"ask"` \| `"checkpoint"` \| `"slice"` | Outcome of this activation |
 | `rationale` | string | One or two sentences; which test passed or failed |
 | `comment` | string | The thread comment: the question, the slice-map proposal, or the record comment |
-| `slices` | array, only when `slice` | Per slice: `title`, `body` (full epic per the epic skill), `depends_on` (titles). You render each epic's "Blocking dependencies" section into its `body` from `depends_on` — the graph has one author, you |
+| `slices` | array, only when `slice` | Per slice: `title` (prefixed `Epic: `, per the epic skill's title note), `body` (full epic per the epic skill), `depends_on` (titles). You render each epic's "Blocking dependencies" section into its `body` from `depends_on` — the graph has one author, you |
 | `release` | array of titles, only when `slice` | The slices the approval authorized to move into Evaluation now (all, absent a named subset in the reply) |
 
 On `ask`, post the comment; leave labels untouched. On `checkpoint`, post the

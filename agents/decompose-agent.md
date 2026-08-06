@@ -180,7 +180,7 @@ Post your checkpoint as a **new top-level comment** (never a reply). Apply the l
 
 **`shaped` — the PM has approved; you decompose.**
 Make these writes, in order:
-1. Create one child story per shaped story, flat under the epic (never nested), in dependency order. Each child carries its `title`, `description` (satisfying `story-contract.md`), and the labels `specialist:<specialist>`, `size:<size>`, `tier:<tier>` (see `story-contract.md`'s assignment metadata note — `specialist:<type>` is the fixed prefix, matching the outcome labels' own `specialist:*` vocabulary).
+1. Create one child story per shaped story, flat under the epic (never nested), in dependency order. Each child carries its `title` (prefixed `Story: `, per `story-contract.md`'s title note — one prefix only; the surface belongs in the label, not the title), `description` (satisfying `story-contract.md`), and the labels `specialist:<specialist>`, `size:<size>`, `tier:<tier>` (see `story-contract.md`'s assignment metadata note — `specialist:<type>` is the fixed prefix, matching the outcome labels' own `specialist:*` vocabulary).
 2. Render each child's **"Blocking dependencies"** section into its description from the dependency graph — the sibling stories it depends on, by identifier and title, one per bullet line with the bare identifier as the first token (`story-contract.md`'s format note — this is what lets a pre-dispatch check parse it mechanically). This section has one author: you, from the graph. A story with no dependencies gets "No blocking dependencies."
 3. Remove the eval working labels and apply `eval:ready`.
 4. Post a summary comment (what was created, the shape of the decomposition, any recorded over-band decision).
@@ -276,7 +276,7 @@ Comment thread:
   "checkpointMessage": "",
   "children": [
     {
-      "title": "API: expose payment status by role on invoice endpoint",
+      "title": "Story: Expose payment status by role on the invoice endpoint",
       "description": "As a backend service, expose payment status on GET /invoices/:id filtered by the caller's role. Account managers see status only. Finance admins see status and payment metadata. Auditors see status only, read-only. Requirements: role is determined from the auth token; unknown roles receive 403; missing payment data returns status: unknown rather than 500. Acceptance criteria — If an account manager requests an invoice, when the API responds, then payment status is present and payment metadata is absent. If a finance admin requests an invoice, when the API responds, then both status and metadata are present. If an auditor requests an invoice, when the API responds, then the response is identical to account manager but the endpoint rejects any write attempt with 403.",
       "specialist": "backend",
       "size": "medium",
@@ -284,7 +284,7 @@ Comment thread:
       "dependsOn": []
     },
     {
-      "title": "UI: payment status display on invoice detail view",
+      "title": "Story: Display payment status on the invoice detail view",
       "description": "As an account manager, I want to see payment status on the invoice detail view so that I can answer customer questions without involving finance. Requirements: status badge renders for all three roles; finance admin sees additional metadata section; auditor view is visually identical to account manager. Fringe cases: status: unknown renders as 'Unavailable' not blank; no edit controls visible to auditors. Acceptance criteria — If an account manager views an invoice, when the page loads, then a payment status badge is visible and no metadata section is shown. If a finance admin views an invoice, when the page loads, then both the badge and metadata section are visible. If the API returns status: unknown, when the page renders, then the badge displays 'Unavailable'.",
       "specialist": "frontend",
       "size": "small",
@@ -292,7 +292,7 @@ Comment thread:
       "dependsOn": [0]
     },
     {
-      "title": "E2E: payment visibility flows per role",
+      "title": "Story: Verify payment visibility flows per role",
       "description": "As an account manager, finance admin, or auditor, I want the payment-visibility flow verified end to end so that each role sees exactly what it should in a running environment. Full-flow coverage: account manager opens an invoice and sees the status badge with no metadata section; finance admin sees badge and metadata; auditor's view matches account manager and write attempts are rejected; an invoice with missing payment data renders 'Unavailable'. Unit tests ship inside the API and UI stories; this story verifies the assembled flows only.",
       "specialist": "e2e",
       "size": "small",

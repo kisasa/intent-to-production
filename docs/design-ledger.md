@@ -2183,6 +2183,81 @@ line.
   are the wrong words for it, and the phrasing predates the collapse rather than
   describing what survived it. Worth one pass before the shaping tier is
   published as reference material.
+- **Title conventions, and a `Epic: ` / `Story: ` prefix (2026-08-06).** Asked
+  whether a prefix rule existed. It did not — neither `epic-writing.md` nor
+  `story-contract.md` said anything about titles at all, which is a strange gap
+  for the most-read text in the tracker. The title is what appears in the board,
+  the search result, the notification, and the Slack unfurl, and Linear derives
+  `gitBranchName` from it, so a vague title becomes a vague branch.
+
+  Three patterns were in play and nothing arbitrated: `decompose-agent.md`'s
+  worked examples used surface prefixes (`API:`, `UI:`, `E2E:`), real stories on
+  the sandbox tracker used none, and no rule existed anywhere.
+
+  Settled: **`Epic: ` + noun phrase naming the area; `Story: ` + verb phrase
+  naming the change.** The grammar carries information the prefix does not —
+  epics name where you are, stories name what is being done — so the two are
+  distinguishable even where the prefix is cut off.
+
+  The argument against the prefix was real and was overruled deliberately: it
+  restates hierarchy the tracker already holds, which is the thing rule 4 of
+  `tracker-writing` tells agents not to do. It wins anyway because the tracker's
+  hierarchy does not travel — a flat search, a filtered list, a notification,
+  and a Slack unfurl all lose it, and those are where titles are read most.
+
+  The surface prefix is dropped rather than stacked. `Story: API: expose payment
+  status` reads badly, and unlike parent/child, the surface *is* carried by the
+  `specialist:*` label, which the tracker shows wherever it shows titles. One
+  prefix only. Decompose's three examples were rewritten accordingly.
+
+  One rule earned its place from practice rather than principle: **sibling
+  stories must be distinguishable by their first few words.** Decomposition
+  produces stories that share a subject, so they come out sharing an opening,
+  and five titles beginning "Add payment status…" are five identical rows in
+  every truncated view.
+- **A house prose standard for tracker text — `tracker-writing` (2026-08-06).**
+  Feedback from people reading the output: issue descriptions and comments are
+  hard to read as English. Not layout — sentences. Three complaints, all
+  specific. The text constantly justifies its own decisions. It interrupts
+  itself with paths and issue identifiers. It is written in a clipped,
+  aphoristic register that is tiring at length.
+
+  Root cause, and it is not the tracker: **agents imitate the prose of their own
+  instructions.** `decompose-agent.md:96` is one 400-word sentence carrying six
+  parenthetical asides. The agent definitions and skills are written in a dense
+  justificatory style throughout, and the output mirrors it faithfully. Worth
+  recording plainly because the same failure will recur every time a definition
+  is edited by someone writing in that register — including in this session,
+  which produced several.
+
+  The skill states four rules: state the decision and leave out the argument for
+  it; put references in a footer under `## References` rather than inline; one
+  idea per sentence, no mid-sentence asides; use ordinary words and avoid the
+  correction pattern ("this is not X, it is Y"), the emphatic fragment, and
+  restating the rule being followed. Each rule carries a before/after pair drawn
+  from real artifacts.
+
+  Scope boundary, stated in the skill because it is the obvious way to misapply
+  it: **this governs tracker text only.** The ledger, the agent definitions, and
+  the skills exist to carry reasoning, and rule 1 would gut them. The provenance
+  contract at the top of this document and rule 1 are in direct tension by
+  design — they serve different readers.
+
+  `story-contract.md` restructured to match. The story body is now the prose a
+  person reads (user value, component breakdown, acceptance criteria, unit-test
+  scenarios, scope boundary), and the three reference-bearing sections —
+  codebase anchors, evidence pointers, blocking dependencies — collect into a
+  `## References` footer. The trade is real and stated in the contract: a
+  requirement and its anchor are no longer in the same sentence, so the anchor
+  entry has to name the requirement it serves. Accepted for prose a person can
+  read straight through.
+
+  Not yet wired: no agent declares `tracker-writing` as a loaded skill, so today
+  it changes nothing at runtime. Wiring it means editing every agent that writes
+  to the tracker, plus the prompt templates, and it collides with CLAUDE.md's
+  claim that Decompose "loads none" — a claim the evaluation prompt templates
+  already contradict by loading two. Left as one deliberate next step rather
+  than folded in here.
 - **Capability resolution moved out of the tracker and into the authoring
   session (2026-08-03).** Supersedes the original `confirm` mechanism, where
   rows were drafted `confirm`, carried into the tracker unresolved, and settled
