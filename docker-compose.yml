@@ -130,7 +130,7 @@ services:
       dockerfile: webhook-listener/Dockerfile
     environment:
       PORT: "8787"
-      DEBOUNCE_MS: "5000"
+      DEBOUNCE_MS: "15000"
       LOG_LEVEL: trace
       LINEAR_API_URL: ""
       LINEAR_MCP_URL: ""
