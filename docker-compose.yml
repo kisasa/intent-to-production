@@ -1,0 +1,147 @@
+# Local dev stack — see docs/local-development.md for the full bring-up
+# walkthrough, the cloudflared tunnel step, and named limitations.
+#
+# Brings up this framework's own services (webhook-listener, dispatch-
+# worker) plus enough of Temporal and AWS to actually exercise the whole
+# dispatch loop:
+#   - temporal / temporal-ui / postgresql: standard local Temporal dev
+#     server (temporalio/auto-setup), not Temporal Cloud.
+#   - localstack / localstack-bootstrap: emulates just enough ECS for
+#     dispatch-worker's real ecs:RunTask/DescribeTasks calls to work,
+#     unmodified — dispatch-specialist.ts/await-specialist-task.ts need no
+#     code change, the installed AWS SDK already respects AWS_ENDPOINT_URL.
+#
+# specialist-runner is deliberately NOT a service here — it's launched by
+# LocalStack's own Fargate emulation (via the local Docker engine) when
+# dispatch-worker calls RunTask, the same way ECS launches it in prod. Build
+# it once, by hand, before triggering a dispatch:
+#   docker build -f specialist-runner/Dockerfile -t specialist-runner:local specialist-runner
+#
+# Linear, GitHub, and Anthropic stay real and external — nothing here
+# emulates them. A cloudflared tunnel (or similar) is still how a real
+# Linear webhook reaches the composed webhook-listener.
+
+services:
+  postgresql:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+    volumes:
+      - postgresql-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  temporal:
+    image: temporalio/auto-setup:latest
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    environment:
+      # "postgresql" is rejected by temporalio/auto-setup's own entrypoint —
+      # confirmed against its actual error message ("Unsupported driver...
+      # Valid drivers are: mysql8, postgres12, postgres12_pgx, cassandra"),
+      # not assumed.
+      DB: postgres12
+      DB_PORT: "5432"
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: temporal
+      POSTGRES_SEEDS: postgresql
+    ports:
+      - "7233:7233"
+
+  temporal-ui:
+    image: temporalio/ui:latest
+    depends_on:
+      - temporal
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:3000
+    ports:
+      - "8080:8080"
+
+  localstack:
+    image: localstack/localstack:latest
+    environment:
+      SERVICES: ec2,ecs
+      # Required as of LocalStack's 2026-03 licensing change — the free,
+      # separately-distributed Community image was discontinued; the single
+      # remaining image now requires an account + token even for the
+      # permanent free (non-commercial) tier. Get one at
+      # https://app.localstack.cloud and set it in your root .env (see
+      # .env.example) — there is no way around this from code.
+      LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:?Sign up free at https://app.localstack.cloud and set LOCALSTACK_AUTH_TOKEN in your root .env}
+    ports:
+      - "4566:4566"
+    volumes:
+      # LocalStack's own requirement for Fargate-via-local-Docker — not
+      # something dispatch-worker's container needs itself.
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  localstack-bootstrap:
+    image: amazon/aws-cli:latest
+    depends_on:
+      localstack:
+        condition: service_healthy
+    entrypoint: ["sh", "/bootstrap.sh"]
+    environment:
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_REGION: us-east-1
+      BOOTSTRAP_OUTPUT_FILE: /bootstrap-output/localstack.env
+    volumes:
+      - ./scripts/localstack-bootstrap.sh:/bootstrap.sh:ro
+      # A host bind mount, not a named volume: env_file (below, on
+      # dispatch-worker) reads from the host filesystem at container-start
+      # time, not from inside another container's volume.
+      - ./local:/bootstrap-output
+
+  webhook-listener:
+    build:
+      context: .
+      dockerfile: webhook-listener/Dockerfile
+    env_file:
+      - ./webhook-listener/.env
+    ports:
+      - "8787:8787"
+    depends_on:
+      - temporal
+
+  dispatch-worker:
+    build:
+      context: ./dispatch-worker
+    env_file:
+      - ./dispatch-worker/.env
+    environment:
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_REGION: us-east-1
+      # Read directly inside the container at process start
+      # (local-env-file.ts), not via env_file above: env_file resolves at
+      # container *creation* time, which happens before localstack-
+      # bootstrap runs, so it can never see the SPECIALIST_* values that
+      # script writes (SPECIALIST_CLUSTER_ARN, SPECIALIST_TASK_DEFINITION_ARN,
+      # SPECIALIST_CONTAINER_NAME, SPECIALIST_SECURITY_GROUP_ID,
+      # SPECIALIST_SUBNET_IDS) within the same `docker compose up` — confirmed
+      # by hitting exactly this failure, not assumed.
+      LOCAL_ENV_FILE: /bootstrap-output/localstack.env
+    volumes:
+      - ./local:/bootstrap-output:ro
+    depends_on:
+      temporal:
+        condition: service_started
+      localstack-bootstrap:
+        condition: service_completed_successfully
+
+volumes:
+  postgresql-data:

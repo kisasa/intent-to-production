@@ -201,8 +201,12 @@ npm run build:bundle       # writes dist/workflow-bundle.js
 docker build -f Dockerfile .
 ```
 
-No live workflow execution against real Temporal Cloud/AWS/GitHub/Linear is
-possible from this repo alone — it needs real credentials and a real
-story/epic/branch chain against live tracker and GitHub state. The workflow
-tests above are real Temporal execution, just against a local test server
-and mocked activities.
+No live workflow execution against real Temporal Cloud is possible from
+this repo alone — that needs real credentials and a real story/epic/branch
+chain against live tracker and GitHub state. The workflow tests above are
+real Temporal execution, just against a local test server and mocked
+activities. A real (if local) end-to-end run — this worker, a local
+Temporal server, and a real `ecs:RunTask` call against LocalStack that
+actually launches a `specialist-runner` container — is possible via the
+repo-root `docker-compose.yml`; see
+[`docs/local-development.md`](../docs/local-development.md).

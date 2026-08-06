@@ -1,12 +1,14 @@
 /**
- * This process's connection to Temporal Cloud for *starting* workflows —
+ * This process's connection to Temporal for *starting* workflows —
  * `@temporalio/client`'s `Connection`/`Client`, not `@temporalio/worker`'s
  * `NativeConnection`: this process never executes a workflow or activity, it
  * only calls `client.workflow.start(...)` and returns. Same TLS + API key
  * shape as `dispatch-worker/src/temporal-connection.ts`'s own worker
  * connection (confirmed against `@temporalio/client`'s own
  * `connection.d.ts`: `ConnectionOptions.apiKey` exists on this class too, not
- * just `NativeConnection`'s).
+ * just `NativeConnection`'s). Both `tls` and `apiKey` are config-driven, not
+ * hardcoded — a local Temporal dev server (`temporalio/auto-setup`, no
+ * namespace auth) runs without either.
  *
  * `dispatchStoryWorkflow` itself is never imported here — dispatch-worker and
  * webhook-listener are separate npm packages with no shared lib (the
@@ -23,13 +25,16 @@ export interface TemporalClientConfig {
   readonly temporalHost: string;
   readonly temporalNamespace: string;
   readonly temporalTaskQueue: string;
-  readonly temporalApiKey: string;
+  /** Optional: Temporal Cloud requires one, a local dev server doesn't have one at all. */
+  readonly temporalApiKey: string | undefined;
+  /** Defaults `true` (Temporal Cloud) — only `TEMPORAL_TLS=false` turns it off. */
+  readonly temporalTls: boolean;
 }
 
 export async function createTemporalClient(config: TemporalClientConfig): Promise<Client> {
   const connection = await Connection.connect({
     address: config.temporalHost,
-    tls: true,
+    tls: config.temporalTls,
     apiKey: config.temporalApiKey,
   });
   return new Client({ connection: connection, namespace: config.temporalNamespace });
@@ -47,11 +52,20 @@ const envConfig: TemporalClientConfig = {
   temporalHost: process.env.TEMPORAL_HOST ?? "",
   temporalNamespace: process.env.TEMPORAL_NAMESPACE ?? "",
   temporalTaskQueue: process.env.TEMPORAL_TASK_QUEUE ?? "",
-  temporalApiKey: process.env.TEMPORAL_API_KEY ?? "",
+  temporalApiKey: process.env.TEMPORAL_API_KEY || undefined,
+  temporalTls: process.env.TEMPORAL_TLS !== "false",
 };
 
+// Only the string fields that must be genuinely present are checked here —
+// temporalApiKey is legitimately optional and temporalTls is a boolean, so
+// neither belongs in a generic truthy-over-every-field loop.
 function requireConfigured(config: TemporalClientConfig): void {
-  for (const [key, value] of Object.entries(config)) {
+  const required: Record<string, string> = {
+    temporalHost: config.temporalHost,
+    temporalNamespace: config.temporalNamespace,
+    temporalTaskQueue: config.temporalTaskQueue,
+  };
+  for (const [key, value] of Object.entries(required)) {
     if (!value) throw new Error(`Missing required env var for the Temporal client: ${key}`);
   }
 }

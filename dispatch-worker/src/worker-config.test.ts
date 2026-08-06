@@ -5,7 +5,6 @@ const REQUIRED_VARS = {
   TEMPORAL_HOST: "prod.abcde.tmprl.cloud:7233",
   TEMPORAL_NAMESPACE: "prod.abcde",
   TEMPORAL_TASK_QUEUE: "dispatch-task-queue",
-  TEMPORAL_API_KEY: "temporal-key",
   SPECIALIST_CLUSTER_ARN: "arn:aws:ecs:us-east-1:123:cluster/example-specialist-prod",
   SPECIALIST_TASK_DEFINITION_ARN: "arn:aws:ecs:us-east-1:123:task-definition/specialist-prod:1",
   SPECIALIST_CONTAINER_NAME: "specialist-prod",
@@ -15,7 +14,7 @@ const REQUIRED_VARS = {
   LINEAR_AGENT_API_KEY: "linear-key",
 };
 
-function stubAll(overrides: Partial<Record<keyof typeof REQUIRED_VARS, string | undefined>> = {}): void {
+function stubAll(overrides: Record<string, string | undefined> = {}): void {
   const merged = { ...REQUIRED_VARS, ...overrides };
   for (const [key, value] of Object.entries(merged)) {
     if (value === undefined) {
@@ -33,12 +32,13 @@ describe("loadWorkerConfig", () => {
   });
 
   it("loads a complete config, splitting and trimming subnet ids", () => {
-    stubAll();
+    stubAll({ TEMPORAL_API_KEY: "temporal-key" });
     expect(loadWorkerConfig()).toEqual({
       temporalHost: "prod.abcde.tmprl.cloud:7233",
       temporalNamespace: "prod.abcde",
       temporalTaskQueue: "dispatch-task-queue",
       temporalApiKey: "temporal-key",
+      temporalTls: true,
       specialistClusterArn: "arn:aws:ecs:us-east-1:123:cluster/example-specialist-prod",
       specialistTaskDefinitionArn: "arn:aws:ecs:us-east-1:123:task-definition/specialist-prod:1",
       specialistContainerName: "specialist-prod",
@@ -52,5 +52,20 @@ describe("loadWorkerConfig", () => {
   it("throws naming the missing var", () => {
     stubAll({ SPECIALIST_CLUSTER_ARN: undefined });
     expect(() => loadWorkerConfig()).toThrow(/SPECIALIST_CLUSTER_ARN/);
+  });
+
+  it("leaves temporalApiKey undefined when not set — a real state, not a missing-config error", () => {
+    stubAll();
+    expect(loadWorkerConfig().temporalApiKey).toBeUndefined();
+  });
+
+  it("defaults temporalTls to true", () => {
+    stubAll();
+    expect(loadWorkerConfig().temporalTls).toBe(true);
+  });
+
+  it("only turns temporalTls off on the literal string \"false\"", () => {
+    stubAll({ TEMPORAL_TLS: "false" });
+    expect(loadWorkerConfig().temporalTls).toBe(false);
   });
 });

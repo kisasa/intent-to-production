@@ -24,6 +24,7 @@ describe("createTemporalClient", () => {
       temporalNamespace: "example-dispatch.abc12",
       temporalTaskQueue: "dispatch-task-queue",
       temporalApiKey: "test-api-key",
+      temporalTls: true,
     });
 
     expect(connectMock).toHaveBeenCalledWith({
@@ -32,5 +33,23 @@ describe("createTemporalClient", () => {
       apiKey: "test-api-key",
     });
     expect(clientCtorMock).toHaveBeenCalledWith({ connection: fakeConnection, namespace: "example-dispatch.abc12" });
+  });
+
+  it("connects without TLS and without an API key against a local dev server", async () => {
+    connectMock.mockResolvedValue({ kind: "fake-connection" });
+
+    await createTemporalClient({
+      temporalHost: "localhost:7233",
+      temporalNamespace: "default",
+      temporalTaskQueue: "dispatch-task-queue",
+      temporalApiKey: undefined,
+      temporalTls: false,
+    });
+
+    expect(connectMock).toHaveBeenCalledWith({
+      address: "localhost:7233",
+      tls: false,
+      apiKey: undefined,
+    });
   });
 });

@@ -27,7 +27,21 @@ export interface WorkerConfig {
   readonly temporalHost: string;
   readonly temporalNamespace: string;
   readonly temporalTaskQueue: string;
-  readonly temporalApiKey: string;
+
+  /**
+   * Optional: Temporal Cloud requires an API key, a local dev server
+   * (`temporalio/auto-setup`, no namespace auth) doesn't have one at all.
+   * `undefined` is a valid, real state here, not a missing-config error.
+   */
+  readonly temporalApiKey: string | undefined;
+
+  /**
+   * Defaults `true` (Temporal Cloud, the only thing this ever pointed at
+   * until local dev needed a plain, unencrypted connection to a local
+   * server) — only `TEMPORAL_TLS=false` turns it off, so existing
+   * deployments need no env change to keep working.
+   */
+  readonly temporalTls: boolean;
 
   /** ARN of the specialist-sandbox ECS cluster to RunTask against. */
   readonly specialistClusterArn: string;
@@ -54,7 +68,8 @@ export function loadWorkerConfig(): WorkerConfig {
     temporalHost: requireEnv("TEMPORAL_HOST"),
     temporalNamespace: requireEnv("TEMPORAL_NAMESPACE"),
     temporalTaskQueue: requireEnv("TEMPORAL_TASK_QUEUE"),
-    temporalApiKey: requireEnv("TEMPORAL_API_KEY"),
+    temporalApiKey: process.env.TEMPORAL_API_KEY || undefined,
+    temporalTls: process.env.TEMPORAL_TLS !== "false",
 
     specialistClusterArn: requireEnv("SPECIALIST_CLUSTER_ARN"),
     specialistTaskDefinitionArn: requireEnv("SPECIALIST_TASK_DEFINITION_ARN"),

@@ -80,6 +80,11 @@ For the deployed environment — an always-on Fargate service behind a load
 balancer, with env vars sourced from SSM — see
 [infrastructure/](../infrastructure/README.md). Everything below is local.
 
+To run this service alongside `dispatch-worker`, a local Temporal server,
+and a LocalStack-emulated ECS — the whole dispatch loop, not just this one
+service — see [`docs/local-development.md`](../docs/local-development.md)
+instead. What follows here is this service in isolation.
+
 ```bash
 cp .env.example .env   # fill in the required values
 npm install

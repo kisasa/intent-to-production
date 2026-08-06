@@ -18,6 +18,7 @@ import { createFindPullRequestActivity } from "./activities/find-pull-request.js
 import { createReadSpecialistOutcomeActivity } from "./activities/read-specialist-outcome.js";
 import { createResolveRepoBaseActivity } from "./activities/resolve-repo-base.js";
 import { createLogger } from "./logger.js";
+import { loadLocalEnvFile } from "./local-env-file.js";
 import { connectToTemporal } from "./temporal-connection.js";
 import { loadWorkerConfig } from "./worker-config.js";
 
@@ -44,6 +45,7 @@ function workflowSource(): { workflowBundle: { codePath: string } } | { workflow
 }
 
 async function main(): Promise<void> {
+  await loadLocalEnvFile();
   const config = loadWorkerConfig();
 
   log.info(`connecting to Temporal at ${config.temporalHost}, namespace=${config.temporalNamespace}`);
