@@ -121,7 +121,7 @@ export function createAwaitPullRequestOutcomeActivity(config: WorkerConfig) {
     const body =
       outcome === "merged"
         ? `**PR merged** _(automated)_\n\n${prUrl} has been merged. Story implementation is complete — move this story to Done once verified.`
-        : `**PR closed without merging** _(automated)_\n\n${prUrl} was closed without merging. This story's dispatch did not complete.`;
+        : `**PR closed without merging** _(automated)_\n\n${prUrl} was closed without merging. This story's dispatch did not complete.\n\nTo retry, move this story back to Todo and then into In Progress again — dispatch is not automatic on a closed PR, and re-entering In Progress starts a fresh run on the same story branch.`;
     await postComment(storyId, config.linearAgentApiKey, linearApiUrl(), body);
 
     return outcome;
