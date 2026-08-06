@@ -14,10 +14,24 @@
 # The cluster and task-definition ARNs are deterministic (LocalStack's
 # account id is always 000000000000) and could be hardcoded, but the
 # subnet/security-group ids AWS/LocalStack assigns are not — so this script
-# writes everything to a shared file docker-compose.yml mounts into
-# dispatch-worker's own environment via env_file, rather than requiring
-# them to be copied by hand.
+# writes everything to a shared file, bind-mounted into dispatch-worker's
+# container too, that local-env-file.ts reads directly at process start
+# (see docker-compose.yml's own comment on dispatch-worker for why not a
+# plain env var), rather than requiring them to be copied by hand.
+#
+# The registered task definition bakes in ANTHROPIC_API_KEY/
+# LINEAR_AGENT_API_KEY/GITHUB_TOKEN as plain container environment —
+# mirroring what infrastructure/constructs/specialist-task.ts does in
+# production via ECS `secrets` (SSM-backed there; a plain env var is the
+# right local-dev equivalent, no SSM emulation needed for this). Without
+# these, `dispatch-specialist.ts`'s own RunTask overrides (STORY_ID and the
+# other per-dispatch fields) are the *only* env vars the launched container
+# gets, and specialist-runner fails fast on the first missing one.
 set -eu
+
+: "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set in docker-compose.override.yml}"
+: "${LINEAR_AGENT_API_KEY:?LINEAR_AGENT_API_KEY must be set in docker-compose.override.yml}"
+: "${GITHUB_TOKEN:?GITHUB_TOKEN must be set in docker-compose.override.yml}"
 
 ENDPOINT="${AWS_ENDPOINT_URL:-http://localstack:4566}"
 REGION="${AWS_REGION:-us-east-1}"
@@ -45,12 +59,25 @@ aws_local ecs create-cluster --cluster-name "$CLUSTER_NAME" >/dev/null
 CLUSTER_ARN="arn:aws:ecs:${REGION}:000000000000:cluster/${CLUSTER_NAME}"
 
 echo "Registering the specialist-runner task definition..."
+CONTAINER_DEFINITIONS=$(cat <<EOF
+[{
+  "name": "${CONTAINER_NAME}",
+  "image": "${IMAGE}",
+  "essential": true,
+  "environment": [
+    {"name": "ANTHROPIC_API_KEY", "value": "${ANTHROPIC_API_KEY}"},
+    {"name": "LINEAR_AGENT_API_KEY", "value": "${LINEAR_AGENT_API_KEY}"},
+    {"name": "GITHUB_TOKEN", "value": "${GITHUB_TOKEN}"}
+  ]
+}]
+EOF
+)
 TASK_DEF_ARN=$(aws_local ecs register-task-definition \
   --family "$TASK_FAMILY" \
   --requires-compatibilities FARGATE \
   --network-mode awsvpc \
   --cpu 1024 --memory 2048 \
-  --container-definitions "[{\"name\":\"${CONTAINER_NAME}\",\"image\":\"${IMAGE}\",\"essential\":true}]" \
+  --container-definitions "$CONTAINER_DEFINITIONS" \
   --query 'taskDefinition.taskDefinitionArn' --output text)
 
 mkdir -p "$(dirname "$OUTPUT_FILE")"

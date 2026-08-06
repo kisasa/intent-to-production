@@ -25,11 +25,8 @@ VPC/subnet/security-group, not `infrastructure/`'s real `network` stack.
   licensing change, the separately-distributed Community image was
   discontinued; the single remaining image now requires an account + token
   even for the permanent free (non-commercial) tier. Sign up at
-  [app.localstack.cloud](https://app.localstack.cloud), generate a token,
-  copy the repo-root `.env.example` to `.env`, and set
-  `LOCALSTACK_AUTH_TOKEN` there. There is no way around this from code —
-  `docker-compose.yml`'s `localstack` service fails fast naming this exact
-  requirement if it's unset.
+  [app.localstack.cloud](https://app.localstack.cloud) and generate one —
+  see Bring-up order below for where it goes.
 - A real Linear sandbox workspace, a real GitHub org/repo you can write
   branches and PRs to, and real API keys for Linear, GitHub, and Anthropic.
 - [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
@@ -39,18 +36,22 @@ VPC/subnet/security-group, not `infrastructure/`'s real `network` stack.
 
 ## Bring-up order
 
-1. **Fill in the env files.** Copy the repo-root `.env.example` to `.env`
-   (just `LOCALSTACK_AUTH_TOKEN` — see Prerequisites) and each package's
-   `.env.example` to `.env`
-   (`webhook-listener/.env`, `dispatch-worker/.env`, `specialist-runner/.env`)
-   and fill in the real credentials. `dispatch-worker/.env` does **not**
-   need `SPECIALIST_CLUSTER_ARN`/`SPECIALIST_TASK_DEFINITION_ARN`/
-   `SPECIALIST_CONTAINER_NAME`/`SPECIALIST_SECURITY_GROUP_ID`/
-   `SPECIALIST_SUBNET_IDS`, or `TEMPORAL_HOST`/`TEMPORAL_NAMESPACE`/
-   `TEMPORAL_TASK_QUEUE`/`TEMPORAL_TLS` — `docker-compose.yml` sets the
-   Temporal ones to point at the compose `temporal` service, and the
-   `SPECIALIST_*` ones are written by the LocalStack bootstrap step below
-   (the ids AWS/LocalStack assigns aren't known ahead of time).
+1. **Copy `docker-compose.override.yml.example` to `docker-compose.override.yml`
+   and fill in your real secret values.** Every env var each service needs
+   is already listed in `docker-compose.yml` itself — one file to see the
+   whole shape — with real working defaults for everything non-secret
+   (Temporal connection info for this stack, AWS/LocalStack placeholder
+   creds) and empty placeholders for the handful that are actually secret
+   (Anthropic/GitHub/Linear keys, the LocalStack token). `docker compose`
+   auto-merges `docker-compose.override.yml` if present (gitignored — never
+   commit your filled-in copy); it only needs to name the specific keys
+   it's overriding, since Compose merges `environment:` maps key-by-key.
+
+   The per-package `.env.example` files (`webhook-listener/`,
+   `dispatch-worker/`, `specialist-runner/`) are unrelated to this compose
+   stack — they're for running one package standalone outside Docker (each
+   README's own "Run it locally" section) or, for `specialist-runner`,
+   testing the image by hand. Nothing here reads them.
 
 2. **Build the specialist-runner image once, by hand** — it's not a compose
    service (see "Why specialist-runner isn't a compose service" below):

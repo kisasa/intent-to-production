@@ -1,6 +1,17 @@
 # Local dev stack — see docs/local-development.md for the full bring-up
 # walkthrough, the cloudflared tunnel step, and named limitations.
 #
+# Every env var each service needs is listed explicitly below, right here —
+# one file to see the whole shape, rather than hunting across four scattered
+# .env files. Non-secret values (Temporal connection info for this stack,
+# AWS/LocalStack placeholder creds) are real, working defaults, set directly.
+# Secrets (Anthropic/GitHub/Linear keys, the LocalStack auth token) are left
+# empty here on purpose — this file is git-tracked. Copy
+# docker-compose.override.yml.example to docker-compose.override.yml
+# (gitignored, auto-merged by `docker compose` if present) and put your real
+# values there; Compose merges `environment:` maps key-by-key, so the
+# override only needs to name the keys it's actually setting.
+#
 # Brings up this framework's own services (webhook-listener, dispatch-
 # worker) plus enough of Temporal and AWS to actually exercise the whole
 # dispatch loop:
@@ -70,10 +81,10 @@ services:
       # Required as of LocalStack's 2026-03 licensing change — the free,
       # separately-distributed Community image was discontinued; the single
       # remaining image now requires an account + token even for the
-      # permanent free (non-commercial) tier. Get one at
-      # https://app.localstack.cloud and set it in your root .env (see
-      # .env.example) — there is no way around this from code.
-      LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:?Sign up free at https://app.localstack.cloud and set LOCALSTACK_AUTH_TOKEN in your root .env}
+      # permanent free (non-commercial) tier. Sign up at
+      # https://app.localstack.cloud and set this in
+      # docker-compose.override.yml — there is no way around this from code.
+      LOCALSTACK_AUTH_TOKEN: ""
     ports:
       - "4566:4566"
     volumes:
@@ -98,6 +109,14 @@ services:
       AWS_SECRET_ACCESS_KEY: test
       AWS_REGION: us-east-1
       BOOTSTRAP_OUTPUT_FILE: /bootstrap-output/localstack.env
+      # The specialist's own credentials — baked into the task definition
+      # this script registers, mirroring what specialist-task.ts does in
+      # production via ECS `secrets`. Without them the launched container
+      # gets only dispatch-specialist.ts's per-story overrides and fails
+      # fast on the first missing one.
+      ANTHROPIC_API_KEY: ""
+      LINEAR_AGENT_API_KEY: ""
+      GITHUB_TOKEN: ""
     volumes:
       - ./scripts/localstack-bootstrap.sh:/bootstrap.sh:ro
       # A host bind mount, not a named volume: env_file (below, on
@@ -109,8 +128,28 @@ services:
     build:
       context: .
       dockerfile: webhook-listener/Dockerfile
-    env_file:
-      - ./webhook-listener/.env
+    environment:
+      PORT: "8787"
+      DEBOUNCE_MS: "5000"
+      LOG_LEVEL: trace
+      LINEAR_API_URL: ""
+      LINEAR_MCP_URL: ""
+      GITHUB_MCP_URL: ""
+      TEST_STAGE: ""
+      PRODUCT_CONTEXT_PATHS: ""
+      TEMPORAL_HOST: temporal:7233
+      TEMPORAL_NAMESPACE: default
+      TEMPORAL_TASK_QUEUE: dispatch-task-queue
+      TEMPORAL_TLS: "false"
+      # A local dev Temporal server has no namespace auth at all — leave
+      # empty even in the override file.
+      TEMPORAL_API_KEY: ""
+      # Secrets — set real values in docker-compose.override.yml.
+      LINEAR_WEBHOOK_SECRET: ""
+      LINEAR_AGENT_API_KEY: ""
+      AGENT_USER_ID: ""
+      GITHUB_TOKEN: ""
+      ANTHROPIC_API_KEY: ""
     ports:
       - "8787:8787"
     depends_on:
@@ -119,21 +158,32 @@ services:
   dispatch-worker:
     build:
       context: ./dispatch-worker
-    env_file:
-      - ./dispatch-worker/.env
     environment:
+      TEMPORAL_HOST: temporal:7233
+      TEMPORAL_NAMESPACE: default
+      TEMPORAL_TASK_QUEUE: dispatch-task-queue
+      TEMPORAL_TLS: "false"
+      TEMPORAL_API_KEY: ""
+      LOG_LEVEL: info
+      LINEAR_API_URL: ""
+      # Secrets — set real values in docker-compose.override.yml.
+      GITHUB_TOKEN: ""
+      LINEAR_AGENT_API_KEY: ""
+      # LocalStack, not real AWS — the installed AWS SDK respects
+      # AWS_ENDPOINT_URL natively, no code change needed for this.
       AWS_ENDPOINT_URL: http://localstack:4566
       AWS_ACCESS_KEY_ID: test
       AWS_SECRET_ACCESS_KEY: test
       AWS_REGION: us-east-1
       # Read directly inside the container at process start
-      # (local-env-file.ts), not via env_file above: env_file resolves at
-      # container *creation* time, which happens before localstack-
-      # bootstrap runs, so it can never see the SPECIALIST_* values that
-      # script writes (SPECIALIST_CLUSTER_ARN, SPECIALIST_TASK_DEFINITION_ARN,
-      # SPECIALIST_CONTAINER_NAME, SPECIALIST_SECURITY_GROUP_ID,
-      # SPECIALIST_SUBNET_IDS) within the same `docker compose up` — confirmed
-      # by hitting exactly this failure, not assumed.
+      # (local-env-file.ts), not via an env var set here: docker-compose's
+      # own env resolution happens at container *creation* time, which is
+      # before localstack-bootstrap runs, so it can never see the
+      # SPECIALIST_* values that script writes (SPECIALIST_CLUSTER_ARN,
+      # SPECIALIST_TASK_DEFINITION_ARN, SPECIALIST_CONTAINER_NAME,
+      # SPECIALIST_SECURITY_GROUP_ID, SPECIALIST_SUBNET_IDS) within the
+      # same `docker compose up` — confirmed by hitting exactly this
+      # failure, not assumed.
       LOCAL_ENV_FILE: /bootstrap-output/localstack.env
     volumes:
       - ./local:/bootstrap-output:ro
