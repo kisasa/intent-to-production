@@ -2183,6 +2183,41 @@ line.
   are the wrong words for it, and the phrasing predates the collapse rather than
   describing what survived it. Worth one pass before the shaping tier is
   published as reference material.
+- **Capability resolution moved out of the tracker and into the authoring
+  session (2026-08-03).** Supersedes the original `confirm` mechanism, where
+  rows were drafted `confirm`, carried into the tracker unresolved, and settled
+  in the project's comment thread — blocking only the Intake Agent's slicing,
+  never project creation. Now: every row is resolved in the session that writes
+  the document, and an unresolved row blocks creation exactly as a placeholder
+  does. Intake's gate stays as a backstop and should never fire again.
+
+  Three reasons, and the third is the one that makes it structural rather than
+  preference. A thread resolves one voice at a time over days, when the same
+  conversation takes minutes with the right people in one room. An unresolved
+  row sitting in a tracker invites slicing around it rather than settling it.
+  And a comment thread on one project **cannot see another project's capability
+  map** — which is exactly what resolving a capability sometimes requires.
+
+  The cross-document case is the new information here. With several BRDs in
+  flight, a capability moved `out` in one may be something another assumed it
+  could build on, and one moved `in-scope` may duplicate work already scoped
+  elsewhere. Nothing looks across projects afterward: Intake slices one project
+  at a time, and no thread sees a sibling. Missed at resolution time, the
+  conflict surfaces as contradictory epics weeks later with stories already
+  under them. So the skill now reads sibling capability maps *before* working
+  its own, and names the affected document and row while a decision is being
+  made.
+
+  Also changed, from the architect watching it work: the map is walked **row by row
+  with candidate answers offered**, not presented whole for bulk agreement. For
+  each row — state what evidence supports it, propose a resolution *and* the
+  strongest case against, record the human's decision in their words. The
+  reasoning is the same one behind `conventions-writing`'s interview
+  discipline: a proposal with only one side gets agreed to rather than decided,
+  and an agreed capability is not a confirmed one. Reported as flowing well and
+  as letting several people collaborate in a single session, which is the
+  format capability scope actually wants — the PM, a designer, and whoever owns
+  the budget disagreeing out loud once beats a week of thread.
 - **Branch topology is per-repo, and nothing reconciles across surfaces.**
   Settled 2026-08-03: the developer starts Claude Code from a workspace parent
   holding every surface repo plus the framework clone, so cross-surface reads
