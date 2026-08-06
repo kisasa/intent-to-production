@@ -833,7 +833,8 @@ renamed to Decompose.
   narrate it (the two-failure-mode error handler). `code-review-agent.md` is
   still a draft and still carries old framing — the one un-reconciled agent.
   (Superseded 2026-08-03 on both counts: `code-review-agent.md` was retired to
-  `docs/archive/`, and "the one un-reconciled agent" turned out to be wrong —
+  `docs/archive/` — and then deleted entirely in `9afef91`; it survives only in
+  git history — and "the one un-reconciled agent" turned out to be wrong —
   `decompose-agent.md`, `intake-agent.md`, and `specification-agent.md` all still
   carry app-hands-context phrasing, tracked as an open item. See the
   development-tier session below.)
@@ -966,9 +967,13 @@ into the epic branch. The agent draft was never built and was two architectures
 stale (verdict object, app-applied). What remained between "CI can check it"
 and "a human must judge it" did not justify a third actor — and inserting one
 before the first specialist run would add a variable to the experiment that run
-exists to measure. Moved to `docs/archive/` with a retirement header rather than
-deleted; if mechanical review returns, it starts from the CI checks that
-replaced it. Epic-branch review, and the PR from epic branch to BRD branch,
+exists to measure. Moved to `docs/archive/` with a retirement header rather
+than deleted, so the trail survived — **and then deleted outright in `9afef91`
+("Clean up"), along with the `docs/archive/` directory itself.** Recovering it
+means `git show af358e7:docs/archive/code-review-agent.md`. Noted rather than
+undone: the file was two architectures stale and describes an agent that was
+never built, so git history is a defensible home for it. But the ledger claimed
+twice that it had been preserved on disk, and it had not. Epic-branch review, and the PR from epic branch to BRD branch,
 remain the architect's.
 
 **E2E runs at the epic level.** An E2E story's branch is cut from the epic
@@ -2215,6 +2220,28 @@ line.
   produces stories that share a subject, so they come out sharing an opening,
   and five titles beginning "Add payment status…" are five identical rows in
   every truncated view.
+- **`docs/specialist-prompt.md` is an engagement artifact in a framework
+  directory, and it is stale.** Added in `b238e6f` as a working copy of the
+  dispatch prompt, specialized for a frontend story: it hardcodes
+  `example-web` as the target surface and names "the frontend Specialist."
+  Three problems, in ascending order of consequence.
+
+  It is a *copy* of the prompt in `docs/development-tier-dispatch.md`, and has
+  already drifted from it — the framework paths became bare filenames
+  (`specialist-<NAME>.md`), which contradicts the read-from-a-local-clone
+  decision the runbook states. Two copies of one prompt is the duplication the
+  `CONVENTIONS.md` template was folded into `conventions-writing` to avoid.
+
+  It names a client repository, in `docs/`, in a repo intended for open
+  publication. Engagement-specific material belongs in `examples/`, which is
+  gitignored precisely for this.
+
+  And frontend dispatch is now app-driven, so a hand-pasted frontend prompt no
+  longer describes how that work starts. Whatever it is kept for, it is not
+  that.
+
+  Not resolved here — the call is the architect's, since it may still be serving a live
+  purpose the framework does not know about.
 - **A house prose standard for tracker text — `tracker-writing` (2026-08-06).**
   Feedback from people reading the output: issue descriptions and comments are
   hard to read as English. Not layout — sentences. Three complaints, all
