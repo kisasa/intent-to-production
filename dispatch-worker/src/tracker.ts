@@ -90,10 +90,37 @@ export async function getIssue(issueId: string, apiKey: string, baseUrl: string)
   };
 }
 
-export async function postComment(issueId: string, apiKey: string, baseUrl: string, body: string): Promise<void> {
-  await graphql(apiKey, baseUrl, `mutation($i:CommentCreateInput!){ commentCreate(input:$i){ success } }`, {
-    i: { issueId: issueId, body: body },
+/**
+ * Returns the created comment's id, or null if the response didn't carry
+ * one — callers that need to keep the comment current (specialist-progress.ts)
+ * use it; every existing caller just ignores the return value.
+ */
+export async function postComment(issueId: string, apiKey: string, baseUrl: string, body: string): Promise<string | null> {
+  const data = await graphql<{ commentCreate: { success: boolean; comment?: { id: string } } }>(
+    apiKey,
+    baseUrl,
+    `mutation($i:CommentCreateInput!){ commentCreate(input:$i){ success comment { id } } }`,
+    { i: { issueId: issueId, body: body } },
+  );
+  return data.commentCreate.comment?.id ?? null;
+}
+
+/**
+ * Edits an existing comment in place — mirrors webhook-listener/src/
+ * tracker-notifier.ts's own updateComment (same GraphQL shape, same
+ * unconfirmed-CommentUpdateInput-shape caveat: assumed `{ body: string }`,
+ * mirroring CommentCreateInput).
+ */
+export async function updateComment(commentId: string, apiKey: string, baseUrl: string, body: string): Promise<void> {
+  await graphql(apiKey, baseUrl, `mutation($id:String!,$i:CommentUpdateInput!){ commentUpdate(id:$id, input:$i){ success } }`, {
+    id: commentId,
+    i: { body: body },
   });
+}
+
+/** Mirrors tracker-notifier.ts's own deleteComment. */
+export async function deleteComment(commentId: string, apiKey: string, baseUrl: string): Promise<void> {
+  await graphql(apiKey, baseUrl, `mutation($id:String!){ commentDelete(id:$id){ success } }`, { id: commentId });
 }
 
 export function linearApiUrl(): string {

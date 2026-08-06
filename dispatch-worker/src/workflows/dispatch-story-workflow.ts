@@ -16,6 +16,7 @@ import { proxyActivities } from "@temporalio/workflow";
 import type { DispatchActivities } from "../activities/interface.js";
 import type { SpecialistOutcome } from "../activities/read-specialist-outcome.js";
 import type { SpecialistType, StoryMover } from "../activities/types.js";
+import { describeFailure } from "./describe-failure.js";
 
 // Domain-specific reason for a non-default retry policy (the SDK default is
 // generous — up to 100 attempts): these six all call external, rate-limited
@@ -29,9 +30,12 @@ const {
   resolveRepoBase,
   createStoryBranch,
   dispatchSpecialist,
+  postSpecialistStarted,
+  deleteSpecialistProgressComment,
   readSpecialistOutcome,
   findPullRequest,
   requestPullRequestReviewer,
+  postDispatchFailed,
 } = proxyActivities<DispatchActivities>({
   startToCloseTimeout: "5 minutes",
   retry: { maximumAttempts: 3 },
@@ -76,44 +80,57 @@ export interface DispatchStoryWorkflowResult {
 }
 
 export async function dispatchStoryWorkflow(input: DispatchStoryWorkflowInput): Promise<DispatchStoryWorkflowResult> {
-  const dependencyCheck = await checkDependencies(input.storyId);
-  if (!dependencyCheck.ready) {
-    return { outcome: "not-ready", blockedBy: dependencyCheck.blockedBy };
+  try {
+    const dependencyCheck = await checkDependencies(input.storyId);
+    if (!dependencyCheck.ready) {
+      return { outcome: "not-ready", blockedBy: dependencyCheck.blockedBy };
+    }
+
+    const repoBase = await resolveRepoBase(input.epicId, input.specialistType);
+
+    await createStoryBranch({
+      repoBase: repoBase,
+      epicBranch: input.epicBranch,
+      storyBranch: input.storyBranch,
+    });
+
+    const taskArn = await dispatchSpecialist({
+      storyId: input.storyId,
+      storyTitle: input.storyTitle,
+      epicId: input.epicId,
+      specialistType: input.specialistType,
+      repoBase: repoBase,
+      storyBranch: input.storyBranch,
+      epicBranch: input.epicBranch,
+      maxTurns: input.maxTurns,
+    });
+
+    const progressCommentId = await postSpecialistStarted(input.storyId);
+    await awaitSpecialistTask(taskArn, progressCommentId);
+    if (progressCommentId) {
+      await deleteSpecialistProgressComment(progressCommentId);
+    }
+
+    const outcome = await readSpecialistOutcome(input.storyId);
+    if (outcome !== "complete") {
+      // waiting/blocked/unknown: no PR exists to watch.
+      return { outcome: outcome };
+    }
+
+    const pr = await findPullRequest(repoBase, input.storyBranch, input.epicBranch);
+    await requestPullRequestReviewer(repoBase, pr.number, input.mover);
+    const prOutcome = await awaitPullRequestOutcome(input.storyId, repoBase, pr.number, pr.url);
+
+    return {
+      outcome: outcome,
+      pullRequest: { number: pr.number, url: pr.url, merged: prOutcome === "merged" },
+    };
+  } catch (err) {
+    // Posted, then re-thrown — Temporal still records the workflow itself
+    // as Failed (the durable, queryable source of truth); the comment is
+    // this tier's own equivalent of the shaping tier's fail-fast comment,
+    // so a human watching the tracker (not Temporal) also finds out.
+    await postDispatchFailed(input.storyId, describeFailure(err));
+    throw err;
   }
-
-  const repoBase = await resolveRepoBase(input.storyId, input.epicId, input.specialistType);
-
-  await createStoryBranch({
-    repoBase: repoBase,
-    epicBranch: input.epicBranch,
-    storyBranch: input.storyBranch,
-  });
-
-  const taskArn = await dispatchSpecialist({
-    storyId: input.storyId,
-    storyTitle: input.storyTitle,
-    epicId: input.epicId,
-    specialistType: input.specialistType,
-    repoBase: repoBase,
-    storyBranch: input.storyBranch,
-    epicBranch: input.epicBranch,
-    maxTurns: input.maxTurns,
-  });
-
-  await awaitSpecialistTask(taskArn);
-
-  const outcome = await readSpecialistOutcome(input.storyId);
-  if (outcome !== "complete") {
-    // waiting/blocked/unknown: no PR exists to watch.
-    return { outcome: outcome };
-  }
-
-  const pr = await findPullRequest(input.storyId, repoBase, input.storyBranch, input.epicBranch);
-  await requestPullRequestReviewer(repoBase, pr.number, input.mover);
-  const prOutcome = await awaitPullRequestOutcome(input.storyId, repoBase, pr.number, pr.url);
-
-  return {
-    outcome: outcome,
-    pullRequest: { number: pr.number, url: pr.url, merged: prOutcome === "merged" },
-  };
 }

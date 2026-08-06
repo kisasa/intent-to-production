@@ -119,6 +119,47 @@ workflow — the PR already exists and a human is already going to review it
 regardless of whether this metadata landed, so the activity only ever logs
 and returns.
 
+## Never silent — `dispatchStoryWorkflow`'s own catch-all
+
+Individual activities used to each decide for themselves whether to post a
+comment on failure — `resolveRepoBase` and `findPullRequest` did, for the one
+failure mode each anticipated; `createStoryBranch`, `dispatchSpecialist`, and
+everything else didn't. Confirmed live (2026-08-06): a real dispatch failed
+on a GitHub 404 nobody had written a comment for, discoverable only by
+querying Temporal directly (`tctl workflow show`).
+
+`dispatchStoryWorkflow`'s entire body is now wrapped in one try/catch. Any
+unhandled failure — anticipated or not — calls `postDispatchFailed` once,
+naming the real cause, then re-throws so Temporal still records the workflow
+as failed. `resolveRepoBase`'s and `findPullRequest`'s own inline
+comment-posting was removed to avoid double-posting; their thrown messages
+are already specific enough to reuse verbatim.
+
+`describeFailure` (`workflows/describe-failure.ts`) unwraps Temporal's own
+activity-failure wrapping — the workflow only ever sees a generic "Activity
+task failed" on the top-level caught error; the activity's real message
+lives one level down, on `.cause` — so the posted comment says the same
+specific thing a developer reading the raw Event History would see.
+
+## Specialist-progress comment
+
+The shaping tier's own courtesy comment (`webhook-listener/src/
+tracker-notifier.ts` — "working on this," edited every couple of minutes,
+deleted on a clean run) extended to the specialist tier, which never had it:
+`postSpecialistStarted` posts once the specialist container is dispatched,
+`awaitSpecialistTask` edits it in place every ~2 minutes with an elapsed-time
+line while it polls, and `deleteSpecialistProgressComment` removes it once
+the container exits — all before `readSpecialistOutcome` runs, so this
+courtesy comment is gone by the time the specialist's own completion report
+is the only thing left narrating what happened. Without it a story could sit
+In Progress for up to four hours with nothing visible on the tracker at all.
+
+Same best-effort discipline as reviewer-of-record above: none of the three
+ever throw. A failure to post/update/delete this comment must never fail an
+otherwise-successful dispatch. Left on the tracker (not deleted) whenever
+`dispatchSpecialist` or `awaitSpecialistTask` itself fails — the same "leave
+it as a trace of how long the run ran" rule tracker-notifier.ts follows.
+
 ## What this does NOT do
 
 - **Does not advance the story's Linear status to Done on merge.** CLAUDE.md

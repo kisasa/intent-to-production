@@ -39,4 +39,30 @@ describe("parseRepoBase", () => {
       ref: "release-2",
     });
   });
+
+  it("ignores Specification's own kickoff-question template line (confirmed live, PROJ-58)", () => {
+    const comments = [
+      "Before I can draft the API map for this epic, I need the repo coordinates. " +
+        "@architect — could you confirm the repo base for the frontend surface? Format:\n" +
+        "`Repo base — frontend: <host>/<org>/<repo>/<ref>` (e.g. `Repo base — frontend: github/example-org/example-app/main`)\n\n" +
+        "Once I have this, I'll confirm the codebase is spec-ready.",
+      "Repo base recorded, thanks @Example User:\n\n`Repo base — frontend: github/example-org/example-app/dev`\n\nDrafted the API map.",
+    ];
+    expect(parseRepoBase(comments, "frontend")).toEqual({
+      host: "github",
+      org: "example-org",
+      repo: "example-app",
+      ref: "dev",
+    });
+  });
+
+  it("rejects a template line even when it's the only candidate", () => {
+    const comments = ["Format:\n`Repo base — frontend: <host>/<org>/<repo>/<ref>` (e.g. `Repo base — frontend: github/example-org/example-app/main`)"];
+    expect(parseRepoBase(comments, "frontend")).toBeNull();
+  });
+
+  it("rejects an angle-bracket placeholder even without an 'e.g.' marker", () => {
+    const comments = ["Repo base — frontend: <host>/<org>/<repo>/<ref>"];
+    expect(parseRepoBase(comments, "frontend")).toBeNull();
+  });
 });

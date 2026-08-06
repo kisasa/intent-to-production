@@ -58,11 +58,14 @@ describe("dispatchStoryWorkflow", () => {
         resolveRepoBase: unexpectedCall("resolveRepoBase"),
         createStoryBranch: unexpectedCall("createStoryBranch"),
         dispatchSpecialist: unexpectedCall("dispatchSpecialist"),
+        postSpecialistStarted: unexpectedCall("postSpecialistStarted"),
         awaitSpecialistTask: unexpectedCall("awaitSpecialistTask"),
+        deleteSpecialistProgressComment: unexpectedCall("deleteSpecialistProgressComment"),
         readSpecialistOutcome: unexpectedCall("readSpecialistOutcome"),
         findPullRequest: unexpectedCall("findPullRequest"),
         requestPullRequestReviewer: unexpectedCall("requestPullRequestReviewer"),
         awaitPullRequestOutcome: unexpectedCall("awaitPullRequestOutcome"),
+        postDispatchFailed: unexpectedCall("postDispatchFailed"),
       },
     });
 
@@ -89,11 +92,14 @@ describe("dispatchStoryWorkflow", () => {
         resolveRepoBase: async () => ({ host: "github", org: "example-org", repo: "example-api", ref: "main" }),
         createStoryBranch: async () => {},
         dispatchSpecialist: async () => "arn:aws:ecs:us-east-1:123:task/example-specialist-prod/abc123",
+        postSpecialistStarted: async () => "comment-1",
         awaitSpecialistTask: async () => {},
+        deleteSpecialistProgressComment: async () => {},
         readSpecialistOutcome: async () => "waiting",
         findPullRequest: unexpectedCall("findPullRequest"),
         requestPullRequestReviewer: unexpectedCall("requestPullRequestReviewer"),
         awaitPullRequestOutcome: unexpectedCall("awaitPullRequestOutcome"),
+        postDispatchFailed: unexpectedCall("postDispatchFailed"),
       },
     });
 
@@ -132,8 +138,15 @@ describe("dispatchStoryWorkflow", () => {
           calls.push("dispatchSpecialist");
           return "arn:aws:ecs:us-east-1:123:task/example-specialist-prod/abc123";
         },
+        postSpecialistStarted: async () => {
+          calls.push("postSpecialistStarted");
+          return "comment-1";
+        },
         awaitSpecialistTask: async () => {
           calls.push("awaitSpecialistTask");
+        },
+        deleteSpecialistProgressComment: async () => {
+          calls.push("deleteSpecialistProgressComment");
         },
         readSpecialistOutcome: async () => {
           calls.push("readSpecialistOutcome");
@@ -150,6 +163,7 @@ describe("dispatchStoryWorkflow", () => {
           calls.push("awaitPullRequestOutcome");
           return "merged";
         },
+        postDispatchFailed: unexpectedCall("postDispatchFailed"),
       },
     });
 
@@ -170,11 +184,57 @@ describe("dispatchStoryWorkflow", () => {
       "resolveRepoBase",
       "createStoryBranch",
       "dispatchSpecialist",
+      "postSpecialistStarted",
       "awaitSpecialistTask",
+      "deleteSpecialistProgressComment",
       "readSpecialistOutcome",
       "findPullRequest",
       "requestPullRequestReviewer",
       "awaitPullRequestOutcome",
     ]);
+  }, 30_000);
+
+  it("posts a dispatch-failed comment naming the real cause, then still fails the workflow (never silent)", async () => {
+    const { client, nativeConnection } = testEnv;
+    const taskQueue = "test-unanticipated-failure";
+    const postedMessages: string[] = [];
+
+    const worker = await Worker.create({
+      connection: nativeConnection,
+      taskQueue: taskQueue,
+      workflowsPath: WORKFLOWS_PATH,
+      activities: {
+        checkDependencies: async () => ({ ready: true, blockedBy: [] }),
+        resolveRepoBase: async () => ({ host: "github", org: "example-org", repo: "example-api", ref: "main" }),
+        // No activity anticipates this failure with its own comment — the
+        // exact shape of today's real createStoryBranch/GitHub-404 incident.
+        createStoryBranch: async () => {
+          throw new Error("Could not read epic branch \"proj-10-refunds\" in kisasa/example-api: GitHub returned 404");
+        },
+        dispatchSpecialist: unexpectedCall("dispatchSpecialist"),
+        postSpecialistStarted: unexpectedCall("postSpecialistStarted"),
+        awaitSpecialistTask: unexpectedCall("awaitSpecialistTask"),
+        deleteSpecialistProgressComment: unexpectedCall("deleteSpecialistProgressComment"),
+        readSpecialistOutcome: unexpectedCall("readSpecialistOutcome"),
+        findPullRequest: unexpectedCall("findPullRequest"),
+        requestPullRequestReviewer: unexpectedCall("requestPullRequestReviewer"),
+        awaitPullRequestOutcome: unexpectedCall("awaitPullRequestOutcome"),
+        postDispatchFailed: async (_storyId: string, message: string) => {
+          postedMessages.push(message);
+        },
+      },
+    });
+
+    await worker.runUntil(async () => {
+      await expect(
+        client.workflow.execute(dispatchStoryWorkflow, {
+          workflowId: "test-unanticipated-failure-1",
+          taskQueue: taskQueue,
+          args: [baseInput],
+        }),
+      ).rejects.toThrow();
+    });
+
+    expect(postedMessages).toEqual(['Could not read epic branch "proj-10-refunds" in kisasa/example-api: GitHub returned 404']);
   }, 30_000);
 });

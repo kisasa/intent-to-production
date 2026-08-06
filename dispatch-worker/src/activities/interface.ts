@@ -20,12 +20,15 @@ import type { SpecialistType, StoryMover } from "./types.js";
 
 export interface DispatchActivities {
   checkDependencies(storyId: string): Promise<DependencyCheckResult>;
-  resolveRepoBase(storyId: string, epicId: string, surface: SpecialistType): Promise<RepoBase>;
+  resolveRepoBase(epicId: string, surface: SpecialistType): Promise<RepoBase>;
   createStoryBranch(input: CreateStoryBranchInput): Promise<void>;
   dispatchSpecialist(input: DispatchSpecialistInput): Promise<string>;
-  awaitSpecialistTask(taskArn: string): Promise<void>;
+  postSpecialistStarted(storyId: string): Promise<string | null>;
+  awaitSpecialistTask(taskArn: string, progressCommentId: string | null): Promise<void>;
+  deleteSpecialistProgressComment(commentId: string): Promise<void>;
   readSpecialistOutcome(storyId: string): Promise<SpecialistOutcome>;
-  findPullRequest(storyId: string, repoBase: RepoBase, headBranch: string, baseBranch: string): Promise<PullRequestReference>;
+  findPullRequest(repoBase: RepoBase, headBranch: string, baseBranch: string): Promise<PullRequestReference>;
   requestPullRequestReviewer(repoBase: RepoBase, prNumber: number, mover: StoryMover | null): Promise<void>;
   awaitPullRequestOutcome(storyId: string, repoBase: RepoBase, prNumber: number, prUrl: string): Promise<PullRequestOutcome>;
+  postDispatchFailed(storyId: string, message: string): Promise<void>;
 }

@@ -22,8 +22,47 @@ export interface DependencyCheckResult {
   readonly blockedBy: string[];
 }
 
-const BULLET_IDENTIFIER = /^-\s*([A-Z][A-Z0-9]*-\d+)/;
-const HEADING_LINE = /^\*\*.+\*\*$/;
+// "-" or "*" — both are valid Markdown bullet markers and Decompose isn't
+// pinned to one (the References section on this exact story used "*" while
+// its own Blocking-dependencies section used "-"). The identifier's own
+// hyphen (e.g. "PROJ-42") is real tracker syntax, not incidental formatting,
+// so that one stays literal.
+const BULLET_IDENTIFIER = /^[-*]\s*([A-Z][A-Z0-9]*-\d+)/;
+
+/**
+ * Strips everything but letters and digits, lowercased, so heading-text
+ * comparisons key on the actual words rather than the punctuation/whitespace
+ * around them: "Blocking dependencies", "Blocking-Dependencies", and
+ * "blocking   dependencies" all normalize to "blockingdependencies". Formatting
+ * (bold vs. heading markup, spacing, punctuation) is never the thing worth
+ * matching on — Decompose doesn't render section headings identically every
+ * time, and every occurrence of an exact-literal match against agent-produced
+ * text in this file has broken once already (see below).
+ */
+function normalizeForComparison(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/**
+ * A section heading, in either markup form seen in real story descriptions:
+ * `**Blocking dependencies**` (story-contract.md's own documented example)
+ * or `## Blocking dependencies` (what Decompose actually renders live —
+ * confirmed against PROJ-63, 2026-08-06 — matching the `## References`
+ * footer convention the tracker-writing prose standard introduced the same
+ * day). Accepting both, rather than picking one, is the lesson the
+ * status-name mismatch just taught: match what Decompose actually produces,
+ * not the one literal string a doc happened to show.
+ */
+function headingText(line: string): string | null {
+  const trimmed = line.trim();
+  const bold = trimmed.match(/^\*\*(.+)\*\*$/);
+  if (bold?.[1]) return bold[1].trim();
+  const heading = trimmed.match(/^#{1,6}\s+(.+)$/);
+  if (heading?.[1]) return heading[1].trim();
+  return null;
+}
+
+const BLOCKING_DEPENDENCIES_HEADING = normalizeForComparison("Blocking dependencies");
 
 /**
  * Extracts blocker identifiers from a story description's "Blocking
@@ -35,18 +74,20 @@ const HEADING_LINE = /^\*\*.+\*\*$/;
  */
 export function parseBlockingDependencyIds(description: string): string[] {
   const lines = description.split("\n");
-  const headingIndex = lines.findIndex((line) => line.trim() === "**Blocking dependencies**");
+  const headingIndex = lines.findIndex((line) => {
+    const text = headingText(line);
+    return text !== null && normalizeForComparison(text) === BLOCKING_DEPENDENCIES_HEADING;
+  });
   if (headingIndex === -1) {
-    throw new Error('Story description has no "**Blocking dependencies**" section');
+    throw new Error('Story description has no "Blocking dependencies" section');
   }
 
   const ids: string[] = [];
   for (let i = headingIndex + 1; i < lines.length; i++) {
     const line = lines[i];
     if (line === undefined) break;
-    const trimmed = line.trim();
-    if (HEADING_LINE.test(trimmed)) break;
-    const match = trimmed.match(BULLET_IDENTIFIER);
+    if (headingText(line) !== null) break;
+    const match = line.trim().match(BULLET_IDENTIFIER);
     if (match?.[1]) ids.push(match[1]);
   }
   return ids;

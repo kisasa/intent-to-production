@@ -15,9 +15,11 @@ import { createCheckDependenciesActivity } from "./activities/check-dependencies
 import { createStoryBranch } from "./activities/create-story-branch.js";
 import { createDispatchSpecialistActivity } from "./activities/dispatch-specialist.js";
 import { createFindPullRequestActivity } from "./activities/find-pull-request.js";
+import { createPostDispatchFailedActivity } from "./activities/post-dispatch-failed.js";
 import { createReadSpecialistOutcomeActivity } from "./activities/read-specialist-outcome.js";
 import { createRequestPullRequestReviewerActivity } from "./activities/request-pull-request-reviewer.js";
 import { createResolveRepoBaseActivity } from "./activities/resolve-repo-base.js";
+import { createPostSpecialistStartedActivity, createDeleteSpecialistProgressActivity } from "./activities/specialist-progress.js";
 import { createLogger } from "./logger.js";
 import { loadLocalEnvFile } from "./local-env-file.js";
 import { connectToTemporal } from "./temporal-connection.js";
@@ -65,11 +67,14 @@ async function main(): Promise<void> {
       resolveRepoBase: createResolveRepoBaseActivity(config),
       createStoryBranch: (input: Parameters<typeof createStoryBranch>[1]) => createStoryBranch(config.githubToken, input),
       dispatchSpecialist: createDispatchSpecialistActivity(config),
+      postSpecialistStarted: createPostSpecialistStartedActivity(config),
       awaitSpecialistTask: createAwaitSpecialistTaskActivity(config),
+      deleteSpecialistProgressComment: createDeleteSpecialistProgressActivity(config),
       readSpecialistOutcome: createReadSpecialistOutcomeActivity(config),
       findPullRequest: createFindPullRequestActivity(config),
       requestPullRequestReviewer: createRequestPullRequestReviewerActivity(config),
       awaitPullRequestOutcome: createAwaitPullRequestOutcomeActivity(config),
+      postDispatchFailed: createPostDispatchFailedActivity(config),
     },
   });
 

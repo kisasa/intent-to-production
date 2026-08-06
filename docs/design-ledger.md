@@ -2423,3 +2423,168 @@ line.
   Not scheduled: one instance is honest for a single engagement, and the gap has
   not yet cost a real run. Revisit when it does, or when deploy frequency rises
   enough that the gap stops being theoretical.
+
+## First live specialist-dispatch attempts — three real bugs, one general lesson (2026-08-06)
+
+the architect ran the pipeline live against a real sandbox (the sandbox team, `github/
+example-org/example-app`), through decompose, and moved the first real story
+(PROJ-63) to `In Progress` to trigger a specialist dispatch. Two real failures,
+each caught from real logs the architect forwarded, not from a test suite — both were
+already unit-tested against hand-written fixtures that happened to match an
+assumed literal, and both broke the instant they met Decompose's actual live
+output.
+
+**Bug 1: the tracker's real status name doesn't match the framework's own
+vocabulary.** `lanes/specialist-dispatch.ts` gated on the literal
+`"In-Process"` — `CLAUDE.md`'s own hyphenated pipeline-stage name — but this
+team's real Linear state is named `"In Progress"` (Linear's stock name,
+confirmed straight from a live payload). The lane silently never fired
+(`no-fire — no lane triggers on status "In Progress"`); nothing was broken
+until a real story actually tried to move. Fixed: the literal in
+`specialist-dispatch.ts` now matches the tracker's real configured name, with
+an inline note explaining this is engagement-specific tracker configuration —
+the same category as the repo base or the specialist container name — and
+belongs in the Linear-specific lane file, not in `CLAUDE.md`'s tool-agnostic
+vocabulary.
+
+**Bug 2: `check-dependencies.ts` matched a doc example, not Decompose's real
+output.** Once the story actually dispatched, `checkDependencies` threw
+`Story description has no "**Blocking dependencies**" section` — PROJ-63's
+real description used `## Blocking dependencies` (a real markdown heading),
+matching the new `## References` footer convention from the same day's
+tracker-writing work, while `story-contract.md`'s own documented example
+still shows the bold-text form. Same root cause as Bug 1: a hardcoded literal
+built against an assumption, never checked against live Decompose output.
+
+**General lesson, given directly by the architect and applied immediately, not just
+to this file:** when parsing text an LLM agent renders into the tracker
+(headings, bullet markers), compare on a normalized form — strip
+formatting/punctuation, accept the markup variants that actually occur —
+rather than one exact literal. Applied: `check-dependencies.ts`'s heading
+match now strips all non-alphanumeric characters before comparing (so
+`**Blocking dependencies**`, `## Blocking-Dependencies`, and
+`###   blocking dependencies` all normalize identically), and its bullet
+regex now accepts both `-` and `*` markers — a second, worse-than-the-crash
+risk caught in the same pass: PROJ-63's own References section used `*` while
+its Blocking-dependencies section used `-`, and a bullet-marker mismatch
+would have silently returned zero blockers on a story that actually had some,
+rather than throwing. The identifier's own hyphen (`PROJ-42`) stays literal —
+real tracker syntax, not incidental formatting.
+
+**Explicitly not the same class of fix, stated to avoid over-generalizing:**
+Bug 1 (status name) is a genuine wording difference — "Process" and
+"Progress" are different words, not a formatting variant of the same word —
+so normalization would not have caught it. That one needed the real string,
+confirmed against live data; Bug 2 needed normalization. The distinguishing
+question for future cases: would a human reading both forms agree they mean
+the same words, just decorated differently? Normalize only when yes.
+
+**Bug 3, found by querying Temporal directly rather than waiting on another
+pasted log file: `resolveRepoBase` matched Specification's own kickoff
+question, not the architect's recorded answer.** With Bugs 1 and 2 fixed,
+the retry got one activity further and `createStoryBranch` failed on
+`Unsupported repo-base host "<host>"` — the literal placeholder text.
+`parseRepoBase`'s regex scan found `` `Repo base — frontend:
+<host>/<org>/<repo>/<ref>` (e.g. `Repo base — frontend:
+github/example-org/example-app/main`) `` — the exact format instructions
+Specification's kickoff question shows the architect, verbatim, so the
+architect knows what to reply with — before it ever reached the real
+recorded line, `` `Repo base — frontend: github/example-org/example-app/dev` ``,
+posted later in the same epic's thread. This is not a one-off: every future
+epic's Specification kickoff carries this same instructional text forever,
+since showing the target format is how the question teaches the architect
+what to write. Fixed with two independent, content-based signals — reject a
+matched line if any captured segment contains `<`/`>` (never valid in a real
+host/org/repo/ref), or if the line contains "e.g." (the fabricated example
+always sits beside it) — rather than trying to fix the comment-ordering
+assumption the old code leaned on (`parseRepoBase`'s own header claimed
+"most-recent-first"; live evidence contradicts a simple createdAt-ascending
+read of Linear's raw `comments` field, and the true default order still
+isn't confirmed — moot now, since content-based rejection makes ordering
+irrelevant to this failure mode specifically, but recorded here rather than
+quietly resolved, since this file's rule is to say what's still unconfirmed).
+
+**A second, independent bug caught by the same test: the `ref` capture
+included a trailing backtick.** Both the fabricated example and the real
+recorded line are written as a single backtick-wrapped code span; the
+regex's final segment was a bare `\S+`, so `` `.../dev` `` captured `ref` as
+`` dev` `` — a trailing-backtick tail that had been silently riding along in
+every prior successful-looking parse, never noticed because no downstream
+consumer had printed the raw value back until this session's own test
+assertion did. Fixed by excluding the backtick character from all four
+segments, not just "/" and whitespace.
+
+**Method note:** all three bugs this session were found from real
+artifacts, not assumption — the first two from pasted log files, the third
+by running `tctl` directly inside the local `temporal` container
+(`docker compose exec temporal tctl --address temporal:7233 --ns default
+workflow show --workflow_id <id>`) to read the actual `ActivityTaskCompleted`
+result payload rather than waiting for another log export. Faster, and it
+reads the same durable Event History a pasted log can only narrate secondhand.
+
+**Specialist-progress comment, added the same session (still unverified
+against a real specialist run at time of writing — the two bugs above were
+found and fixed before a real dispatch reached this activity).** The shaping
+tier's courtesy comment (`tracker-notifier.ts`: post "working on this" before
+the call opens, edit every couple of minutes, delete on a clean run) had no
+specialist-tier equivalent — a story could sit `In Progress` for up to four
+hours with nothing visible on the tracker until the specialist's own
+completion report landed, a startup crash posted a fallback comment, or
+nothing at all. Extended, in `dispatch-worker`: `postSpecialistStarted` posts
+once the container is dispatched, `awaitSpecialistTask`'s existing poll loop
+edits it every ~2 minutes (matching `activation-config.ts`'s own
+`progressUpdateIntervalMs`) with an elapsed-time line, and
+`deleteSpecialistProgressComment` removes it once the container exits —
+before `readSpecialistOutcome` runs, so the courtesy comment is gone by the
+time the specialist's own report is the only thing narrating what happened.
+One forced deviation from `tracker-notifier.ts`'s exact shape: that module
+picks one quip per activation and reuses it across every comment because one
+function call holds it in a shared closure; here, posting the started
+comment and polling are two separate Temporal activities with no shared
+closure, and the workflow itself cannot call `Math.random()` (workflow code
+must replay deterministically) to pick one value and thread it through. Each
+side picks its own quip once instead — a cosmetic mismatch between the
+started comment and the progress edits, accepted rather than plumbed around.
+
+## Development tier's own "never silent" guarantee (2026-08-06)
+
+Direct feedback from the architect after the bugs above: the shaping tier
+(Intake/Specification/Decompose) has always been good about this — a
+working-on-it comment, a detailed error comment if something goes wrong.
+The development tier didn't have the same guarantee, and it showed: the
+`createStoryBranch` GitHub-404 failure earlier this same session posted
+nothing to the story at all — the only way to find out was querying
+Temporal directly. Before this, individual activities each decided for
+themselves whether to post a failure comment: `resolveRepoBase` and
+`findPullRequest` did, for the one failure mode each anticipated;
+`createStoryBranch`, `dispatchSpecialist`, and everything else didn't.
+Ad hoc coverage, not a guarantee — exactly the same category of problem the
+shaping tier already solved and stated as a standing principle ("Every
+activation terminates in a visible tracker state — never silence," above),
+just never carried over to this tier when it was built.
+
+**Fix: centralize, don't keep enumerating.** `dispatchStoryWorkflow`'s
+entire body is now one try/catch. Any unhandled failure — anticipated or
+not — calls a new `postDispatchFailed` activity once, naming the real
+cause, then re-throws (Temporal still records the workflow itself as
+Failed; the comment is this tier's own equivalent of the shaping tier's
+fail-fast comment, so a human watching the tracker, not Temporal, also
+finds out). `resolveRepoBase`'s and `findPullRequest`'s own inline
+comment-posting was removed — once the catch-all existed, keeping both
+would have double-posted for those two specific cases — and their thrown
+messages were tightened to be actionable on their own, since the catch-all
+reuses them verbatim rather than duplicating the guidance in two places.
+
+**One real Temporal-specific wrinkle, confirmed rather than assumed:**
+the workflow's own caught error is not the activity's original one.
+Temporal wraps it one layer — the outer failure's message is a generic
+"Activity task failed"; the activity's real, specific message ("Could not
+read epic branch ... GitHub returned 404") lives one level down, on
+`.cause`. Confirmed directly from a real test run's own log output, not
+inferred from SDK docs. `describeFailure` (`workflows/describe-failure.ts`)
+prefers that inner message when present, falling back to the outer one
+otherwise. Pulled into its own module with zero Temporal imports —
+`dispatch-story-workflow.ts`'s own module-level `proxyActivities(...)`
+calls require a real workflow execution context to run at all, so a plain
+vitest import of that file for a unit test would throw; the extraction is
+what makes `describeFailure` testable outside `TestWorkflowEnvironment`.

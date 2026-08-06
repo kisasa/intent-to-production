@@ -9,14 +9,15 @@
  *
  * No matching open PR is a real specialist-compliance gap (reported
  * "complete," didn't actually open the right PR) — not silently treated as
- * "still working." Posts a comment naming it and throws
- * `ApplicationFailure.nonRetryable`, same category as
- * `resolve-repo-base.ts`'s own missing-repo-base handling.
+ * "still working." Throws `ApplicationFailure.nonRetryable` with a message
+ * actionable on its own — dispatchStoryWorkflow's own catch-all posts it to
+ * the story (see post-dispatch-failed.ts); this activity used to post its
+ * own comment too, which would have double-posted once that catch-all
+ * existed. Same category as `resolve-repo-base.ts`'s own handling.
  */
 
 import { ApplicationFailure } from "@temporalio/activity";
 import { githubRequest, isClientError } from "../github-request.js";
-import { postComment, linearApiUrl } from "../tracker.js";
 import type { WorkerConfig } from "../worker-config.js";
 import type { RepoBase } from "./resolve-repo-base.js";
 
@@ -44,7 +45,6 @@ export function pickPullRequest(candidates: GitHubPullRequestListItem[]): PullRe
 
 export function createFindPullRequestActivity(config: WorkerConfig) {
   return async function findPullRequest(
-    storyId: string,
     repoBase: RepoBase,
     headBranch: string,
     baseBranch: string,
@@ -68,16 +68,9 @@ export function createFindPullRequestActivity(config: WorkerConfig) {
 
     const pr = pickPullRequest(result.json);
     if (!pr) {
-      await postComment(
-        storyId,
-        config.linearAgentApiKey,
-        linearApiUrl(),
-        `**Dispatch blocked** _(automated)_\n\nThe specialist reported this story complete, but no open pull request ` +
-          `was found from \`${headBranch}\` into \`${baseBranch}\` in ${owner}/${repo}. Check that the PR was actually ` +
-          `opened against the epic branch.`,
-      );
       throw ApplicationFailure.nonRetryable(
-        `No open pull request found from "${headBranch}" into "${baseBranch}" in ${owner}/${repo}`,
+        `The specialist reported this story complete, but no open pull request was found from "${headBranch}" ` +
+          `into "${baseBranch}" in ${owner}/${repo}. Check that the PR was actually opened against the epic branch.`,
         "PullRequestNotFound",
       );
     }
