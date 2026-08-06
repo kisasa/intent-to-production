@@ -30,9 +30,10 @@ describe("makeDispatcher", () => {
   it("fires the agent immediately on first pass", () => {
     const agent = vi.fn();
     const dispatch = makeDispatcher({ debounceMs: 5000 });
-    dispatch("disp-first-1", "first", "Some Title", "trace-1", agent);
+    const actor = { id: "user-1", name: "Example User", email: "user@example.com" };
+    dispatch("disp-first-1", "first", "Some Title", "trace-1", actor, agent);
     expect(agent).toHaveBeenCalledOnce();
-    expect(agent).toHaveBeenCalledWith("disp-first-1", "first", "Some Title", "trace-1");
+    expect(agent).toHaveBeenCalledWith("disp-first-1", "first", "Some Title", "trace-1", actor);
   });
 
   it("debounces follow-up calls and fires once after the window elapses", () => {
@@ -40,14 +41,14 @@ describe("makeDispatcher", () => {
     const agent = vi.fn();
     const dispatch = makeDispatcher({ debounceMs: 500 });
 
-    dispatch("disp-debounce-1", "follow-up", null, "trace-a", agent);
-    dispatch("disp-debounce-1", "follow-up", null, "trace-b", agent);
-    dispatch("disp-debounce-1", "follow-up", null, "trace-c", agent);
+    dispatch("disp-debounce-1", "follow-up", null, "trace-a", null, agent);
+    dispatch("disp-debounce-1", "follow-up", null, "trace-b", null, agent);
+    dispatch("disp-debounce-1", "follow-up", null, "trace-c", null, agent);
     expect(agent).not.toHaveBeenCalled();
 
     vi.advanceTimersByTime(500);
     expect(agent).toHaveBeenCalledOnce();
     // The last call's trace id is the one that survives the coalescing.
-    expect(agent).toHaveBeenCalledWith("disp-debounce-1", "follow-up", null, "trace-c");
+    expect(agent).toHaveBeenCalledWith("disp-debounce-1", "follow-up", null, "trace-c", null);
   });
 });

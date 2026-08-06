@@ -36,3 +36,5 @@ services:
     environment:
       GITHUB_TOKEN: ""
       LINEAR_AGENT_API_KEY: ""
+      # Optional — e.g. {"you@example.com":"your-github-login"}
+      REVIEWER_EMAIL_TO_GITHUB_LOGIN: ""

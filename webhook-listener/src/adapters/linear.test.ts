@@ -112,6 +112,31 @@ describe("parseEvent — Issue update", () => {
     });
   });
 
+  it("carries the webhook's actor through on status_changed — reviewer-of-record's source", async () => {
+    const payload = JSON.stringify({
+      type: "Issue",
+      action: "update",
+      actor: { id: "user-1", name: "Example User", email: "user@example.com", type: "user" },
+      data: { id: "issue-3", state: { name: "In-Process" }, labelIds: [] },
+      updatedFrom: { stateId: "old-state-id" },
+    });
+    expect(await adapter.parseEvent(payload, "test-trace")).toMatchObject({
+      kind: "status_changed",
+      actor: { id: "user-1", name: "Example User", email: "user@example.com" },
+    });
+  });
+
+  it("reports a null actor when the webhook's actor has no email", async () => {
+    const payload = JSON.stringify({
+      type: "Issue",
+      action: "update",
+      actor: { id: "bot-1", name: "Some Bot", type: "user" },
+      data: { id: "issue-3b", state: { name: "In-Process" }, labelIds: [] },
+      updatedFrom: { stateId: "old-state-id" },
+    });
+    expect(await adapter.parseEvent(payload, "test-trace")).toMatchObject({ actor: null });
+  });
+
   it("returns label_added with only the newly applied label's name", async () => {
     stubLabelLookup("issueLabels", [
       { id: "l1", name: "bug" },

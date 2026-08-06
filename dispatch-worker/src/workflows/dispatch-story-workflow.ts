@@ -15,7 +15,7 @@
 import { proxyActivities } from "@temporalio/workflow";
 import type { DispatchActivities } from "../activities/interface.js";
 import type { SpecialistOutcome } from "../activities/read-specialist-outcome.js";
-import type { SpecialistType } from "../activities/types.js";
+import type { SpecialistType, StoryMover } from "../activities/types.js";
 
 // Domain-specific reason for a non-default retry policy (the SDK default is
 // generous — up to 100 attempts): these six all call external, rate-limited
@@ -31,6 +31,7 @@ const {
   dispatchSpecialist,
   readSpecialistOutcome,
   findPullRequest,
+  requestPullRequestReviewer,
 } = proxyActivities<DispatchActivities>({
   startToCloseTimeout: "5 minutes",
   retry: { maximumAttempts: 3 },
@@ -62,6 +63,8 @@ export interface DispatchStoryWorkflowInput {
   readonly storyBranch: string;
   readonly epicBranch: string;
   readonly maxTurns: number;
+  /** Whoever moved this story to In-Process — reviewer-of-record. Null if the triggering webhook carried no resolvable actor. */
+  readonly mover: StoryMover | null;
 }
 
 export interface DispatchStoryWorkflowResult {
@@ -106,6 +109,7 @@ export async function dispatchStoryWorkflow(input: DispatchStoryWorkflowInput): 
   }
 
   const pr = await findPullRequest(input.storyId, repoBase, input.storyBranch, input.epicBranch);
+  await requestPullRequestReviewer(repoBase, pr.number, input.mover);
   const prOutcome = await awaitPullRequestOutcome(input.storyId, repoBase, pr.number, pr.url);
 
   return {

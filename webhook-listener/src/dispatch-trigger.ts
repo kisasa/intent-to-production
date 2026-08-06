@@ -12,17 +12,21 @@
  * tested) — this trigger's only job is gathering input and starting the
  * workflow.
  *
- * What this does NOT do, named and deferred (docs/design-ledger.md,
- * "automated dispatch and BRD closure"): record the status-mover as
- * reviewer-of-record on the specialist's eventual PR. That needs a Linear
- * webhook field not yet confirmed against a live payload and touches three
- * packages — out of scope for this pass.
+ * Reviewer-of-record: `actor` is the webhook's own TrackerActor for this
+ * status move — confirmed against live payloads 2026-08-06 that Linear
+ * carries it uniformly, including for status_changed (docs/design-ledger.md,
+ * "reviewer-of-record"). Passed into the workflow as `mover`; dispatch-worker
+ * resolves it to a GitHub login via its own static mapping and requests them
+ * as a reviewer once the specialist's PR is found. `actor` can be null in
+ * principle (a malformed or partial webhook) — the workflow input just
+ * carries that through; dispatch-worker's activity treats a null mover as
+ * "nothing to request," not an error.
  */
 
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 import type { Client } from "@temporalio/client";
 import { createLogger } from "./logger.js";
-import type { AgentFn } from "./tracker-event.js";
+import type { AgentFn, TrackerActor } from "./tracker-event.js";
 import { fetchStoryDispatchContext, type SpecialistType } from "./story-context.js";
 import trackerNotifier from "./tracker-notifier.js";
 
@@ -49,6 +53,7 @@ interface DispatchStoryWorkflowInput {
   readonly storyBranch: string;
   readonly epicBranch: string;
   readonly maxTurns: number;
+  readonly mover: TrackerActor | null;
 }
 
 export interface DispatchTriggerConfig {
@@ -60,7 +65,13 @@ export interface DispatchTriggerConfig {
 }
 
 export function createDispatchTrigger(config: DispatchTriggerConfig): AgentFn {
-  return async function dispatchTrigger(entityId: string, _pass, entityTitle: string | null, traceId: string) {
+  return async function dispatchTrigger(
+    entityId: string,
+    _pass,
+    entityTitle: string | null,
+    traceId: string,
+    actor: TrackerActor | null,
+  ) {
     const reqLog = log.child(traceId);
     reqLog.trace(`specialist-dispatch: gathering context for story ${entityId}`);
 
@@ -84,6 +95,7 @@ export function createDispatchTrigger(config: DispatchTriggerConfig): AgentFn {
       storyBranch: contextResult.context.storyBranch,
       epicBranch: contextResult.context.epicBranch,
       maxTurns: config.maxTurns ?? DEFAULT_MAX_TURNS,
+      mover: actor,
     };
 
     try {

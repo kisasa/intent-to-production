@@ -23,6 +23,39 @@ function requireEnv(name: string): string {
   return value;
 }
 
+/**
+ * Reviewer-of-record's identity mapping: Linear only gives the pipeline a
+ * story-mover's email (docs/design-ledger.md, "reviewer-of-record"); GitHub's
+ * requested-reviewers API needs a login. No automatic way to bridge the two
+ * reliably exists (an email-search API call would silently miss anyone whose
+ * GitHub account doesn't expose a matching public email), so this is a static,
+ * architect-maintained table instead — reviewed the same way a conventions
+ * spec is, kept current as people join/leave.
+ *
+ * Optional and defaults to empty: an engagement that hasn't filled this in yet
+ * still dispatches normally, it just skips requesting a reviewer (see
+ * `request-pull-request-reviewer.ts`) rather than failing every dispatch.
+ */
+export function parseReviewerMapping(raw: string | undefined): Map<string, string> {
+  if (!raw) return new Map();
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    throw new Error(`REVIEWER_EMAIL_TO_GITHUB_LOGIN is not valid JSON: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error("REVIEWER_EMAIL_TO_GITHUB_LOGIN must be a JSON object of email -> GitHub login");
+  }
+  const entries = Object.entries(parsed as Record<string, unknown>);
+  for (const [email, login] of entries) {
+    if (typeof login !== "string" || login.length === 0) {
+      throw new Error(`REVIEWER_EMAIL_TO_GITHUB_LOGIN's entry for "${email}" must be a non-empty string GitHub login`);
+    }
+  }
+  return new Map(entries as [string, string][]);
+}
+
 export interface WorkerConfig {
   readonly temporalHost: string;
   readonly temporalNamespace: string;
@@ -61,6 +94,9 @@ export interface WorkerConfig {
 
   readonly githubToken: string;
   readonly linearAgentApiKey: string;
+
+  /** Reviewer-of-record's static Linear-email -> GitHub-login table. See parseReviewerMapping. */
+  readonly reviewerEmailToGithubLogin: Map<string, string>;
 }
 
 export function loadWorkerConfig(): WorkerConfig {
@@ -82,5 +118,7 @@ export function loadWorkerConfig(): WorkerConfig {
 
     githubToken: requireEnv("GITHUB_TOKEN"),
     linearAgentApiKey: requireEnv("LINEAR_AGENT_API_KEY"),
+
+    reviewerEmailToGithubLogin: parseReviewerMapping(process.env.REVIEWER_EMAIL_TO_GITHUB_LOGIN),
   };
 }

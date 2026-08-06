@@ -55,6 +55,7 @@ function event(overrides: Partial<TrackerEvent>): TrackerEvent {
     labels: [],
     authorId: null,
     addedLabels: [],
+    actor: null,
     ...overrides,
   };
 }
@@ -202,6 +203,15 @@ describe("route — specialist-dispatch (status_entered, presence-gated, stories
       cfg,
     );
     expect(decision).toMatchObject({ fire: true, pass: "first", lane: "specialist-dispatch" });
+  });
+
+  it("carries the event's actor through as entityActor — reviewer-of-record's source", () => {
+    const mover = { id: "user-1", name: "Example User", email: "user@example.com" };
+    const decision = route(
+      event({ kind: "status_changed", entityType: "issue", status: "In-Process", labels: ["specialist:backend"], actor: mover }),
+      cfg,
+    );
+    expect(decision).toMatchObject({ fire: true, entityActor: mover });
   });
 
   it("does not fire for an epic entering In-Process with no specialist:* label — the presence gate", () => {

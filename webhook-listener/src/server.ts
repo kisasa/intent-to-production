@@ -97,7 +97,7 @@ app.post("/webhooks/linear", async (c) => {
   }
 
   reqLog.info(`FIRE — lane=${decision.lane} entity=${decision.entityId} pass=${decision.pass}`);
-  dispatch(decision.entityId, decision.pass, decision.entityTitle, traceId, decision.agent);
+  dispatch(decision.entityId, decision.pass, decision.entityTitle, traceId, decision.entityActor, decision.agent);
   return c.json({ ok: true, fired: true });
 });
 

@@ -16,6 +16,7 @@ import { createStoryBranch } from "./activities/create-story-branch.js";
 import { createDispatchSpecialistActivity } from "./activities/dispatch-specialist.js";
 import { createFindPullRequestActivity } from "./activities/find-pull-request.js";
 import { createReadSpecialistOutcomeActivity } from "./activities/read-specialist-outcome.js";
+import { createRequestPullRequestReviewerActivity } from "./activities/request-pull-request-reviewer.js";
 import { createResolveRepoBaseActivity } from "./activities/resolve-repo-base.js";
 import { createLogger } from "./logger.js";
 import { loadLocalEnvFile } from "./local-env-file.js";
@@ -67,6 +68,7 @@ async function main(): Promise<void> {
       awaitSpecialistTask: createAwaitSpecialistTaskActivity(config),
       readSpecialistOutcome: createReadSpecialistOutcomeActivity(config),
       findPullRequest: createFindPullRequestActivity(config),
+      requestPullRequestReviewer: createRequestPullRequestReviewerActivity(config),
       awaitPullRequestOutcome: createAwaitPullRequestOutcomeActivity(config),
     },
   });

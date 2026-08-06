@@ -1945,6 +1945,69 @@ on a from-scratch stand-up, `temporal-workers` now deploys before
   Tests/E2E specialist dispatch (still the human-in-Claude-Code model,
   `docs/development-tier-dispatch.md`).
 
+## Reviewer-of-record — built (2026-08-06)
+
+The Linear webhook field this session's "deliberately not built" note above
+was waiting on, confirmed against real payloads: the architect captured full logs
+from a live sandbox run and forwarded them. Every Issue/Project webhook —
+human or bot-authored — carries a top-level `actor` object
+(`{id, name, email, avatarUrl, url, type}`), including on a `status_changed`
+event, not only on comments. Confirmed on two real events on the same issue
+(a design-tier reference issue, PROJ-47): a human status move recorded
+`actor: {name: "Example User", email: "user@example.com"}`; an
+agent-driven one (Intake advancing the design issue to In Progress via MCP,
+per the design-issue entry above) recorded the pipeline's own bot user
+(`name: "Intent Agent", email: "agent@example.com"`) — the same field
+cleanly distinguishes the two, which is exactly what reviewer-of-record
+needs. `adapters/linear.ts` had been discarding it entirely for
+`status_changed` (`authorId: null`, unconditionally); `TrackerEvent` had no
+field to carry it at all outside `comment_added`.
+
+**Wired through, not re-architected.** `TrackerEvent` gained `actor`
+(populated for every event kind now, not just comments — `authorId` is left
+untouched since the self-comment guard's semantics are comment-specific by
+design). `AgentFn` gained a fifth parameter carrying it, threaded through
+`agent-scheduler.ts`'s `dispatch()` and `swim-lane-routing.ts`'s
+`RouteDecision` the same way `entityTitle` already was — every other lane
+(`createActivationRunner`'s Anthropic-driven agents) just ignores it,
+confirming `swim-lanes.ts`'s own "adding a lane is a registration" claim
+extends to widening the shared contract, not only to adding a new one.
+`dispatch-trigger.ts` reads it and carries it into
+`DispatchStoryWorkflowInput` as `mover`.
+
+**The one real decision: how to turn a Linear identity into a GitHub one.**
+Linear gives only `id`/`name`/`email`; GitHub's requested-reviewers API needs
+a login. Considered and rejected: resolving it live via GitHub's
+`search/users?q=<email>+in:email` — silently fails for anyone whose GitHub
+account doesn't expose a matching public email, and a silent gap here is
+worse than an explicit one. **Settled (the architect): a static, architect-maintained
+mapping** — `REVIEWER_EMAIL_TO_GITHUB_LOGIN`, a JSON object string parsed
+once at worker startup (`worker-config.ts`'s `parseReviewerMapping`, same
+"pure parse, tested directly" shape as `parseRepoBase`), same category of
+artifact as the conventions spec: reviewed and kept current by a human, not
+derived. Optional throughout — unset, or missing an entry for a given mover,
+just skips the reviewer request for that one dispatch rather than failing it.
+
+**`requestPullRequestReviewer` is deliberately best-effort, unlike every
+other activity in this package.** Every other activity here classifies
+failures into retryable/non-retryable and throws. This one never throws: a
+null `mover`, an unmapped email, or a GitHub error (unknown login, rate
+limit, transient failure) all just log through `@temporalio/activity`'s own
+`log` and return. Reasoning: by the time this activity runs, the PR already
+exists and a human is already going to review it regardless of whether this
+metadata landed — failing the whole dispatch over cosmetic reviewer-request
+metadata would be strictly worse than a silently-missing requested reviewer.
+Called from `dispatchStoryWorkflow` right after `findPullRequest` succeeds,
+before `awaitPullRequestOutcome` starts its (up to 14-day) wait.
+
+Preserves the property named when dispatch first moved from human-in-
+Claude-Code to app-driven (see "Dispatch is human, not app-driven," now
+superseded, in the development-tier session above): "the person who reviews
+decides when it gets written." Under manual dispatch that was automatic —
+the developer typing the dispatch command was the reviewer. Under app-driven
+dispatch it has to be reconstructed from the one human act that still
+exists: the tracker status move.
+
 ## `dispatch-worker` — CI-wait and human-review-gate (2026-08-05)
 
 Closes the last link in the ledger's own stated chain — *dispatch → wait for

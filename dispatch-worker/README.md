@@ -90,6 +90,7 @@ reader can trust it.
 | `SPECIALIST_SUBNET_IDS` | yes | Comma-separated (via Terraform's own `Fn.join`, not a JS-side join — see `temporal-worker-service.ts`); from `network`'s `publicSubnetIds` output |
 | `GITHUB_TOKEN`, `LINEAR_AGENT_API_KEY` | yes (already in `temporal.parameter-prefix`) | Same secrets, same mechanism as every other container in this project |
 | `LINEAR_API_URL` | no (optional) | Default `https://api.linear.app/graphql` |
+| `REVIEWER_EMAIL_TO_GITHUB_LOGIN` | no (optional) | Reviewer-of-record's static Linear-email -> GitHub-login table, JSON object string. Unset or missing an entry just skips the reviewer request for that dispatch — see `activities/request-pull-request-reviewer.ts` |
 
 All five `SPECIALIST_*` vars are now wired into
 `infrastructure/stacks/temporal-workers.ts`'s container environment, and the
@@ -100,6 +101,23 @@ against `specialist-sandbox`. The caller now exists too:
 `webhook-listener/src/dispatch-trigger.ts`'s `specialist-dispatch` lane calls
 `client.workflow.start("dispatchStoryWorkflow", ...)` when a story enters
 `In-Process` — see `webhook-listener/README.md`'s own lane table.
+
+## Reviewer-of-record
+
+`dispatchStoryWorkflow`'s input carries `mover` — the tracker actor
+`webhook-listener` read off the very webhook that moved the story to
+`In-Process` (Linear's own `actor` field, confirmed live 2026-08-06 to be
+present on every event kind, not just comments; see `docs/design-ledger.md`).
+Once `findPullRequest` locates the specialist's PR, `requestPullRequestReviewer`
+resolves `mover.email` through `REVIEWER_EMAIL_TO_GITHUB_LOGIN` and requests
+that login as a GitHub reviewer — preserving "the person who reviews decides
+when it gets written" under app-driven dispatch (CLAUDE.md, Agent Roster).
+
+Deliberately best-effort, unlike every other activity in this package: a null
+`mover`, a missing mapping entry, or a GitHub error here never fails the
+workflow — the PR already exists and a human is already going to review it
+regardless of whether this metadata landed, so the activity only ever logs
+and returns.
 
 ## What this does NOT do
 
@@ -141,7 +159,7 @@ against a real (local, in-memory) Temporal test server —
 mocked — not just unit tests of the activities' own pure helper functions.
 Covers the not-ready short-circuit, the not-complete short-circuit (waiting/
 blocked/unknown never reaches `findPullRequest`/`awaitPullRequestOutcome`),
-and the full eight-activity sequence ending in a merged PR, asserting both
+and the full nine-activity sequence ending in a merged PR, asserting both
 the returned result and the exact call order. `createLocal()` over
 `createTimeSkipping()`: this workflow has no workflow-level timers to skip
 through (the only sleeps live inside `awaitSpecialistTask`'s and

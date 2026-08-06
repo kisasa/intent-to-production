@@ -31,7 +31,7 @@
  * directly without a running server or live tracker connection.
  */
 
-import type { AgentFn, EntityType, Pass, TrackerEvent } from "./tracker-event.js";
+import type { AgentFn, EntityType, Pass, TrackerActor, TrackerEvent } from "./tracker-event.js";
 
 export type FirstPassTrigger =
   | { on: "label_added"; label: string; statusRequired?: string }
@@ -63,7 +63,15 @@ export interface SwimLaneRoutingConfig {
 
 export type RouteDecision =
   | { fire: false; reason: string }
-  | { fire: true; entityId: string; entityTitle: string | null; pass: Pass; agent: AgentFn; lane: string };
+  | {
+      fire: true;
+      entityId: string;
+      entityTitle: string | null;
+      pass: Pass;
+      agent: AgentFn;
+      lane: string;
+      entityActor: TrackerActor | null;
+    };
 
 export function route(event: TrackerEvent, cfg: SwimLaneRoutingConfig): RouteDecision {
   if (event.kind === "comment_added") {
@@ -86,6 +94,7 @@ export function route(event: TrackerEvent, cfg: SwimLaneRoutingConfig): RouteDec
       pass: "follow-up",
       agent: lane.agent,
       lane: lane.name,
+      entityActor: event.actor,
     };
   }
 
@@ -107,6 +116,7 @@ export function route(event: TrackerEvent, cfg: SwimLaneRoutingConfig): RouteDec
       pass: "first",
       agent: lane.agent,
       lane: lane.name,
+      entityActor: event.actor,
     };
   }
 
@@ -135,6 +145,7 @@ export function route(event: TrackerEvent, cfg: SwimLaneRoutingConfig): RouteDec
       pass: "first",
       agent: lane.agent,
       lane: lane.name,
+      entityActor: event.actor,
     };
   }
 

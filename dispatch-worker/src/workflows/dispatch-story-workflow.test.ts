@@ -25,6 +25,7 @@ const baseInput = {
   storyBranch: "proj-101-refund-endpoint",
   epicBranch: "proj-10-refunds",
   maxTurns: 40,
+  mover: { id: "00000000-0000-4000-8000-000000000001", name: "Example User", email: "user@example.com" },
 };
 
 function unexpectedCall(name: string) {
@@ -60,6 +61,7 @@ describe("dispatchStoryWorkflow", () => {
         awaitSpecialistTask: unexpectedCall("awaitSpecialistTask"),
         readSpecialistOutcome: unexpectedCall("readSpecialistOutcome"),
         findPullRequest: unexpectedCall("findPullRequest"),
+        requestPullRequestReviewer: unexpectedCall("requestPullRequestReviewer"),
         awaitPullRequestOutcome: unexpectedCall("awaitPullRequestOutcome"),
       },
     });
@@ -90,6 +92,7 @@ describe("dispatchStoryWorkflow", () => {
         awaitSpecialistTask: async () => {},
         readSpecialistOutcome: async () => "waiting",
         findPullRequest: unexpectedCall("findPullRequest"),
+        requestPullRequestReviewer: unexpectedCall("requestPullRequestReviewer"),
         awaitPullRequestOutcome: unexpectedCall("awaitPullRequestOutcome"),
       },
     });
@@ -140,6 +143,9 @@ describe("dispatchStoryWorkflow", () => {
           calls.push("findPullRequest");
           return { number: 42, url: "https://github.com/example-org/example-api/pull/42" };
         },
+        requestPullRequestReviewer: async () => {
+          calls.push("requestPullRequestReviewer");
+        },
         awaitPullRequestOutcome: async () => {
           calls.push("awaitPullRequestOutcome");
           return "merged";
@@ -167,6 +173,7 @@ describe("dispatchStoryWorkflow", () => {
       "awaitSpecialistTask",
       "readSpecialistOutcome",
       "findPullRequest",
+      "requestPullRequestReviewer",
       "awaitPullRequestOutcome",
     ]);
   }, 30_000);

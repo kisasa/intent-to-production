@@ -349,6 +349,7 @@ export function createActivationRunner(lane: AgentLaneConfig): AgentFn {
     pass: Pass,
     entityTitle: string | null,
     traceId: string,
+    _actor,
   ): Promise<void> {
     const reqLog = log.child(traceId);
     reqLog.info(`run — entity=${entityId} pass=${pass}`);

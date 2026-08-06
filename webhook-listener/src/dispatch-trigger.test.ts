@@ -17,6 +17,8 @@ vi.mock("@temporalio/client", () => ({
 
 const { createDispatchTrigger } = await import("./dispatch-trigger.js");
 
+const MOVER = { id: "00000000-0000-4000-8000-000000000001", name: "Example User", email: "user@example.com" };
+
 const WELL_FORMED_CONTEXT = {
   ok: true,
   context: {
@@ -53,7 +55,7 @@ describe("createDispatchTrigger", () => {
     const { config, start } = makeConfig(() => ({ workflowId: "dispatch-story-1" }));
     const trigger = createDispatchTrigger(config);
 
-    await trigger("story-1", "first", "Add refund data model", "trace-1");
+    await trigger("story-1", "first", "Add refund data model", "trace-1", MOVER);
 
     expect(start).toHaveBeenCalledWith("dispatchStoryWorkflow", {
       workflowId: "dispatch-story-1",
@@ -67,6 +69,7 @@ describe("createDispatchTrigger", () => {
           storyBranch: "story/story-1",
           epicBranch: "epic/epic-1",
           maxTurns: 80,
+          mover: MOVER,
         },
       ],
     });
@@ -78,7 +81,7 @@ describe("createDispatchTrigger", () => {
     const { config, start } = makeConfig(() => ({ workflowId: "dispatch-story-1" }));
     const trigger = createDispatchTrigger(config);
 
-    await trigger("story-1", "first", null, "trace-1");
+    await trigger("story-1", "first", null, "trace-1", null);
 
     expect(start).toHaveBeenCalledWith(
       "dispatchStoryWorkflow",
@@ -91,7 +94,7 @@ describe("createDispatchTrigger", () => {
     const { config, start } = makeConfig(() => ({}));
     const trigger = createDispatchTrigger(config);
 
-    await trigger("story-1", "first", "Some story", "trace-1");
+    await trigger("story-1", "first", "Some story", "trace-1", null);
 
     expect(start).not.toHaveBeenCalled();
     expect(postErrorComment).toHaveBeenCalledWith(
@@ -109,7 +112,7 @@ describe("createDispatchTrigger", () => {
     });
     const trigger = createDispatchTrigger(config);
 
-    await trigger("story-1", "first", "Some story", "trace-1");
+    await trigger("story-1", "first", "Some story", "trace-1", null);
 
     expect(postErrorComment).not.toHaveBeenCalled();
   });
@@ -121,7 +124,7 @@ describe("createDispatchTrigger", () => {
     });
     const trigger = createDispatchTrigger(config);
 
-    await trigger("story-1", "first", "Some story", "trace-1");
+    await trigger("story-1", "first", "Some story", "trace-1", null);
 
     expect(postErrorComment).toHaveBeenCalledWith("story-1", "issue", "trace-1", "Dispatch could not start: connection refused");
   });

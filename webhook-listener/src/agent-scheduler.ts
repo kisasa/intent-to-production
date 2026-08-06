@@ -15,7 +15,7 @@
  * back these maps with a database. The function signatures don't change.
  */
 
-import type { AgentFn } from "./tracker-event.js";
+import type { AgentFn, TrackerActor } from "./tracker-event.js";
 import { createLogger } from "./logger.js";
 
 const log = createLogger("scheduler");
@@ -48,13 +48,14 @@ export function makeDispatcher(cfg: AgentSchedulerConfig) {
     pass: "first" | "follow-up",
     entityTitle: string | null,
     traceId: string,
+    actor: TrackerActor | null,
     agent: AgentFn,
   ): void {
     const reqLog = log.child(traceId);
 
     if (pass === "first") {
       reqLog.trace(`first pass — firing immediately, entity=${entityId}`);
-      void agent(entityId, pass, entityTitle, traceId);
+      void agent(entityId, pass, entityTitle, traceId, actor);
       return;
     }
 
@@ -70,7 +71,7 @@ export function makeDispatcher(cfg: AgentSchedulerConfig) {
       timer: setTimeout(() => {
         timers.delete(entityId);
         reqLog.trace(`debounce elapsed — firing now, entity=${entityId}`);
-        void agent(entityId, pass, entityTitle, traceId);
+        void agent(entityId, pass, entityTitle, traceId, actor);
       }, cfg.debounceMs),
       traceId: traceId,
     });

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { loadWorkerConfig } from "./worker-config.js";
+import { loadWorkerConfig, parseReviewerMapping } from "./worker-config.js";
 
 const REQUIRED_VARS = {
   TEMPORAL_HOST: "prod.abcde.tmprl.cloud:7233",
@@ -46,6 +46,7 @@ describe("loadWorkerConfig", () => {
       specialistSubnetIds: ["subnet-aaa", "subnet-bbb"],
       githubToken: "gh-token",
       linearAgentApiKey: "linear-key",
+      reviewerEmailToGithubLogin: new Map(),
     });
   });
 
@@ -67,5 +68,46 @@ describe("loadWorkerConfig", () => {
   it("only turns temporalTls off on the literal string \"false\"", () => {
     stubAll({ TEMPORAL_TLS: "false" });
     expect(loadWorkerConfig().temporalTls).toBe(false);
+  });
+
+  it("parses REVIEWER_EMAIL_TO_GITHUB_LOGIN when set", () => {
+    stubAll({ REVIEWER_EMAIL_TO_GITHUB_LOGIN: '{"user@example.com":"example-login"}' });
+    expect(loadWorkerConfig().reviewerEmailToGithubLogin).toEqual(new Map([["user@example.com", "example-login"]]));
+  });
+});
+
+describe("parseReviewerMapping", () => {
+  it("returns an empty map when unset", () => {
+    expect(parseReviewerMapping(undefined)).toEqual(new Map());
+  });
+
+  it("returns an empty map for an empty string", () => {
+    expect(parseReviewerMapping("")).toEqual(new Map());
+  });
+
+  it("parses a well-formed email -> login object", () => {
+    const mapping = parseReviewerMapping('{"user@example.com":"example-login","second@example.com":"example-login-2"}');
+    expect(mapping).toEqual(
+      new Map([
+        ["user@example.com", "example-login"],
+        ["second@example.com", "example-login-2"],
+      ]),
+    );
+  });
+
+  it("throws on malformed JSON", () => {
+    expect(() => parseReviewerMapping("{not json")).toThrow(/not valid JSON/);
+  });
+
+  it("throws on a JSON array", () => {
+    expect(() => parseReviewerMapping("[]")).toThrow(/must be a JSON object/);
+  });
+
+  it("throws on a non-string login value", () => {
+    expect(() => parseReviewerMapping('{"user@example.com":42}')).toThrow(/must be a non-empty string GitHub login/);
+  });
+
+  it("throws on an empty-string login value", () => {
+    expect(() => parseReviewerMapping('{"user@example.com":""}')).toThrow(/must be a non-empty string GitHub login/);
   });
 });
