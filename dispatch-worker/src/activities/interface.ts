@@ -14,7 +14,6 @@ import type { DependencyCheckResult } from "./check-dependencies.js";
 import type { CreateStoryBranchInput } from "./create-story-branch.js";
 import type { DispatchSpecialistInput } from "./dispatch-specialist.js";
 import type { PullRequestReference } from "./find-pull-request.js";
-import type { SpecialistOutcome } from "./read-specialist-outcome.js";
 import type { RepoBase } from "./resolve-repo-base.js";
 import type { SpecialistType, StoryMover } from "./types.js";
 
@@ -26,9 +25,9 @@ export interface DispatchActivities {
   postSpecialistStarted(storyId: string): Promise<string | null>;
   awaitSpecialistTask(taskArn: string, progressCommentId: string | null): Promise<void>;
   deleteSpecialistProgressComment(commentId: string): Promise<void>;
-  readSpecialistOutcome(storyId: string): Promise<SpecialistOutcome>;
-  findPullRequest(repoBase: RepoBase, headBranch: string, baseBranch: string): Promise<PullRequestReference>;
+  findPullRequest(repoBase: RepoBase, headBranch: string, baseBranch: string): Promise<PullRequestReference | null>;
   requestPullRequestReviewer(repoBase: RepoBase, prNumber: number, mover: StoryMover | null): Promise<void>;
   awaitPullRequestOutcome(storyId: string, repoBase: RepoBase, prNumber: number, prUrl: string): Promise<PullRequestOutcome>;
   postDispatchFailed(storyId: string, message: string): Promise<void>;
+  moveStoryToTodo(storyId: string): Promise<void>;
 }

@@ -107,8 +107,8 @@ export async function prepareWorkspace(
   );
 
   // If the branch doesn't exist, this throws — that's the broken-chain case
-  // the specialist's own definition already handles (post `specialist:blocked`
-  // and stop), not this module's job to paper over or repair.
+  // the specialist's own definition already handles (post a comment and
+  // stop), not this module's job to paper over or repair.
   log.info(`checking out story branch ${context.storyBranch}`);
   await runGit(["checkout", context.storyBranch], surfaceRepoPath, log, githubToken);
 

@@ -33,26 +33,27 @@ dispatch are merged and closed-without-merging.
    Idempotent (a retried attempt against an already-created branch is not an
    error); never rebases or re-parents an existing branch.
 4. **Dispatch the specialist** — `ecs:RunTask` against the specialist-sandbox
-   task definition, container overrides exactly matching
+   task definition, container overrides matching
    [`specialist-runner`](../specialist-runner)'s documented
-   `dispatch-context.ts` contract.
+   `dispatch-context.ts` contract, plus this worker's own `LOG_LEVEL`
+   propagated down as one more override — the specialist's verbosity follows
+   whatever this worker was configured with, no separate setting to keep in
+   sync.
 5. **Wait for it** — polls the ECS task until it stops (long-running
    activity, heartbeats every poll — a specialist run can take a long time).
-6. **Read the outcome** — the specialist's own `specialist:complete
-   /:waiting/:blocked` label, once the task has stopped. This workflow never
-   decides the outcome itself; it only reports what the specialist already
-   decided and wrote via its own Linear MCP calls. Anything other than
-   `complete` (waiting/blocked/unknown) ends the workflow here — there's no
-   PR to watch.
-7. **Find the PR** — mechanically, via GitHub's own head/base filter (`GET
-   /repos/{owner}/{repo}/pulls?head=...&base=...&state=open`), not by parsing
-   the specialist's free-prose "PR & branch" completion-report line. The
-   workflow already knows the exact story/epic branch names before it ever
-   dispatches the specialist, so no new recording format was needed here (see
-   Two tightened content formats, below, for the two cases where one was).
-   No matching open PR is a real specialist-compliance gap — posts a comment
-   naming it and fails the workflow, non-retryable.
-8. **Wait for merged, full stop** — polls the PR (re-reading its current head
+6. **Check for a PR — this is the outcome check.** Mechanically, via GitHub's
+   own head/base filter, not a label and not the specialist's free-prose "PR
+   & branch" completion-report line. No label exists (removed 2026-08-07 —
+   see `docs/design-ledger.md`): a PR's existence *is* the outcome. Checks
+   `open` first, then the single most recent `closed` PR for the same pair,
+   trusting it only if it was actually merged — a merge that happened faster
+   than this check's own next poll must still read as complete, not "no-pr"
+   (confirmed live 2026-08-07, PROJ-67). No matching PR at all → moves the
+   story back to To-Do and returns `{ outcome: "no-pr" }` — waiting on a
+   dependency, blocked, still thinking, or crashed all look the same to this
+   workflow; the specialist's own comment on the story is the record of
+   which one it was.
+7. **Wait for merged, full stop** — polls the PR (re-reading its current head
    sha every poll, so a force-push can't leave it tracking a stale commit)
    until it's merged or closed without merging, heartbeating a CI/status
    summary each poll. Posts the final "PR merged" / "PR closed without
@@ -141,6 +142,35 @@ task failed" on the top-level caught error; the activity's real message
 lives one level down, on `.cause` — so the posted comment says the same
 specific thing a developer reading the raw Event History would see.
 
+## Moving back to Todo — the next step is always the developer's
+
+Every path through `dispatchStoryWorkflow` that ends without a specialist
+actively running or a PR left open to watch — dependencies not ready
+(`checkDependencies`), a non-`"complete"` specialist outcome (waiting,
+blocked, or unknown), or the catch-all failure above — also calls
+`moveStoryToTodo`. Confirmed live (2026-08-07): PROJ-64's story description
+recorded its blocking dependency (PROJ-63) as a bare line with no bullet
+marker, which `checkDependencies`' own parser silently missed (fixed —
+`BULLET_IDENTIFIER` now accepts a bare identifier line, not just a bulleted
+one) — the specialist itself caught the real blocker mid-run instead and
+reported `specialist:waiting`, but the story's tracker status stayed
+"In Progress" long after dispatch had already stopped, misrepresenting the
+board. CLAUDE.md's own dispatch primitive is "status (a gate — human-moved)
+... In-Process is the human dispatch act": a workflow that can't proceed
+should hand the next move back to a developer, not leave a story looking
+like work is still happening.
+
+`moveStoryToTodo` (`activities/move-story-to-todo.ts`) is best-effort like
+every other courtesy activity here: it resolves the story's team's "Todo"
+status by name (`findStateIdByName`/`updateIssueState` in `tracker.ts` —
+state ids are per-team, so this is a two-step lookup, not a literal), and a
+missing/renamed status or a Linear error is logged and swallowed rather than
+failing the dispatch outcome it's just trying to reflect. "Todo" is this
+team's actual configured name (confirmed live against the sandbox team's team state
+list, 2026-08-07) — the same engagement-specific-literal category as
+`specialist-dispatch.ts`'s own "In Progress", not CLAUDE.md's hyphenated
+"To-Do" framework vocabulary.
+
 ## Specialist-progress comment
 
 The shaping tier's own courtesy comment (`webhook-listener/src/
@@ -149,9 +179,9 @@ deleted on a clean run) extended to the specialist tier, which never had it:
 `postSpecialistStarted` posts once the specialist container is dispatched,
 `awaitSpecialistTask` edits it in place every ~2 minutes with an elapsed-time
 line while it polls, and `deleteSpecialistProgressComment` removes it once
-the container exits — all before `readSpecialistOutcome` runs, so this
-courtesy comment is gone by the time the specialist's own completion report
-is the only thing left narrating what happened. Without it a story could sit
+the container exits — all before the PR check that follows, so this courtesy
+comment is gone by the time the specialist's own completion report is the
+only thing left narrating what happened. Without it a story could sit
 In Progress for up to four hours with nothing visible on the tracker at all.
 
 Same best-effort discipline as reviewer-of-record above: none of the three

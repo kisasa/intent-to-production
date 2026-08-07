@@ -54,6 +54,11 @@ describe("loadDispatchContext", () => {
     expect(loadDispatchContext().specialistFile).toBe("specialist-frontend.md");
   });
 
+  it("resolves specialistFile for tests too", () => {
+    stubAll({ SPECIALIST_TYPE: "tests" });
+    expect(loadDispatchContext().specialistFile).toBe("specialist-tests.md");
+  });
+
   it("defaults frameworkRef to main when unset", () => {
     stubAll({ FRAMEWORK_REF: undefined });
     expect(loadDispatchContext().frameworkRef).toBe("main");

@@ -10,6 +10,11 @@ vi.mock("./story-context.js", () => ({
   fetchStoryDispatchContext: (...args: unknown[]) => fetchStoryDispatchContext(...args),
 }));
 
+const moveStoryToTodo = vi.fn();
+vi.mock("./move-story-to-todo.js", () => ({
+  moveStoryToTodo: (...args: unknown[]) => moveStoryToTodo(...args),
+}));
+
 class FakeAlreadyStartedError extends Error {}
 vi.mock("@temporalio/client", () => ({
   WorkflowExecutionAlreadyStartedError: FakeAlreadyStartedError,
@@ -47,6 +52,7 @@ function makeConfig(startImpl: (...args: unknown[]) => unknown) {
 beforeEach(() => {
   postErrorComment.mockReset();
   fetchStoryDispatchContext.mockReset();
+  moveStoryToTodo.mockReset();
 });
 
 describe("createDispatchTrigger", () => {
@@ -74,6 +80,7 @@ describe("createDispatchTrigger", () => {
       ],
     });
     expect(postErrorComment).not.toHaveBeenCalled();
+    expect(moveStoryToTodo).not.toHaveBeenCalled();
   });
 
   it("uses a fallback title when entityTitle is null", async () => {
@@ -103,9 +110,10 @@ describe("createDispatchTrigger", () => {
       "trace-1",
       "This story could not be dispatched: no specialist:<type> label found.",
     );
+    expect(moveStoryToTodo).toHaveBeenCalledWith("story-1", "test-api-key", "https://api.linear.app/graphql", "trace-1");
   });
 
-  it("treats an already-started workflow as a benign no-op, not an error comment", async () => {
+  it("treats an already-started workflow as a benign no-op, not an error comment or a status move", async () => {
     fetchStoryDispatchContext.mockResolvedValue(WELL_FORMED_CONTEXT);
     const { config } = makeConfig(() => {
       throw new FakeAlreadyStartedError("already started");
@@ -115,9 +123,10 @@ describe("createDispatchTrigger", () => {
     await trigger("story-1", "first", "Some story", "trace-1", null);
 
     expect(postErrorComment).not.toHaveBeenCalled();
+    expect(moveStoryToTodo).not.toHaveBeenCalled();
   });
 
-  it("posts an error comment when the workflow fails to start for any other reason", async () => {
+  it("posts an error comment and moves the story back to Todo when the workflow fails to start for any other reason", async () => {
     fetchStoryDispatchContext.mockResolvedValue(WELL_FORMED_CONTEXT);
     const { config } = makeConfig(() => {
       throw new Error("connection refused");
@@ -127,5 +136,6 @@ describe("createDispatchTrigger", () => {
     await trigger("story-1", "first", "Some story", "trace-1", null);
 
     expect(postErrorComment).toHaveBeenCalledWith("story-1", "issue", "trace-1", "Dispatch could not start: connection refused");
+    expect(moveStoryToTodo).toHaveBeenCalledWith("story-1", "test-api-key", "https://api.linear.app/graphql", "trace-1");
   });
 });

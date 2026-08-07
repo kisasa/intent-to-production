@@ -1,9 +1,14 @@
 /**
  * Calls `ecs:RunTask` against the specialist-sandbox task definition — the
  * caller that infra piece was built without ("nothing calls it yet"). The
- * container overrides exactly mirror `specialist-runner/src/dispatch-
- * context.ts`'s documented contract: whatever this activity doesn't set,
- * that runner will fail fast on at startup, naming the missing var.
+ * story-derived container overrides mirror `specialist-runner/src/dispatch-
+ * context.ts`'s documented contract exactly: whatever this activity doesn't
+ * set, that runner will fail fast on at startup, naming the missing var.
+ * `LOG_LEVEL` is the one override outside that contract — dispatch-context.ts
+ * never requires it, but propagating this worker's own configured level
+ * down means the specialist's verbosity follows wherever this worker's
+ * `LOG_LEVEL` is set (docker-compose, the ECS task definition, ...) without
+ * a second setting to keep in sync.
  */
 
 import { ECSClient, RunTaskCommand } from "@aws-sdk/client-ecs";
@@ -22,12 +27,16 @@ export interface DispatchSpecialistInput {
   readonly maxTurns: number;
 }
 
-export function buildContainerOverrides(input: DispatchSpecialistInput) {
+export function buildContainerOverrides(input: DispatchSpecialistInput, logLevel: string) {
   // Names match specialist-runner/src/dispatch-context.ts's required vars
   // exactly — SURFACE_REPO is "org/name", not the full repoBase (the
   // specialist clones over HTTPS with its own GITHUB_TOKEN; it doesn't need
   // the host or ref, which only this activity and its own FRAMEWORK_REF
-  // default care about).
+  // default care about). LOG_LEVEL isn't part of that required contract —
+  // specialist-runner's own logger.ts reads it independently, same as this
+  // worker's own — but propagating this worker's configured level down
+  // means the specialist's verbosity follows dispatch-worker's own
+  // LOG_LEVEL without a second, separately-maintained setting.
   return [
     { name: "STORY_ID", value: input.storyId },
     { name: "STORY_TITLE", value: input.storyTitle },
@@ -37,6 +46,7 @@ export function buildContainerOverrides(input: DispatchSpecialistInput) {
     { name: "STORY_BRANCH", value: input.storyBranch },
     { name: "EPIC_BRANCH", value: input.epicBranch },
     { name: "MAX_TURNS", value: String(input.maxTurns) },
+    { name: "LOG_LEVEL", value: logLevel },
   ];
 }
 
@@ -61,7 +71,7 @@ export function createDispatchSpecialistActivity(config: WorkerConfig) {
           containerOverrides: [
             {
               name: config.specialistContainerName,
-              environment: buildContainerOverrides(input),
+              environment: buildContainerOverrides(input, config.logLevel),
             },
           ],
         },

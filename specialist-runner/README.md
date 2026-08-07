@@ -1,18 +1,30 @@
 # specialist-runner
 
-Runs a **backend** or **frontend** Specialist against one story, inside the
-`specialist-sandbox` ECS task [`infrastructure/`](../infrastructure) registers.
-The automated replacement for the human half of
+Runs a **backend**, **frontend**, or **integration-test** (`specialist:tests`) Specialist against one story,
+inside the `specialist-sandbox` ECS task
+[`infrastructure/`](../infrastructure) registers. The automated replacement
+for the human half of
 [`docs/development-tier-dispatch.md`](../docs/development-tier-dispatch.md) —
 same specialist definitions (`agents/specialist-backend.md`,
-`agents/specialist-frontend.md`), same MCP-driven orientation and hand-back,
-just triggered by a `RunTask` call instead of a developer pasting a prompt
-into Claude Code.
+`agents/specialist-frontend.md`, `agents/specialist-tests.md`), same
+MCP-driven orientation and hand-back, just triggered by a `RunTask` call
+instead of a developer pasting a prompt into Claude Code.
 
-**Tests and E2E specialists are not built here.** They need GitHub Actions
-cross-repo checkout (docker-compose across sibling surfaces) that doesn't
-exist yet — see the design ledger's automated-dispatch session. This package
-only knows `backend` and `frontend`.
+**E2E specialists are not built here yet.** Per CLAUDE.md's own Agent
+Roster, e2e runs against "an environment stood up from the epic branch
+after every sibling story has merged" — nothing in this package or
+`dispatch-worker` stands up such an environment. `tests` needed no new
+infrastructure to add (2026-08-07): `workspace.ts` already clones exactly
+one target surface repo per dispatch, resolved by `dispatch-worker`'s
+`resolveRepoBase(epicId, specialistType)` from a `Repo base — tests: ...`
+comment the architect records on the epic — the same mechanism backend and
+frontend already use. That covers integration testing *within* one repo
+(this engagement's actual shape — `frontend/` and presumably `backend/` as
+folders in one `example-app` monorepo). It does **not** cover a hypothetical
+engagement where backend and frontend are genuinely separate GitHub repos
+and integration tests need both checked out simultaneously — that would
+need this package's clone step to support more than one target repo, which
+it doesn't today.
 
 ## What it does
 
@@ -38,7 +50,7 @@ only knows `backend` and `frontend`.
 
 ## Dispatch context — the contract for whoever calls this
 
-Nothing calls this yet. A future Temporal worker is expected to set these as
+`dispatch-worker/src/activities/dispatch-specialist.ts` sets these as
 `RunTask` container overrides (see `src/dispatch-context.ts`, which validates
 all of them at startup and fails fast naming whatever's missing):
 
@@ -58,6 +70,14 @@ injected by the ECS agent — see `infrastructure/README.md`):
 `ANTHROPIC_API_KEY`, `LINEAR_AGENT_API_KEY`, `GITHUB_TOKEN`. Optional URL
 overrides: `LINEAR_MCP_URL`, `GITHUB_MCP_URL`, `LINEAR_API_URL` (used only by
 the fallback-comment path).
+
+`LOG_LEVEL` is set too, but it isn't part of `dispatch-context.ts`'s own
+contract above — `src/logger.ts` reads it independently, same as every other
+package's logger. `dispatch-specialist.ts` propagates `dispatch-worker`'s own
+configured `LOG_LEVEL` (docker-compose locally, the ECS task definition in
+prod) down as a container override on every dispatch, so this runner's
+verbosity follows the worker that launched it without a second setting to
+keep in sync.
 
 ## Model and effort — always explicit, never the SDK's own default
 

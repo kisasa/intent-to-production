@@ -194,12 +194,13 @@ Every story carries three assignment fields, applied as labels at
 decomposition time:
 
 - `specialist` — applied as `specialist:<type>` (e.g. `specialist:backend`),
-  one of backend, frontend, tests, or e2e. This prefix is fixed — it's also
-  what the outcome labels use (`specialist:complete`/`:waiting`/`:blocked`)
-  and what the specialist-dispatch trigger reads mechanically to route a
-  story, so it isn't a per-engagement choice the way the label's *values*
-  are. Which specialists exist and what their domains cover is engagement
-  context, not part of this contract.
+  one of backend, frontend, tests, or e2e. This prefix is fixed — it's what
+  the specialist-dispatch trigger reads mechanically to route a story, so it
+  isn't a per-engagement choice the way the label's *values* are. Which
+  specialists exist and what their domains cover is engagement context, not
+  part of this contract. (There is no outcome label — removed 2026-08-07;
+  the specialist's own comment is the only record of what happened on a
+  run.)
 - `size` — small, medium, or large: relative effort within this epic. A story
   dramatically larger than its siblings fails the decomposition size band
   even when the count passes.

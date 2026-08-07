@@ -47,6 +47,7 @@ describe("loadWorkerConfig", () => {
       githubToken: "gh-token",
       linearAgentApiKey: "linear-key",
       reviewerEmailToGithubLogin: new Map(),
+      logLevel: "info",
     });
   });
 
@@ -73,6 +74,16 @@ describe("loadWorkerConfig", () => {
   it("parses REVIEWER_EMAIL_TO_GITHUB_LOGIN when set", () => {
     stubAll({ REVIEWER_EMAIL_TO_GITHUB_LOGIN: '{"user@example.com":"example-login"}' });
     expect(loadWorkerConfig().reviewerEmailToGithubLogin).toEqual(new Map([["user@example.com", "example-login"]]));
+  });
+
+  it("defaults logLevel to info", () => {
+    stubAll();
+    expect(loadWorkerConfig().logLevel).toBe("info");
+  });
+
+  it("reads logLevel from LOG_LEVEL when set", () => {
+    stubAll({ LOG_LEVEL: "trace" });
+    expect(loadWorkerConfig().logLevel).toBe("trace");
   });
 });
 

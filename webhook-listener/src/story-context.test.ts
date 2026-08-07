@@ -24,6 +24,10 @@ describe("parseSpecialistType", () => {
     expect(parseSpecialistType(["size:medium", "specialist:backend"])).toEqual({ type: "backend" });
   });
 
+  it("extracts 'tests' as a supported specialist type", () => {
+    expect(parseSpecialistType(["size:medium", "specialist:tests"])).toEqual({ type: "tests" });
+  });
+
   it("reports when no specialist:* label is present", () => {
     expect(parseSpecialistType(["size:medium"])).toEqual({
       reason: "no specialist:<type> label found",
@@ -31,8 +35,23 @@ describe("parseSpecialistType", () => {
   });
 
   it("reports when the specialist type isn't one this trigger supports", () => {
-    const result = parseSpecialistType(["specialist:tests"]);
+    const result = parseSpecialistType(["specialist:e2e"]);
     expect("reason" in result && result.reason).toMatch(/not a supported specialist type/);
+  });
+
+  it("ignores a leftover outcome label from an earlier dispatch attempt (real PROJ-64 shape)", () => {
+    const result = parseSpecialistType(["specialist:waiting", "specialist:frontend", "tier:small", "size:medium"]);
+    expect(result).toEqual({ type: "frontend" });
+  });
+
+  it("ignores a leftover outcome label regardless of label order", () => {
+    expect(parseSpecialistType(["specialist:backend", "specialist:complete"])).toEqual({ type: "backend" });
+    expect(parseSpecialistType(["specialist:blocked", "specialist:backend"])).toEqual({ type: "backend" });
+  });
+
+  it("reports when a story carries more than one specialist type label", () => {
+    const result = parseSpecialistType(["specialist:backend", "specialist:frontend"]);
+    expect("reason" in result && result.reason).toMatch(/more than one specialist type label/);
   });
 });
 

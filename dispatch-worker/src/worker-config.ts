@@ -15,6 +15,8 @@
  *   applyable."
  */
 
+import { envOr } from "./env.js";
+
 function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
@@ -97,6 +99,17 @@ export interface WorkerConfig {
 
   /** Reviewer-of-record's static Linear-email -> GitHub-login table. See parseReviewerMapping. */
   readonly reviewerEmailToGithubLogin: Map<string, string>;
+
+  /**
+   * This process's own log level (`logger.ts` already reads `LOG_LEVEL`
+   * directly for its own logging) — surfaced here too so
+   * `dispatch-specialist.ts` can pass it through as a RunTask container
+   * override, propagating whatever this worker was configured with down to
+   * the specialist container it launches, rather than the specialist
+   * needing its own separate `LOG_LEVEL` wired in. Defaults to "info",
+   * matching every other logger in this codebase.
+   */
+  readonly logLevel: string;
 }
 
 export function loadWorkerConfig(): WorkerConfig {
@@ -120,5 +133,7 @@ export function loadWorkerConfig(): WorkerConfig {
     linearAgentApiKey: requireEnv("LINEAR_AGENT_API_KEY"),
 
     reviewerEmailToGithubLogin: parseReviewerMapping(process.env.REVIEWER_EMAIL_TO_GITHUB_LOGIN),
+
+    logLevel: envOr("LOG_LEVEL", "info"),
   };
 }

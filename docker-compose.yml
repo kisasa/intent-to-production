@@ -171,7 +171,7 @@ services:
       TEMPORAL_TASK_QUEUE: dispatch-task-queue
       TEMPORAL_TLS: "false"
       TEMPORAL_API_KEY: ""
-      LOG_LEVEL: info
+      LOG_LEVEL: debug
       LINEAR_API_URL: ""
       # Secrets — set real values in docker-compose.override.yml.
       GITHUB_TOKEN: ""

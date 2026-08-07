@@ -1,17 +1,17 @@
 /**
- * The contract between this runner and whatever dispatches it — a future
- * Temporal worker calling `ecs:RunTask` with these as container overrides.
- * Nothing calls it yet; this is the documented shape that worker needs to
- * produce. Fails fast, naming the missing var, rather than partway through a
- * run — same discipline as `infrastructure/models/context.ts`'s `requireX`
- * helpers, just over env vars instead of a JSON context tree.
+ * The contract between this runner and whatever dispatches it —
+ * `dispatch-worker/src/activities/dispatch-specialist.ts` calls `ecs:RunTask`
+ * with these as container overrides. Fails fast, naming the missing var,
+ * rather than partway through a run — same discipline as
+ * `infrastructure/models/context.ts`'s `requireX` helpers, just over env vars
+ * instead of a JSON context tree.
  */
 
 import { envOr } from "./env.js";
 
-export type SpecialistType = "backend" | "frontend";
+export type SpecialistType = "backend" | "frontend" | "tests";
 
-const SUPPORTED_SPECIALIST_TYPES: SpecialistType[] = ["backend", "frontend"];
+const SUPPORTED_SPECIALIST_TYPES: SpecialistType[] = ["backend", "frontend", "tests"];
 
 export interface DispatchContext {
   readonly storyId: string;
@@ -51,10 +51,10 @@ function requireEnv(name: string): string {
 
 function requireSpecialistType(name: string): SpecialistType {
   const value = requireEnv(name);
-  if (value === "backend" || value === "frontend") return value;
+  if (SUPPORTED_SPECIALIST_TYPES.includes(value as SpecialistType)) return value as SpecialistType;
   throw new Error(
     `${name}="${value}" is not a supported specialist type. Supported: ${SUPPORTED_SPECIALIST_TYPES.join(", ")} ` +
-      `— tests/e2e specialists are a tracked follow-up, not built here.`,
+      `— e2e specialists are a tracked follow-up, not built here.`,
   );
 }
 

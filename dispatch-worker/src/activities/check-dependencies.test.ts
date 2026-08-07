@@ -70,6 +70,17 @@ describe("parseBlockingDependencyIds — markdown-heading form (what Decompose a
     const description = ["## Blocking dependencies", "* PROJ-7 — A blocker", "* PROJ-8 — Another blocker"].join("\n");
     expect(parseBlockingDependencyIds(description)).toEqual(["PROJ-7", "PROJ-8"]);
   });
+
+  it("accepts a bare identifier line with no bullet marker at all (real PROJ-64 shape)", () => {
+    const description = [
+      "## Blocking dependencies",
+      "",
+      "PROJ-63 — Story: Extend the Employee model with department and tier enumeration",
+      "",
+      "## References",
+    ].join("\n");
+    expect(parseBlockingDependencyIds(description)).toEqual(["PROJ-63"]);
+  });
 });
 
 describe("parseBlockingDependencyIds — missing section", () => {

@@ -49,6 +49,7 @@ The epic arrives already specified: its capabilities were confirmed at intake, a
 - Scope boundary defined — what is explicitly in and out?
 - Directional definition of done?
 - **A resolved API map present, with every row resolved** (`existing` / `extend` / `new`)? An unresolved or missing map means the Specification Agent's gate has not cleared — you cannot decompose; surface it rather than guessing existence.
+- **A recorded repo base for every surface this decomposition will actually assign** — not just the surfaces the API map touches. Draft the specialist assignments now (you already estimate story count from the map, so you can see this too): if any story will carry `specialist:tests` or `specialist:e2e`, confirm the epic's thread already has a `Repo base — tests: ...` / `Repo base — e2e: ...` line (specification-agent.md's own recording format — `Repo base — <surface>: <host>/<org>/<repo>/<ref>`). The Specification Agent has no way to anticipate this: it resolves repo bases from the API map's own surfaces (typically backend/frontend) before you ever assign a specialist type, so an integration-test or e2e story is a gap it structurally cannot have filled. Do not assume a missing surface shares another surface's repo — ask; a monorepo where every surface lives together is common but not guaranteed. If any needed surface is missing, that is a readiness gap like any other — `ask` for it directly, naming every missing surface together in one question, in the exact recording format so branch is never left implicit (e.g. "This epic will need repo bases recorded for its integration-test and e2e work — could you confirm: `Repo base — tests: <host>/<org>/<repo>/<ref>` and `Repo base — e2e: <host>/<org>/<repo>/<ref>`? If either shares the same repo and branch as frontend, say so explicitly rather than leaving it implied.").
 
 **Logical correctness:**
 - Is the described approach consistent with the stated problem?
@@ -139,11 +140,36 @@ and routes it touches or mirrors), evidence pointers on user-facing stories, and
 a scope boundary.
 
 **Test taxonomy — fixed.** Never create unit-test stories: unit tests are
-intrinsic to each implementation story and enumerated in its scenario section.
-Dedicated test stories exist only for cross-story verification — integration
-tests and E2E flows — placed late in the graph, depending on the implementation
-stories they verify. Typically one integration story per meaningful seam and one
-E2E story per epic covering its primary user flows.
+intrinsic to each implementation story and enumerated in its scenario section —
+every backend and frontend story ships with its own, and nothing blocks them;
+they run "at leisure," on every change, with no dependency on anything else in
+the epic.
+
+Dedicated test stories exist only for cross-story verification, and the two
+kinds are not symmetric:
+
+- **Integration-test stories are backend-only.** They verify API behavior
+  through real components and cross-story data flows — seams that only exist
+  between backend touchpoints. **Create one only if the epic's resolved API map
+  includes backend work.** A frontend-only epic (no backend touchpoint in the
+  map) never gets an integration-test story — its stories carry unit tests
+  only, and nothing else verifies them until E2E. When an integration-test
+  story is warranted, its "Blocking dependencies" section names **every backend
+  story in the epic**, not just the one or two nearest the seam it targets —
+  integration testing is a phase that starts only once all of the epic's
+  backend work has merged, not a per-seam check that can run against a partial
+  backend.
+- **The E2E story runs last, once all other epic work is done.** Its
+  "Blocking dependencies" section names every implementation story in the
+  epic — backend and frontend — and every integration-test story the epic has,
+  not just the stories on its primary flow's critical path. It is the final,
+  combined verification pass; nothing in the epic should still be unmerged
+  when it starts.
+
+Typically one E2E story per epic covering its primary user flows, and — for an
+epic with backend work — one integration story per meaningful seam (each still
+depending on the full backend set, per above, even if it's only exercising one
+seam of it).
 
 **Dependencies are a content graph, not tracker structure.** A story may depend
 on several siblings (a DAG). You express the graph in each story's "Blocking
@@ -180,7 +206,7 @@ Post your checkpoint as a **new top-level comment** (never a reply). Apply the l
 
 **`shaped` — the PM has approved; you decompose.**
 Make these writes, in order:
-1. Create one child story per shaped story, flat under the epic (never nested), in dependency order. Each child carries its `title` (prefixed `Story: `, per `story-contract.md`'s title note — one prefix only; the surface belongs in the label, not the title), `description` (satisfying `story-contract.md`), and the labels `specialist:<specialist>`, `size:<size>`, `tier:<tier>` (see `story-contract.md`'s assignment metadata note — `specialist:<type>` is the fixed prefix, matching the outcome labels' own `specialist:*` vocabulary).
+1. Create one child story per shaped story, flat under the epic (never nested), in dependency order. Each child carries its `title` (prefixed `Story: `, per `story-contract.md`'s title note — one prefix only; the surface belongs in the label, not the title), `description` (satisfying `story-contract.md`), and the labels `specialist:<specialist>`, `size:<size>`, `tier:<tier>` (see `story-contract.md`'s assignment metadata note — `specialist:<type>` is the fixed prefix).
 2. Render each child's **"Blocking dependencies"** section into its description from the dependency graph — the sibling stories it depends on, by identifier and title, one per bullet line with the bare identifier as the first token (`story-contract.md`'s format note — this is what lets a pre-dispatch check parse it mechanically). This section has one author: you, from the graph. A story with no dependencies gets "No blocking dependencies."
 3. Remove the eval working labels and apply `eval:ready`.
 4. Post a summary comment (what was created, the shape of the decomposition, any recorded over-band decision).

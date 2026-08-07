@@ -27,6 +27,7 @@ import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 import type { Client } from "@temporalio/client";
 import { createLogger } from "./logger.js";
 import type { AgentFn, TrackerActor } from "./tracker-event.js";
+import { moveStoryToTodo } from "./move-story-to-todo.js";
 import { fetchStoryDispatchContext, type SpecialistType } from "./story-context.js";
 import trackerNotifier from "./tracker-notifier.js";
 
@@ -84,6 +85,12 @@ export function createDispatchTrigger(config: DispatchTriggerConfig): AgentFn {
         traceId,
         `This story could not be dispatched: ${contextResult.reason}.`,
       );
+      // No workflow ever started, so dispatch-worker's own moveStoryToTodo
+      // activity never gets a chance to run — this failure happens entirely
+      // before that. Without this, the story is left in In Progress with
+      // only an error comment and nothing dispatched (confirmed live
+      // 2026-08-07, PROJ-64).
+      await moveStoryToTodo(entityId, config.linearAgentApiKey, config.linearApiUrl, traceId);
       return;
     }
 
@@ -121,6 +128,7 @@ export function createDispatchTrigger(config: DispatchTriggerConfig): AgentFn {
         traceId,
         `Dispatch could not start: ${err instanceof Error ? err.message : String(err)}`,
       );
+      await moveStoryToTodo(entityId, config.linearAgentApiKey, config.linearApiUrl, traceId);
     }
   };
 }

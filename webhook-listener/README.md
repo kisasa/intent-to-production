@@ -161,8 +161,9 @@ one request's entire path through the system.
 | `src/agent-lane.ts` | The `AgentLaneConfig` shape every lane's config satisfies |
 | `src/lanes/{intake,specification,decompose}.ts` | Per-lane identity: agent file, skills, codebase access, templates, placeholders |
 | `src/lanes/specialist-dispatch.ts` | The one lane exporting a plain `LaneConfig` directly (not `AgentLaneConfig`) — its `agent` starts a Temporal workflow, not an activation |
-| `src/dispatch-trigger.ts` | Gathers a story's dispatch context, starts `dispatchStoryWorkflow` on `dispatch-worker`'s task queue, posts an error comment on a malformed story or a start failure |
-| `src/story-context.ts` | Reads a story's `branchName`, `specialist:<type>` label, and parent epic (`id`/`branchName`) from Linear directly — this lane's own small GraphQL client, same pattern as `tracker-notifier.ts` |
+| `src/dispatch-trigger.ts` | Gathers a story's dispatch context, starts `dispatchStoryWorkflow` on `dispatch-worker`'s task queue, posts an error comment and moves the story back to Todo on a malformed story or a start failure — the workflow never gets a chance to run its own equivalent for either case |
+| `src/story-context.ts` | Reads a story's `branchName`, `specialist:<type>` label, and parent epic (`id`/`branchName`) from Linear directly — this lane's own small GraphQL client, same pattern as `tracker-notifier.ts`. `parseSpecialistType` filters to a label naming a *supported* type rather than taking the first `specialist:`-prefixed label, so it can't be fooled by any stray label sharing the same prefix (the outcome labels this used to collide with are gone — see `docs/design-ledger.md`) |
+| `src/move-story-to-todo.ts` | Best-effort: moves a story back to To-Do when `dispatch-trigger.ts` can't proceed, before any workflow starts — mirrors `dispatch-worker/src/activities/move-story-to-todo.ts`, no shared lib between the two packages |
 | `src/temporal-client.ts` | This process's `@temporalio/client` connection for *starting* workflows — distinct from `dispatch-worker`'s own `NativeConnection`, which executes them |
 | `src/prompt-assembly.ts` + `src/prompt-templates/*.md` | Template lookup, placeholder substitution, system-block assembly |
 | `src/activation-runner.ts` | Generic runner: assembles the prompt, attaches the Linear MCP server (+ GitHub's for codebase-access lanes), posts + refreshes "working on it", makes the Anthropic call (resuming past a paused server-side MCP tool-call loop, up to `maxPauseContinuations`), error-reports |
@@ -183,19 +184,12 @@ crash-survival — the function signatures in `agent-scheduler.ts` don't change.
 
 ## Not yet built
 
-- **Reviewer-of-record.** The automated-dispatch redesign
-  (`docs/design-ledger.md`, "automated dispatch and BRD closure") names
-  recording whoever moved the story to In-Process as the requested reviewer
-  on the specialist's eventual PR as the property this whole redesign has to
-  preserve — deliberately deferred, not forgotten. It needs a Linear webhook
-  field (who moved the status) not yet confirmed against a live payload, and
-  threading it through would touch three packages
-  (`dispatch-trigger.ts` → the workflow input → `specialist-runner`'s own PR
-  step). `dispatch-trigger.ts`'s docstring names this explicitly.
-- **Tests/E2E specialist lanes.** `specialist-dispatch` only dispatches
-  backend/frontend (`story-context.ts`'s `SpecialistType`, matching
-  `dispatch-worker`'s and `specialist-runner`'s own scoping) — dedicated
-  Tests/E2E dispatch is a tracked follow-up, not built here.
+- **E2E specialist lane.** `specialist-dispatch` dispatches backend,
+  frontend, and integration tests (`story-context.ts`'s `SpecialistType`,
+  matching `dispatch-worker`'s and `specialist-runner`'s own scoping —
+  `tests` joined 2026-08-07) — e2e needs the epic-branch environment
+  stand-up named in CLAUDE.md's Agent Roster, which is new infrastructure
+  this package doesn't build, not a simple registration like `tests` was.
 - **A second issue tracker.** The write path is Linear-specific (MCP) — a
   Jira or GitHub Issues adapter would need its own MCP server to reach the
   same architecture, not just a webhook parser. (GitHub is already wired in,

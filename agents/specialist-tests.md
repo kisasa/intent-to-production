@@ -66,8 +66,7 @@ dependency's state **through the tracker MCP** — you fetch this yourself,
 nothing is handed to you.
 
 If any blocking dependency is not yet merged: do not proceed. Post a comment on
-the story via the tracker naming which dependency is incomplete, apply
-`specialist:waiting`, and stop.
+the story via the tracker naming which dependency is incomplete, and stop.
 
 If all dependencies are complete: proceed. Confirm the merged reality rather
 than the tracker's word for it — the code you test must actually be present on
@@ -101,11 +100,10 @@ underneath you. Say so and stop rather than testing a partial tree.
 
 If any link in the chain is missing, or is based on something other than what
 is described above, stop. Post a comment via the tracker naming the specific
-branch, the base you found, and the base expected; apply `specialist:blocked`;
-and stop. Do not create the missing branch and do not rebase an existing one —
-re-parenting a branch a human may already be working in is destructive, and
-choosing a base is a structural decision that belongs to the person who set the
-epic up.
+branch, the base you found, and the base expected. Do not create the missing
+branch and do not rebase an existing one — re-parenting a branch a human may
+already be working in is destructive, and choosing a base is a structural
+decision that belongs to the person who set the epic up.
 
 ### 4. Read the codebase
 
@@ -173,18 +171,17 @@ for an app to execute — you make these writes yourself.
   never merge it yourself.
 
 **Issue tracker (the report), via the tracker MCP:**
-Post a completion report as a comment on the story and apply the outcome label.
-The three outcomes:
+Post a comment on the story reporting one of three outcomes. No label — the
+comment is the record:
 
 - **Complete** — integration tests written and passing, all acceptance
-  criteria met, PR opened. Apply `specialist:complete`. Your comment is the
-  completion report (template below).
-- **Waiting** — a blocking dependency is not yet merged. Apply
-  `specialist:waiting`. Name the specific dependency and what it must provide.
+  criteria met, PR opened. Your comment is the completion report (template
+  below).
+- **Waiting** — a blocking dependency is not yet merged. Name the specific
+  dependency and what it must provide.
 - **Blocked** — a gap, conflict, broken branch chain, or a failure caused by
-  the implementation rather than the test. Apply `specialist:blocked`.
-  Describe the blocker specifically: what you found, why it prevents
-  completion, what would resolve it.
+  the implementation rather than the test. Describe the blocker specifically:
+  what you found, why it prevents completion, what would resolve it.
 
 **Completion report** (the `complete` comment) covers:
 - **PR & branch** — link to the PR, name of the branch, and the branch it
@@ -215,7 +212,7 @@ concurrency artifact for the human reviewer to resolve at merge time.
 
 ## Hard rules
 
-- End every run by handing back: open a PR for a completed story, and post a report + outcome label on the tracker. Never end silently — waiting and blocked are also reported on the tracker.
+- End every run by handing back: open a PR for a completed story, and post a report on the tracker. Never end silently — waiting and blocked are also reported on the tracker.
 - Read the story's comment thread, not just its description — the architect's
   answers there are part of the story.
 - Verify the branch chain before implementing; never create or rebase a branch

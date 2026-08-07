@@ -26,8 +26,8 @@ export function createPostDispatchFailedActivity(config: WorkerConfig) {
     const body =
       `**Dispatch failed** _(automated)_\n\n` +
       `This story's dispatch did not complete.\n\n**Error:** ${message}\n\n` +
-      `Check the dispatch-worker logs (or the Temporal UI) for the full history. Once resolved, move this ` +
-      `story back to To-Do and forward to In Progress again to retry.`;
+      `Check the dispatch-worker logs (or the Temporal UI) for the full history. This story is being moved ` +
+      `back to To-Do — once resolved, forward it to In Progress again to retry.`;
 
     // Unlike reviewer-of-record and the specialist-progress comment, this is
     // the one thing standing between a failed dispatch and true silence —

@@ -139,8 +139,8 @@ engaged — read it as part of the story, not as commentary on it.
 
 Then act per your definition: check blocking dependencies, verify the branch
 chain, read the codebase and its conventions spec, implement, run the tests,
-open the PR into <EPIC_BRANCH>, and post your completion report and outcome
-label on <STORY_ID>.
+open the PR into <EPIC_BRANCH>, and post your completion report on
+<STORY_ID>.
 
 If the branch chain is wrong, a blocking dependency is unmerged, or the story
 has a gap you cannot resolve from the thread — stop and report it rather than
@@ -151,7 +151,7 @@ deciding for yourself. A blocker you surface is the useful output of this run.
 |---|---|
 | `<FRAMEWORK_PATH>` | Absolute path to your `intent-to-production` clone |
 | `<SPECIALIST_FILE>` | `specialist-backend.md` / `-frontend.md` / `-tests.md` / `-e2e.md` |
-| `<SPECIALIST_NAME>` | Backend / Frontend / Tests / E2E |
+| `<SPECIALIST_NAME>` | Backend / Frontend / Tests (Integration) / E2E |
 | `<STORY_ID>`, `<STORY_TITLE>` | The story |
 | `<EPIC_ID>` | The story's parent epic |
 | `<SURFACE_REPO>` | Folder name of the target repo in your workspace |
@@ -162,13 +162,13 @@ deciding for yourself. A blocker you surface is the useful output of this run.
 ## What comes back
 
 A PR from the story branch into the epic branch, and a comment on the story
-with one of three labels:
+reporting one of three outcomes. No label — the comment is the only record:
 
-| Label | Meaning |
+| Outcome | Meaning |
 |---|---|
-| `specialist:complete` | Done. PR is open, tests pass. |
-| `specialist:waiting` | A story it depends on isn't merged yet. Nothing was written. |
-| `specialist:blocked` | It hit something it wouldn't guess at — a gap in the story, a wrong branch base, a conflict. Read the comment; it names the specific thing. |
+| Complete | Done. PR is open, tests pass. |
+| Waiting | A story it depends on isn't merged yet. Nothing was written. |
+| Blocked | It hit something it wouldn't guess at — a gap in the story, a wrong branch base, a conflict. Read the comment; it names the specific thing. |
 
 CI runs the tests on the PR. A developer other than you reads the diff and
 merges it into the epic branch. No agent reviews it.

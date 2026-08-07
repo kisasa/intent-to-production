@@ -7,11 +7,11 @@
  * — separate npm package, no shared lib between them, matching this repo's
  * existing "each package owns its own small client" pattern.
  *
- * Settled this session: the assignment label is `specialist:<type>` — matches
- * the already-built outcome-label prefix (`specialist:complete`/`:waiting`/
- * `:blocked` in dispatch-worker's `read-specialist-outcome.ts`), resolving the
+ * The assignment label is `specialist:<type>` — resolving the
  * `specialist:<type>` vs `spec:<type>` conflict design-ledger.md flagged as
- * unresolved.
+ * unresolved. (It used to also match the outcome-label prefix
+ * `specialist:complete`/`:waiting`/`:blocked`; those are gone — see
+ * `docs/design-ledger.md`, 2026-08-07.)
  *
  * VERIFY before relying on this in production (same flagged-not-confirmed
  * category as `adapters/linear.ts`'s and `dispatch-worker/src/tracker.ts`'s
@@ -24,9 +24,9 @@ import { createLogger } from "./logger.js";
 
 const log = createLogger("story-context");
 
-export type SpecialistType = "backend" | "frontend";
+export type SpecialistType = "backend" | "frontend" | "tests";
 
-const SUPPORTED_SPECIALIST_TYPES: SpecialistType[] = ["backend", "frontend"];
+const SUPPORTED_SPECIALIST_TYPES: SpecialistType[] = ["backend", "frontend", "tests"];
 const SPECIALIST_LABEL_PREFIX = "specialist:";
 
 export interface StoryDispatchContext {
@@ -71,21 +71,42 @@ interface StoryContextQueryResult {
  * string for every way a story can fail to carry a usable one, rather than a
  * bare null — `dispatch-trigger.ts` posts this reason verbatim in its error
  * comment, so it has to be specific enough for a human to act on.
+ *
+ * Filters to labels naming a *supported* type, rather than just taking the
+ * first `specialist:`-prefixed label. Confirmed live (2026-08-07, PROJ-64):
+ * back when the specialist's own outcome was also tracked as a label under
+ * this exact same prefix (`specialist:complete`/`:waiting`/`:blocked`,
+ * removed 2026-08-07 — see `docs/design-ledger.md`), nothing cleared one
+ * once a story was re-dispatched, and a leftover `specialist:waiting` won
+ * over the real `specialist:frontend` assignment label on the next attempt,
+ * since the old code just took whichever `specialist:*` label came first.
+ * Outcome labels are gone now, so this can't recur from a future dispatch,
+ * but the filter stays: it makes resolution order-independent and immune to
+ * any stray label sharing the prefix, and still reports clearly if a story
+ * genuinely carries zero or more than one type label.
  */
 export function parseSpecialistType(labels: string[]): { type: SpecialistType } | { reason: string } {
   const specialistLabels = labels.filter((name) => name.startsWith(SPECIALIST_LABEL_PREFIX));
   if (specialistLabels.length === 0) {
     return { reason: `no ${SPECIALIST_LABEL_PREFIX}<type> label found` };
   }
-  const raw = specialistLabels[0]?.slice(SPECIALIST_LABEL_PREFIX.length);
-  if (raw === undefined || !SUPPORTED_SPECIALIST_TYPES.includes(raw as SpecialistType)) {
+
+  const typeLabels = specialistLabels.filter((name) =>
+    SUPPORTED_SPECIALIST_TYPES.includes(name.slice(SPECIALIST_LABEL_PREFIX.length) as SpecialistType),
+  );
+
+  if (typeLabels.length === 0) {
     return {
       reason:
-        `${specialistLabels[0]} is not a supported specialist type. Supported: ` +
-        `${SUPPORTED_SPECIALIST_TYPES.join(", ")} — tests/e2e specialists are a tracked follow-up, not dispatched here.`,
+        `${specialistLabels.join(", ")} is not a supported specialist type. Supported: ` +
+        `${SUPPORTED_SPECIALIST_TYPES.join(", ")} — e2e specialists are a tracked follow-up, not dispatched here.`,
     };
   }
-  return { type: raw as SpecialistType };
+  if (typeLabels.length > 1) {
+    return { reason: `story carries more than one specialist type label: ${typeLabels.join(", ")} — exactly one is required` };
+  }
+
+  return { type: typeLabels[0]!.slice(SPECIALIST_LABEL_PREFIX.length) as SpecialistType };
 }
 
 export async function fetchStoryDispatchContext(

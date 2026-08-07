@@ -45,9 +45,10 @@ describe("dispatchStoryWorkflow", () => {
     await testEnv?.teardown();
   });
 
-  it("short-circuits to not-ready without touching any later activity", async () => {
+  it("short-circuits to not-ready without touching any later activity, but does move the story back to Todo", async () => {
     const { client, nativeConnection } = testEnv;
     const taskQueue = "test-not-ready";
+    const movedStoryIds: string[] = [];
 
     const worker = await Worker.create({
       connection: nativeConnection,
@@ -61,11 +62,13 @@ describe("dispatchStoryWorkflow", () => {
         postSpecialistStarted: unexpectedCall("postSpecialistStarted"),
         awaitSpecialistTask: unexpectedCall("awaitSpecialistTask"),
         deleteSpecialistProgressComment: unexpectedCall("deleteSpecialistProgressComment"),
-        readSpecialistOutcome: unexpectedCall("readSpecialistOutcome"),
         findPullRequest: unexpectedCall("findPullRequest"),
         requestPullRequestReviewer: unexpectedCall("requestPullRequestReviewer"),
         awaitPullRequestOutcome: unexpectedCall("awaitPullRequestOutcome"),
         postDispatchFailed: unexpectedCall("postDispatchFailed"),
+        moveStoryToTodo: async (storyId: string) => {
+          movedStoryIds.push(storyId);
+        },
       },
     });
 
@@ -77,11 +80,14 @@ describe("dispatchStoryWorkflow", () => {
       });
       expect(result).toEqual({ outcome: "not-ready", blockedBy: ["PROJ-42"] });
     });
+
+    expect(movedStoryIds).toEqual([baseInput.storyId]);
   }, 30_000);
 
-  it("skips PR-watching entirely when the specialist's outcome isn't complete", async () => {
+  it("skips PR-watching and moves the story back to Todo when the specialist's run leaves no PR behind", async () => {
     const { client, nativeConnection } = testEnv;
     const taskQueue = "test-not-complete";
+    const movedStoryIds: string[] = [];
 
     const worker = await Worker.create({
       connection: nativeConnection,
@@ -95,11 +101,13 @@ describe("dispatchStoryWorkflow", () => {
         postSpecialistStarted: async () => "comment-1",
         awaitSpecialistTask: async () => {},
         deleteSpecialistProgressComment: async () => {},
-        readSpecialistOutcome: async () => "waiting",
-        findPullRequest: unexpectedCall("findPullRequest"),
+        findPullRequest: async () => null,
         requestPullRequestReviewer: unexpectedCall("requestPullRequestReviewer"),
         awaitPullRequestOutcome: unexpectedCall("awaitPullRequestOutcome"),
         postDispatchFailed: unexpectedCall("postDispatchFailed"),
+        moveStoryToTodo: async (storyId: string) => {
+          movedStoryIds.push(storyId);
+        },
       },
     });
 
@@ -109,8 +117,10 @@ describe("dispatchStoryWorkflow", () => {
         taskQueue: taskQueue,
         args: [baseInput],
       });
-      expect(result).toEqual({ outcome: "waiting" });
+      expect(result).toEqual({ outcome: "no-pr" });
     });
+
+    expect(movedStoryIds).toEqual([baseInput.storyId]);
   }, 30_000);
 
   it("runs the full sequence and returns the specialist's outcome", async () => {
@@ -148,10 +158,6 @@ describe("dispatchStoryWorkflow", () => {
         deleteSpecialistProgressComment: async () => {
           calls.push("deleteSpecialistProgressComment");
         },
-        readSpecialistOutcome: async () => {
-          calls.push("readSpecialistOutcome");
-          return "complete";
-        },
         findPullRequest: async () => {
           calls.push("findPullRequest");
           return { number: 42, url: "https://github.com/example-org/example-api/pull/42" };
@@ -164,6 +170,7 @@ describe("dispatchStoryWorkflow", () => {
           return "merged";
         },
         postDispatchFailed: unexpectedCall("postDispatchFailed"),
+        moveStoryToTodo: unexpectedCall("moveStoryToTodo"),
       },
     });
 
@@ -187,17 +194,17 @@ describe("dispatchStoryWorkflow", () => {
       "postSpecialistStarted",
       "awaitSpecialistTask",
       "deleteSpecialistProgressComment",
-      "readSpecialistOutcome",
       "findPullRequest",
       "requestPullRequestReviewer",
       "awaitPullRequestOutcome",
     ]);
   }, 30_000);
 
-  it("posts a dispatch-failed comment naming the real cause, then still fails the workflow (never silent)", async () => {
+  it("posts a dispatch-failed comment naming the real cause, moves the story back to Todo, then still fails the workflow (never silent)", async () => {
     const { client, nativeConnection } = testEnv;
     const taskQueue = "test-unanticipated-failure";
     const postedMessages: string[] = [];
+    const movedStoryIds: string[] = [];
 
     const worker = await Worker.create({
       connection: nativeConnection,
@@ -215,12 +222,14 @@ describe("dispatchStoryWorkflow", () => {
         postSpecialistStarted: unexpectedCall("postSpecialistStarted"),
         awaitSpecialistTask: unexpectedCall("awaitSpecialistTask"),
         deleteSpecialistProgressComment: unexpectedCall("deleteSpecialistProgressComment"),
-        readSpecialistOutcome: unexpectedCall("readSpecialistOutcome"),
         findPullRequest: unexpectedCall("findPullRequest"),
         requestPullRequestReviewer: unexpectedCall("requestPullRequestReviewer"),
         awaitPullRequestOutcome: unexpectedCall("awaitPullRequestOutcome"),
         postDispatchFailed: async (_storyId: string, message: string) => {
           postedMessages.push(message);
+        },
+        moveStoryToTodo: async (storyId: string) => {
+          movedStoryIds.push(storyId);
         },
       },
     });
@@ -236,5 +245,6 @@ describe("dispatchStoryWorkflow", () => {
     });
 
     expect(postedMessages).toEqual(['Could not read epic branch "proj-10-refunds" in kisasa/example-api: GitHub returned 404']);
+    expect(movedStoryIds).toEqual([baseInput.storyId]);
   }, 30_000);
 });

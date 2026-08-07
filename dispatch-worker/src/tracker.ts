@@ -26,6 +26,7 @@ export interface TrackerIssue {
   readonly branchName: string;
   /** Linear's WorkflowState.type — "completed" means Done. */
   readonly stateType: string;
+  readonly teamId: string;
   readonly labels: string[];
   readonly comments: string[];
 }
@@ -57,6 +58,7 @@ const ISSUE_QUERY = `
       description
       branchName
       state { type name }
+      team { id }
       labels { nodes { name } }
       comments { nodes { body } }
     }
@@ -71,6 +73,7 @@ interface IssueQueryResult {
     description: string | null;
     branchName: string;
     state: { type: string; name: string };
+    team: { id: string };
     labels: { nodes: { name: string }[] };
     comments: { nodes: { body: string }[] };
   };
@@ -85,9 +88,36 @@ export async function getIssue(issueId: string, apiKey: string, baseUrl: string)
     description: issue.description ?? "",
     branchName: issue.branchName,
     stateType: issue.state.type,
+    teamId: issue.team.id,
     labels: issue.labels.nodes.map((label) => label.name),
     comments: issue.comments.nodes.map((comment) => comment.body),
   };
+}
+
+/**
+ * Resolves a workflow-state id by exact name within one team — needed
+ * because `IssueUpdateInput.stateId` (used to move an issue, e.g. back to
+ * To-Do) takes an id, not a name, and state ids are per-team, not global.
+ * Returns null rather than throwing on no match so callers can log and skip
+ * the move rather than fail whatever triggered it — a renamed or missing
+ * status shouldn't take down the caller's own real work.
+ */
+export async function findStateIdByName(teamId: string, name: string, apiKey: string, baseUrl: string): Promise<string | null> {
+  const { team } = await graphql<{ team: { states: { nodes: { id: string; name: string }[] } } }>(
+    apiKey,
+    baseUrl,
+    `query($teamId:String!){ team(id:$teamId){ states { nodes { id name } } } }`,
+    { teamId: teamId },
+  );
+  return team.states.nodes.find((state) => state.name === name)?.id ?? null;
+}
+
+/** Moves an issue to a different workflow state — e.g. back to To-Do. */
+export async function updateIssueState(issueId: string, stateId: string, apiKey: string, baseUrl: string): Promise<void> {
+  await graphql(apiKey, baseUrl, `mutation($id:String!,$i:IssueUpdateInput!){ issueUpdate(id:$id, input:$i){ success } }`, {
+    id: issueId,
+    i: { stateId: stateId },
+  });
 }
 
 /**

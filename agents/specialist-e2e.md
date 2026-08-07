@@ -77,14 +77,13 @@ nothing is handed to you. Your blockers will typically include the backend,
 frontend, and integration-test stories for the same feature area.
 
 If any blocking dependency is not yet merged: do not proceed. Post a comment on
-the story via the tracker naming which dependency is incomplete, apply
-`specialist:waiting`, and stop.
+the story via the tracker naming which dependency is incomplete, and stop.
 
 Beyond your listed blockers, confirm the epic itself is ready for you: every
 implementation and integration story under your parent epic must be merged into
 the epic branch. A sibling story still open that your flow happens to traverse
 will fail your tests for a reason that is not a defect. If the epic is not
-fully merged, apply `specialist:waiting`, name what is outstanding, and stop.
+fully merged, post a comment naming what is outstanding, and stop.
 
 ### 3. Verify the branch topology
 
@@ -109,8 +108,7 @@ also be cut from the right parent at the wrong time.
 
 If any link in the chain is missing or wrongly based, stop. Post a comment via
 the tracker naming the specific branch, the base you found, and the base
-expected; apply `specialist:blocked`; and stop. Do not create the missing
-branch and do not rebase an existing one.
+expected. Do not create the missing branch and do not rebase an existing one.
 
 ### 4. Read the codebase
 
@@ -163,9 +161,8 @@ Distinguish failure kinds explicitly, because they route to different people:
   unreachable, test data would not seed) is not an implementation defect. Say
   so plainly in your report.
 - An **implementation** failure — the code does not meet the acceptance
-  criteria — is a blocker. Post a comment via the tracker, apply
-  `specialist:blocked`, and describe specifically what failed and in which
-  flow.
+  criteria — is a blocker. Post a comment via the tracker describing
+  specifically what failed and in which flow.
 
 ---
 
@@ -186,19 +183,17 @@ for an app to execute — you make these writes yourself.
   never merge it yourself.
 
 **Issue tracker (the report), via the tracker MCP:**
-Post a completion report as a comment on the story and apply the outcome label.
-The three outcomes:
+Post a comment on the story reporting one of three outcomes. No label — the
+comment is the record:
 
 - **Complete** — E2E flows written and passing against the epic-branch
-  environment, all acceptance criteria met, PR opened. Apply
-  `specialist:complete`. Your comment is the completion report (template
-  below).
+  environment, all acceptance criteria met, PR opened. Your comment is the
+  completion report (template below).
 - **Waiting** — a blocking dependency, or a sibling story under the same epic,
-  is not yet merged. Apply `specialist:waiting`. Name what is outstanding and
-  what it must provide.
+  is not yet merged. Name what is outstanding and what it must provide.
 - **Blocked** — a gap, conflict, broken branch chain, or an implementation
-  failure. Apply `specialist:blocked`. Describe the blocker specifically: what
-  you found, why it prevents completion, what would resolve it.
+  failure. Describe the blocker specifically: what you found, why it prevents
+  completion, what would resolve it.
 
 **Completion report** (the `complete` comment) covers:
 - **PR & branch** — link to the PR, name of the branch, and the branch it
@@ -230,7 +225,7 @@ concurrency artifact for the human reviewer to resolve at merge time.
 
 ## Hard rules
 
-- End every run by handing back: open a PR for a completed story, and post a report + outcome label on the tracker. Never end silently — waiting and blocked are also reported on the tracker.
+- End every run by handing back: open a PR for a completed story, and post a report on the tracker. Never end silently — waiting and blocked are also reported on the tracker.
 - Read the story's comment thread, not just its description — the architect's
   answers there are part of the story.
 - Do not begin until every implementation and integration story under your

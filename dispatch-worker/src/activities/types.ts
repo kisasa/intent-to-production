@@ -1,9 +1,10 @@
 /**
- * Shared across activities and the workflow. Same two values as
- * `specialist-runner/src/dispatch-context.ts`'s `SpecialistType` — tests/e2e
- * aren't dispatched by this workflow, same scoping as that package.
+ * Shared across activities and the workflow. Same values as
+ * `specialist-runner/src/dispatch-context.ts`'s `SpecialistType` — e2e isn't
+ * dispatched by this workflow yet (it needs an epic-branch environment
+ * stand-up this workflow doesn't build), same scoping as that package.
  */
-export type SpecialistType = "backend" | "frontend";
+export type SpecialistType = "backend" | "frontend" | "tests";
 
 /**
  * Whoever moved the story to In-Process — webhook-listener's own TrackerActor,

@@ -1,11 +1,24 @@
 /**
  * The workflow: checks dependencies, resolves the target surface's repo
  * base, creates the story branch, dispatches the specialist, waits for it,
- * reads back its outcome, and — when that outcome is "complete" — finds the
- * PR the specialist opened and waits for it to merge or close. Covers the
- * ledger's full "dispatch → wait for the specialist → trigger CI → wait for
- * the result → gate on human review → proceed" chain now; "trigger CI" is a
- * no-op here since it already runs automatically on the PR's own push.
+ * and checks whether a PR now exists — if so, waits for it to merge or
+ * close. Covers the ledger's full "dispatch → wait for the specialist →
+ * trigger CI → wait for the result → gate on human review → proceed" chain
+ * now; "trigger CI" is a no-op here since it already runs automatically on
+ * the PR's own push.
+ *
+ * No outcome label (removed 2026-08-07 — see `docs/design-ledger.md`): a
+ * PR's existence *is* the outcome. The specialist's own comment on the story
+ * carries the why when there isn't one (waiting on a dependency, blocked,
+ * still thinking, crashed) — the workflow itself only needs to know whether
+ * there's a PR to watch, not classify the reason there isn't one yet.
+ *
+ * Every path that ends without a specialist actively running or a PR left
+ * open to watch — dependencies not ready, no PR after the specialist's run,
+ * or the catch-all failure below — also moves the story back to To-Do.
+ * Confirmed live (2026-08-07): without this, a story could sit in
+ * "In Progress" long after its own dispatch had already stopped, and the
+ * next move is always the developer's to make, not a workflow's to wait on.
  *
  * Runs in Temporal's deterministic workflow sandbox: no fetch, no AWS SDK, no
  * filesystem here — every real IO call goes through `proxyActivities`, which
@@ -14,7 +27,6 @@
 
 import { proxyActivities } from "@temporalio/workflow";
 import type { DispatchActivities } from "../activities/interface.js";
-import type { SpecialistOutcome } from "../activities/read-specialist-outcome.js";
 import type { SpecialistType, StoryMover } from "../activities/types.js";
 import { describeFailure } from "./describe-failure.js";
 
@@ -23,8 +35,8 @@ import { describeFailure } from "./describe-failure.js";
 // APIs (Linear, GitHub, AWS ECS). A persistent failure after 3 attempts
 // should surface as a failed workflow rather than hammer those APIs for
 // the better part of a day. Permanent errors (an unsupported host, a
-// missing repo base, no matching PR) skip retries entirely — see each
-// activity's own use of `ApplicationFailure.nonRetryable`.
+// missing repo base) skip retries entirely — see each activity's own use of
+// `ApplicationFailure.nonRetryable`.
 const {
   checkDependencies,
   resolveRepoBase,
@@ -32,10 +44,10 @@ const {
   dispatchSpecialist,
   postSpecialistStarted,
   deleteSpecialistProgressComment,
-  readSpecialistOutcome,
   findPullRequest,
   requestPullRequestReviewer,
   postDispatchFailed,
+  moveStoryToTodo,
 } = proxyActivities<DispatchActivities>({
   startToCloseTimeout: "5 minutes",
   retry: { maximumAttempts: 3 },
@@ -72,7 +84,7 @@ export interface DispatchStoryWorkflowInput {
 }
 
 export interface DispatchStoryWorkflowResult {
-  readonly outcome: SpecialistOutcome | "not-ready";
+  readonly outcome: "not-ready" | "no-pr" | "complete";
   /** Only set when `outcome` is "not-ready" — the blocking dependencies that aren't Done yet. */
   readonly blockedBy?: string[];
   /** Only set when `outcome` is "complete" — the PR this story's dispatch was watching. */
@@ -83,6 +95,7 @@ export async function dispatchStoryWorkflow(input: DispatchStoryWorkflowInput): 
   try {
     const dependencyCheck = await checkDependencies(input.storyId);
     if (!dependencyCheck.ready) {
+      await moveStoryToTodo(input.storyId);
       return { outcome: "not-ready", blockedBy: dependencyCheck.blockedBy };
     }
 
@@ -111,18 +124,22 @@ export async function dispatchStoryWorkflow(input: DispatchStoryWorkflowInput): 
       await deleteSpecialistProgressComment(progressCommentId);
     }
 
-    const outcome = await readSpecialistOutcome(input.storyId);
-    if (outcome !== "complete") {
-      // waiting/blocked/unknown: no PR exists to watch.
-      return { outcome: outcome };
+    const pr = await findPullRequest(repoBase, input.storyBranch, input.epicBranch);
+    if (!pr) {
+      // No PR yet, for whatever reason (waiting on a dependency, blocked,
+      // still thinking, crashed) — the specialist's own comment on the
+      // story already says why. Nothing is actively running anymore, so
+      // hand the next move back to a developer rather than leaving the
+      // board showing "In Progress" for a dispatch that's already stopped.
+      await moveStoryToTodo(input.storyId);
+      return { outcome: "no-pr" };
     }
 
-    const pr = await findPullRequest(repoBase, input.storyBranch, input.epicBranch);
     await requestPullRequestReviewer(repoBase, pr.number, input.mover);
     const prOutcome = await awaitPullRequestOutcome(input.storyId, repoBase, pr.number, pr.url);
 
     return {
-      outcome: outcome,
+      outcome: "complete",
       pullRequest: { number: pr.number, url: pr.url, merged: prOutcome === "merged" },
     };
   } catch (err) {
@@ -131,6 +148,7 @@ export async function dispatchStoryWorkflow(input: DispatchStoryWorkflowInput): 
     // this tier's own equivalent of the shaping tier's fail-fast comment,
     // so a human watching the tracker (not Temporal) also finds out.
     await postDispatchFailed(input.storyId, describeFailure(err));
+    await moveStoryToTodo(input.storyId);
     throw err;
   }
 }

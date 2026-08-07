@@ -33,6 +33,16 @@ describe("buildUserMessage", () => {
     const message = buildUserMessage({ ...context, specialistType: "frontend", specialistFile: "specialist-frontend.md" });
     expect(message).toContain("Frontend Specialist");
   });
+
+  it("names Tests for a tests dispatch", () => {
+    const message = buildUserMessage({ ...context, specialistType: "tests", specialistFile: "specialist-tests.md" });
+    expect(message).toContain("Tests Specialist");
+  });
+
+  it("does not mention an outcome label — removed 2026-08-07, the comment is the only record", () => {
+    const message = buildUserMessage(context);
+    expect(message).not.toMatch(/outcome label/i);
+  });
 });
 
 describe("buildSystemPrompt", () => {

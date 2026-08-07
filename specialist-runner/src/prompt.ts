@@ -22,6 +22,7 @@ import type { DispatchContext, SpecialistType } from "./dispatch-context.js";
 const SPECIALIST_NAMES: Record<SpecialistType, string> = {
   backend: "Backend",
   frontend: "Frontend",
+  tests: "Tests",
 };
 
 const SKILL_NAMES = ["story-contract", "epic-writing"];
@@ -45,7 +46,7 @@ Your target surface is the current working directory. Every write you make goes 
 
 Using the Linear connector, read ${context.storyId}'s description and its full comment thread, then walk up to ${context.epicId} for the parent epic, its resolved API map, and the linked design issue. The comment thread on ${context.storyId} may carry a question-and-answer exchange between the developer who picked this up and the architect from before you were engaged — read it as part of the story, not as commentary on it.
 
-Then act per your definition: check blocking dependencies, verify the branch chain, read the codebase and its conventions spec, implement, run the tests, open the PR into ${context.epicBranch}, and post your completion report and outcome label on ${context.storyId}.
+Then act per your definition: check blocking dependencies, verify the branch chain, read the codebase and its conventions spec, implement, run the tests, open the PR into ${context.epicBranch}, and post your completion report on ${context.storyId}.
 
 If the branch chain is wrong, a blocking dependency is unmerged, or the story has a gap you cannot resolve from the thread — stop and report it rather than deciding for yourself. A blocker you surface is the useful output of this run.`;
 }

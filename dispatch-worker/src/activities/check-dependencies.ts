@@ -24,10 +24,14 @@ export interface DependencyCheckResult {
 
 // "-" or "*" — both are valid Markdown bullet markers and Decompose isn't
 // pinned to one (the References section on this exact story used "*" while
-// its own Blocking-dependencies section used "-"). The identifier's own
-// hyphen (e.g. "PROJ-42") is real tracker syntax, not incidental formatting,
-// so that one stays literal.
-const BULLET_IDENTIFIER = /^[-*]\s*([A-Z][A-Z0-9]*-\d+)/;
+// its own Blocking-dependencies section used "-"). The bullet marker itself
+// is optional — confirmed live (2026-08-06, PROJ-64): Decompose rendered a
+// single blocker as a bare line ("PROJ-63 — Story: ...") with no marker at
+// all, which silently produced zero blocker ids and let checkDependencies
+// wave the story through — the specialist itself had to catch the real
+// blocker mid-run. The identifier's own hyphen (e.g. "PROJ-42") is real
+// tracker syntax, not incidental formatting, so that one stays literal.
+const BULLET_IDENTIFIER = /^[-*]?\s*([A-Z][A-Z0-9]*-\d+)/;
 
 /**
  * Strips everything but letters and digits, lowercased, so heading-text
@@ -114,8 +118,8 @@ export function createCheckDependenciesActivity(config: WorkerConfig) {
         config.linearAgentApiKey,
         baseUrl,
         `**Dispatch blocked** _(automated)_\n\nThis story's blocking dependencies aren't all Done yet: ` +
-          `${notDone.join(", ")}. Move this story back to To-Do and forward again once ` +
-          `${notDone.length === 1 ? "it merges" : "they merge"}.`,
+          `${notDone.join(", ")}. Moving this story back to To-Do — forward it to In Progress again once ` +
+          `${notDone.length === 1 ? "it merges" : "they merge"} to retry.`,
       );
       return { ready: false, blockedBy: notDone };
     }
