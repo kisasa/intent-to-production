@@ -2979,3 +2979,125 @@ pointing to PROJ-70. This is a live-dispatch data fix on top of the process
 fix above — the corrected `decompose-agent.md` prevents a *future* epic from
 repeating this, it does not retroactively repair one already decomposed
 before the fix landed.
+
+### E2E execution moves from the story's own PR to the epic→BRD PR; the specialist stops self-verifying (2026-08-07)
+
+the architect set up PROJ-58's actual `e2e/` project (a real Playwright project with a
+`CONVENTIONS.md`, scaffolded directly onto the epic branch — see the entry
+above) and then asked the operational question this revealed: why can't he
+just move PROJ-70 to In Progress and get tests written? Two answers, one old
+and one that needed revisiting.
+
+**Old answer, still true:** E2E isn't app-dispatched. `webhook-listener`'s
+`specialist-dispatch` lane only recognizes `backend`/`frontend`/`tests`;
+moving PROJ-70 to In Progress today fails fast and bounces back to To-Do via
+`moveStoryToTodo`, exactly as designed. E2E stays on the human-in-Claude-Code
+model until the epic-branch environment stand-up gets built.
+
+**The part that needed revisiting: what "environment stand-up" actually means
+was already decided, back in the automated-dispatch design session, and
+`specialist-e2e.md` contradicted it.** That session recorded: *"Integration
+and E2E run in GitHub Actions, not a new AWS service — Fargate cannot run the
+team's docker-compose stack... The dedicated integration-test story's PR and
+the E2E story's PR are what trigger this stage."* `specialist-e2e.md`'s own
+hand-back criteria never caught up to that — it still told the specialist to
+"run the E2E tests against an environment stood up from the epic branch and
+confirm they pass" before handing back, i.e. it assumed the specialist itself
+stands up the full stack. That's precisely what Fargate (and by extension any
+constrained sandbox) was already established not to be trusted for; keeping
+the requirement made the agent definition ask for something the design had
+already ruled out elsewhere.
+
+**Two decisions, made explicit and applied to `specialist-e2e.md`:**
+
+1. **Trigger point changed:** not the E2E story's own PR into the epic
+   branch (the original wording), but **the epic's PR into the BRD branch**,
+   once every story under the epic — implementation, integration, and E2E —
+   has already merged into the epic branch on code review alone. Rationale:
+   the expensive docker-compose run only needs to happen once per epic, at
+   the point that actually gates promotion, rather than potentially
+   repeatedly against an E2E story's PR while it's still being iterated on.
+2. **The specialist no longer self-verifies.** It writes tests, does a
+   careful self-review (does each assertion actually check the criterion it
+   claims to, not something adjacent), and hands back without needing to
+   stand up or run anything. Standing up the app locally while writing is
+   still fine and worth reporting if done, but it's a sanity check now, never
+   a blocker and never a reason to report `blocked`. CI is the actual
+   pass/fail gate; a failure discovered there routes to whoever is reviewing
+   the epic's PR into the BRD branch, not back through this specialist.
+
+**Still not built anywhere:** the GitHub Actions workflow and docker-compose
+file this whole design depends on. Checked `example-app` directly — it has
+only `backend.yml`/`frontend.yml` (basic per-surface lint/type-check/test),
+no docker-compose file, no integration/e2e workflow. This was explicitly
+deferred when `specialist-runner`/`dispatch-worker` were built ("tests/e2e
+need the GitHub Actions cross-repo checkout this session already deferred")
+and remains deferred — today's fix corrects the agent definition to match the
+decided design, it does not build the missing CI infrastructure.
+
+`CLAUDE.md`'s Agent Roster and the app-dispatch paragraph below it were
+updated to match; `agents/specialist-e2e.md` had its "Where you run",
+"Verify", hand-back, and hard-rules sections all reworked so no path through
+the document still tells the specialist to run its own suite.
+
+### `e2e` joins app-dispatch — the last barrier was self-verification, not mechanics (2026-08-07)
+
+the architect's next question, after the fix above: "I don't want you to run anything
+here. That defeats the purpose of this testing... Do we need to work through
+creating specialist:e2e?" Right instinct — a human standing in for the
+specialist mid-session (or worse, the same session that just fixed the agent
+definition also grading its own homework by running it) tells you nothing
+about whether the *pipeline* works. The only way this test means anything is
+if moving PROJ-70 to In Progress dispatches a real Agent SDK session against a
+real sandbox, same as backend/frontend/tests already do.
+
+Checked every dispatch touchpoint before assuming this was "just like
+`tests`," rather than repeating the earlier registration by pattern-match
+alone:
+
+- `check-dependencies.ts` — reads whatever's in "Blocking dependencies,"
+  zero type awareness.
+- `create-story-branch.ts` — cuts the story branch from the epic branch's
+  current SHA via the GitHub API, zero type awareness.
+- `resolve-repo-base.ts` — parses `Repo base — <surface>: ...` for whatever
+  surface string it's given; already proven working for `e2e` (used to
+  record PROJ-58's line, two entries up).
+- `workspace.ts` — clones exactly one target repo, zero type awareness.
+- `specialistFile` is built as `` `specialist-${specialistType}.md` `` —
+  `specialist-e2e.md` resolves with no separate mapping.
+
+All of it was already generic. The only reason `e2e` couldn't register
+alongside `tests` earlier the same day was `specialist-e2e.md` itself
+requiring a live environment and self-verification — once that was gone (the
+entry above), there was no remaining mechanical difference between `e2e` and
+`tests` at all. Registered exactly the same way:
+
+- `SpecialistType`/`SUPPORTED_SPECIALIST_TYPES` widened to include `"e2e"`
+  in the three touchpoint files (`webhook-listener/src/story-context.ts`,
+  `dispatch-worker/src/activities/types.ts`,
+  `specialist-runner/src/dispatch-context.ts`).
+- `SPECIALIST_NAMES` in `specialist-runner/src/prompt.ts` gained
+  `e2e: "E2E"` — the exact class of bug caught last time (`tests` missing
+  from this same record was a real compile error), avoided this time by
+  checking the file directly rather than assuming the pattern held.
+- Two stale "e2e specialists are a tracked follow-up, not dispatched here"
+  messages, sitting right next to the arrays they were about to contradict,
+  removed.
+- `buildUserMessage`'s generic "implement, run the tests, open the PR..."
+  line no longer holds for e2e (which self-reviews rather than runs) —
+  softened to "do the story's work, open the PR..." rather than adding a
+  type-specific branch for one word.
+- Test coverage added in all three packages mirroring `tests`'s own
+  additions: a positive extraction/resolution test for `e2e`, and the
+  existing "rejects an unsupported type" tests repointed at a genuinely
+  unsupported value (`design`) since `e2e` no longer is one.
+
+**What this does and doesn't unlock.** Moving PROJ-70 to In Progress now
+dispatches a real `specialist-e2e.md` run through the same Temporal
+workflow, ECS task, and Agent SDK session as any other story — no manual
+branch-cutting, no human (or this session) standing in as the specialist.
+What it still doesn't do is *execute* the resulting suite — that's the
+GitHub Actions piece two entries up, confirmed still unbuilt in
+`example-app`. Verified: typecheck and test:unit clean across all three
+packages (92 webhook-listener, 77 dispatch-worker, 24 specialist-runner
+tests) before this entry was written, not assumed after.

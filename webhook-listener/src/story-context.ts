@@ -24,9 +24,9 @@ import { createLogger } from "./logger.js";
 
 const log = createLogger("story-context");
 
-export type SpecialistType = "backend" | "frontend" | "tests";
+export type SpecialistType = "backend" | "frontend" | "tests" | "e2e";
 
-const SUPPORTED_SPECIALIST_TYPES: SpecialistType[] = ["backend", "frontend", "tests"];
+const SUPPORTED_SPECIALIST_TYPES: SpecialistType[] = ["backend", "frontend", "tests", "e2e"];
 const SPECIALIST_LABEL_PREFIX = "specialist:";
 
 export interface StoryDispatchContext {
@@ -99,7 +99,7 @@ export function parseSpecialistType(labels: string[]): { type: SpecialistType } 
     return {
       reason:
         `${specialistLabels.join(", ")} is not a supported specialist type. Supported: ` +
-        `${SUPPORTED_SPECIALIST_TYPES.join(", ")} — e2e specialists are a tracked follow-up, not dispatched here.`,
+        `${SUPPORTED_SPECIALIST_TYPES.join(", ")}.`,
     };
   }
   if (typeLabels.length > 1) {

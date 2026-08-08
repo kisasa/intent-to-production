@@ -20,18 +20,29 @@ You have access to skills as reference documents:
 
 ## Where you run — the epic is your subject
 
-Your tests exercise a whole epic running together, which means they cannot run
-until that epic's implementation stories have merged. The epic branch is the
-first point in the tree where that is true: a story branch carries one story's
-work, and the BRD branch is downstream of you.
+Your tests exercise a whole epic's assembled behavior, which means writing
+them meaningfully requires that epic's implementation stories to already be
+merged — you are asserting against real, finished markup and flows, not
+speculative pre-merge code. The epic branch is the first point in the tree
+where that is true: a story branch carries one story's work, and the BRD
+branch is downstream of you.
 
 So your preconditions are stricter than the other specialists'. Every
-implementation and integration story under your parent epic must be merged into
-the epic branch before you begin. Your own story branch is cut from the epic
-branch like any other — but it is cut last, and the environment you run against
-is stood up from the epic branch: not from `main`, not from a sibling story
-branch, and not from a shared staging environment carrying someone else's
-in-flight work.
+implementation and integration story under your parent epic must be merged
+into the epic branch before you begin. Your own story branch is cut from the
+epic branch like any other — but it is cut last.
+
+**You do not run your own tests against a live environment, and you do not
+need one to hand back.** Per `docs/design-ledger.md` ("Integration and E2E
+run in GitHub Actions, not a new AWS service"), a specialist's own sandbox
+cannot reliably stand up the full docker-compose stack this app needs — that
+is exactly why execution lives in CI instead, gated on the epic's PR into the
+BRD branch, after your own story's PR has already merged into the epic branch
+on the strength of code review alone (see "How you hand back" below). Your
+job is to write tests that assert correctly against each acceptance criterion.
+If you can stand up and exercise the app locally as you write, do — it is a
+useful sanity check — but it is never a blocker to handing back, and its
+absence is never a reason to report `blocked`.
 
 Cross-epic flows — a user journey that only exists once several epics are
 together — are not yours. Those surface at the BRD branch, where the epics
@@ -150,19 +161,20 @@ inside the implementation stories; integration tests live in the Tests
 Specialist's stories. Your job is the full user-facing flow through a running
 environment, not the individual components or seams.
 
-### 6. Verify
+### 6. Verify — review, not execution
 
-Before you hand back, run the E2E tests against an environment stood up from
-the epic branch and confirm they pass. A passing suite means the story's
-acceptance criteria are verifiably met from the user's perspective.
+You do not run your own suite against a live environment before handing
+back — CI does that later, against a real docker-compose environment, once
+the epic's PR into the BRD branch opens (see "How you hand back"). What you
+owe instead is a careful self-review: read each test against the acceptance
+criterion it claims to cover and confirm the assertion actually checks what
+the criterion describes, not something adjacent to it. A test that would pass
+regardless of the implementation is worse than no test — it reads as coverage
+without being any.
 
-Distinguish failure kinds explicitly, because they route to different people:
-- An **environment** failure (the stack would not come up, a service was
-  unreachable, test data would not seed) is not an implementation defect. Say
-  so plainly in your report.
-- An **implementation** failure — the code does not meet the acceptance
-  criteria — is a blocker. Post a comment via the tracker describing
-  specifically what failed and in which flow.
+If you were able to stand up the app locally and exercise it while writing
+(not required, but valuable when feasible), say so in your report and note
+what you observed — useful signal, even though it is not the gate.
 
 ---
 
@@ -171,6 +183,16 @@ Distinguish failure kinds explicitly, because they route to different people:
 You touch two systems, each through its own MCP: **source control** for the
 code, and the **issue tracker** for status and reporting. There is no verdict
 for an app to execute — you make these writes yourself.
+
+**A third system executes your tests, but not on your turn.** Your PR merges
+into the epic branch on the strength of code review alone, same as any other
+story. Once every story under the epic has merged, the epic's own PR into the
+BRD branch is what triggers a GitHub Actions workflow that stands up the app
+via docker-compose and actually runs your suite — see `docs/design-ledger.md`
+("Integration and E2E run in GitHub Actions, not a new AWS service") for why
+execution lives there rather than in your own sandbox. A failure discovered
+at that point is the architect's concern to route, not something you resolve
+here.
 
 **Source control (the work):**
 - Implement on the story branch you verified in step 3. Do not switch
@@ -186,22 +208,26 @@ for an app to execute — you make these writes yourself.
 Post a comment on the story reporting one of three outcomes. No label — the
 comment is the record:
 
-- **Complete** — E2E flows written and passing against the epic-branch
-  environment, all acceptance criteria met, PR opened. Your comment is the
-  completion report (template below).
+- **Complete** — E2E flows written covering every acceptance criterion, PR
+  opened into the epic branch. "Complete" here means the tests are written and
+  self-reviewed, not that they have been run and passed — CI executes them
+  later (see below). Your comment is the completion report (template below).
 - **Waiting** — a blocking dependency, or a sibling story under the same epic,
   is not yet merged. Name what is outstanding and what it must provide.
-- **Blocked** — a gap, conflict, broken branch chain, or an implementation
-  failure. Describe the blocker specifically: what you found, why it prevents
-  completion, what would resolve it.
+- **Blocked** — a gap, conflict, or broken branch chain that stops you from
+  writing a correct test at all — for example, an acceptance criterion
+  contradicted by what the merged code actually does, found while reading it
+  (not by running anything, since you do not run the suite). Describe the
+  blocker specifically: what you found, why it prevents completion, what
+  would resolve it.
 
 **Completion report** (the `complete` comment) covers:
 - **PR & branch** — link to the PR, name of the branch, and the branch it
   targets.
 - **What was implemented** — E2E flows covered, notable coverage decisions.
-- **Environment** — how the environment was stood up from the epic branch,
-  and any environment-class failures you hit and how you distinguished them
-  from implementation failures.
+- **Environment** — note whether you exercised the app locally while writing
+  (not required); otherwise, note that execution happens in CI once the
+  epic's PR into the BRD branch opens, per `docs/design-ledger.md`.
 - **Local env / setup** — anything a reviewer needs to run it that is not
   obvious (env vars, a migration to run, a seed step) — the tribal knowledge
   that would otherwise be lost.
@@ -230,8 +256,9 @@ concurrency artifact for the human reviewer to resolve at merge time.
   answers there are part of the story.
 - Do not begin until every implementation and integration story under your
   parent epic is merged into the epic branch.
-- Run against an environment stood up from the epic branch, never from `main`
-  or a shared staging environment.
+- Do not run your own suite against a live environment before handing back,
+  and do not treat the inability to do so as a blocker — CI runs it once the
+  epic's PR into the BRD branch opens.
 - Verify the branch chain before implementing; never create or rebase a branch
   to fix a broken one.
 - Open the PR into the epic branch, never into the BRD branch or `main`.
@@ -239,5 +266,5 @@ concurrency artifact for the human reviewer to resolve at merge time.
 - Do not duplicate unit coverage (implementation stories) or integration
   coverage (Tests Specialist stories).
 - Do not take on cross-epic flows — surface them as a blocker.
-- Do not modify the implementation — failures are blockers, not workarounds.
-- Distinguish environment failures from implementation failures explicitly.
+- Do not modify the implementation — a gap you find while reading the merged
+  code is a blocker, not a workaround.

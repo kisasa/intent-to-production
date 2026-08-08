@@ -28,6 +28,10 @@ describe("parseSpecialistType", () => {
     expect(parseSpecialistType(["size:medium", "specialist:tests"])).toEqual({ type: "tests" });
   });
 
+  it("extracts 'e2e' as a supported specialist type", () => {
+    expect(parseSpecialistType(["size:medium", "specialist:e2e"])).toEqual({ type: "e2e" });
+  });
+
   it("reports when no specialist:* label is present", () => {
     expect(parseSpecialistType(["size:medium"])).toEqual({
       reason: "no specialist:<type> label found",
@@ -35,7 +39,7 @@ describe("parseSpecialistType", () => {
   });
 
   it("reports when the specialist type isn't one this trigger supports", () => {
-    const result = parseSpecialistType(["specialist:e2e"]);
+    const result = parseSpecialistType(["specialist:design"]);
     expect("reason" in result && result.reason).toMatch(/not a supported specialist type/);
   });
 

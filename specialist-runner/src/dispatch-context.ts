@@ -9,9 +9,9 @@
 
 import { envOr } from "./env.js";
 
-export type SpecialistType = "backend" | "frontend" | "tests";
+export type SpecialistType = "backend" | "frontend" | "tests" | "e2e";
 
-const SUPPORTED_SPECIALIST_TYPES: SpecialistType[] = ["backend", "frontend", "tests"];
+const SUPPORTED_SPECIALIST_TYPES: SpecialistType[] = ["backend", "frontend", "tests", "e2e"];
 
 export interface DispatchContext {
   readonly storyId: string;
@@ -53,8 +53,7 @@ function requireSpecialistType(name: string): SpecialistType {
   const value = requireEnv(name);
   if (SUPPORTED_SPECIALIST_TYPES.includes(value as SpecialistType)) return value as SpecialistType;
   throw new Error(
-    `${name}="${value}" is not a supported specialist type. Supported: ${SUPPORTED_SPECIALIST_TYPES.join(", ")} ` +
-      `— e2e specialists are a tracked follow-up, not built here.`,
+    `${name}="${value}" is not a supported specialist type. Supported: ${SUPPORTED_SPECIALIST_TYPES.join(", ")}.`,
   );
 }
 

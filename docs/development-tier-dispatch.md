@@ -2,6 +2,14 @@
 
 For the developer who just picked up a story in **To-Do**.
 
+**As of 2026-08-07, all four specialist types (backend, frontend, tests, e2e)
+are app-dispatched** — moving a story to `In-Process` starts a real
+`dispatch-worker` workflow against the specialist sandbox, no manual steps
+needed. This document is now a manual fallback: useful for debugging a
+dispatch, running against a target repo the app-dispatch path doesn't reach
+yet, or working without the app's infrastructure at all. It is no longer any
+specialist type's primary path.
+
 You do three things: set the branch up, paste a prompt, review what comes back.
 Everything below is the detail behind those three.
 

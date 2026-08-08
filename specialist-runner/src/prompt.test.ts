@@ -39,6 +39,16 @@ describe("buildUserMessage", () => {
     expect(message).toContain("Tests Specialist");
   });
 
+  it("names E2E for an e2e dispatch", () => {
+    const message = buildUserMessage({ ...context, specialistType: "e2e", specialistFile: "specialist-e2e.md" });
+    expect(message).toContain("E2E Specialist");
+  });
+
+  it("does not tell the specialist to run tests — not true for e2e, which only self-reviews", () => {
+    const message = buildUserMessage(context);
+    expect(message).not.toMatch(/run the tests/i);
+  });
+
   it("does not mention an outcome label — removed 2026-08-07, the comment is the only record", () => {
     const message = buildUserMessage(context);
     expect(message).not.toMatch(/outcome label/i);

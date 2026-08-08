@@ -184,12 +184,6 @@ crash-survival — the function signatures in `agent-scheduler.ts` don't change.
 
 ## Not yet built
 
-- **E2E specialist lane.** `specialist-dispatch` dispatches backend,
-  frontend, and integration tests (`story-context.ts`'s `SpecialistType`,
-  matching `dispatch-worker`'s and `specialist-runner`'s own scoping —
-  `tests` joined 2026-08-07) — e2e needs the epic-branch environment
-  stand-up named in CLAUDE.md's Agent Roster, which is new infrastructure
-  this package doesn't build, not a simple registration like `tests` was.
 - **A second issue tracker.** The write path is Linear-specific (MCP) — a
   Jira or GitHub Issues adapter would need its own MCP server to reach the
   same architecture, not just a webhook parser. (GitHub is already wired in,

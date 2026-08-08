@@ -1,24 +1,40 @@
 # specialist-runner
 
-Runs a **backend**, **frontend**, or **integration-test** (`specialist:tests`) Specialist against one story,
-inside the `specialist-sandbox` ECS task
-[`infrastructure/`](../infrastructure) registers. The automated replacement
-for the human half of
+Runs a **backend**, **frontend**, **integration-test** (`specialist:tests`),
+or **E2E** (`specialist:e2e`) Specialist against one story, inside the
+`specialist-sandbox` ECS task [`infrastructure/`](../infrastructure)
+registers. The automated replacement for the human half of
 [`docs/development-tier-dispatch.md`](../docs/development-tier-dispatch.md) —
 same specialist definitions (`agents/specialist-backend.md`,
-`agents/specialist-frontend.md`, `agents/specialist-tests.md`), same
-MCP-driven orientation and hand-back, just triggered by a `RunTask` call
-instead of a developer pasting a prompt into Claude Code.
+`agents/specialist-frontend.md`, `agents/specialist-tests.md`,
+`agents/specialist-e2e.md`), same MCP-driven orientation and hand-back, just
+triggered by a `RunTask` call instead of a developer pasting a prompt into
+Claude Code.
 
-**E2E specialists are not built here yet.** Per CLAUDE.md's own Agent
-Roster, e2e runs against "an environment stood up from the epic branch
-after every sibling story has merged" — nothing in this package or
-`dispatch-worker` stands up such an environment. `tests` needed no new
-infrastructure to add (2026-08-07): `workspace.ts` already clones exactly
-one target surface repo per dispatch, resolved by `dispatch-worker`'s
-`resolveRepoBase(epicId, specialistType)` from a `Repo base — tests: ...`
+`tests` (2026-08-07) and `e2e` (2026-08-07, right after) both needed no new
+infrastructure to add: `workspace.ts` already clones exactly one target
+surface repo per dispatch, resolved by `dispatch-worker`'s
+`resolveRepoBase(epicId, specialistType)` from a `Repo base — <surface>: ...`
 comment the architect records on the epic — the same mechanism backend and
-frontend already use. That covers integration testing *within* one repo
+frontend already use. `e2e`'s registration was blocked slightly longer than
+`tests`'s, but not by anything in this package — `specialist-e2e.md` used to
+require the specialist to stand up and self-verify against a live
+environment, which no sandbox here can do (see `docs/design-ledger.md`,
+"Integration and E2E run in GitHub Actions": Fargate can't run the team's
+privileged docker-compose stack). Once that requirement was dropped in favor
+of CI doing the actual execution, dispatch mechanics were already fully
+generic and `e2e` registered exactly like `tests` did.
+
+**This still doesn't execute the E2E suite it writes — only the GitHub
+Actions piece would.** The specialist writes tests and opens a PR; per the
+decided design, a GitHub Actions workflow triggered by the epic's own PR
+into the BRD branch is what's supposed to stand up docker-compose and run
+them. That workflow doesn't exist in any target repo yet (confirmed empty in
+`example-app`: no docker-compose file, no e2e/integration workflow, only
+per-surface `backend.yml`/`frontend.yml`) — a separate, unbuilt piece from
+what this package does.
+
+Registering `tests` also only covers integration testing *within* one repo
 (this engagement's actual shape — `frontend/` and presumably `backend/` as
 folders in one `example-app` monorepo). It does **not** cover a hypothetical
 engagement where backend and frontend are genuinely separate GitHub repos
@@ -58,7 +74,7 @@ all of them at startup and fails fast naming whatever's missing):
 |---|---|---|
 | `STORY_ID`, `STORY_TITLE` | yes | The story |
 | `EPIC_ID` | yes | Parent epic |
-| `SPECIALIST_TYPE` | yes | `backend` or `frontend` |
+| `SPECIALIST_TYPE` | yes | `backend`, `frontend`, `tests`, or `e2e` |
 | `SURFACE_REPO` | yes | `org/name` on GitHub — the one repo this run writes to |
 | `STORY_BRANCH`, `EPIC_BRANCH` | yes | Branch names the tracker already assigned |
 | `MAX_TURNS` | yes | Hard cap on Agent SDK turns — the ledger is explicit a session doesn't time out on its own |

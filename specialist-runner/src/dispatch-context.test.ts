@@ -59,6 +59,11 @@ describe("loadDispatchContext", () => {
     expect(loadDispatchContext().specialistFile).toBe("specialist-tests.md");
   });
 
+  it("resolves specialistFile for e2e too", () => {
+    stubAll({ SPECIALIST_TYPE: "e2e" });
+    expect(loadDispatchContext().specialistFile).toBe("specialist-e2e.md");
+  });
+
   it("defaults frameworkRef to main when unset", () => {
     stubAll({ FRAMEWORK_REF: undefined });
     expect(loadDispatchContext().frameworkRef).toBe("main");
@@ -75,7 +80,7 @@ describe("loadDispatchContext", () => {
   });
 
   it("rejects an unsupported specialist type", () => {
-    stubAll({ SPECIALIST_TYPE: "e2e" });
+    stubAll({ SPECIALIST_TYPE: "design" });
     expect(() => loadDispatchContext()).toThrow(/not a supported specialist type/);
   });
 
