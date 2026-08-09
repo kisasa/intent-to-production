@@ -2,8 +2,7 @@
 
 For the developer who just picked up a story in **To-Do**.
 
-**As of 2026-08-07, all four specialist types (backend, frontend, tests, e2e)
-are app-dispatched** — moving a story to `In-Process` starts a real
+**As of 2026-08-07, every surface is app-dispatched** — moving a story to `In-Process` starts a real
 `dispatch-worker` workflow against the specialist sandbox, no manual steps
 needed. This document is now a manual fallback: useful for debugging a
 dispatch, running against a target repo the app-dispatch path doesn't reach
@@ -70,7 +69,7 @@ the first few stories you want to see what it actually does.
 
 - [ ] Story read, and it makes sense to you
 - [ ] Your questions asked and answered **in the story's comment thread**
-- [ ] Branch chain set up in the target repo, story branch checked out
+- [ ] Branch chain set up in the target surface's repo, story branch checked out
 - [ ] `git pull` in the framework clone
 - [ ] Claude Code session pointed at the workspace folder
 
@@ -105,33 +104,33 @@ Check out the story branch before you dispatch.
 The specialist checks this chain and stops if it's wrong. It won't create or
 re-parent a branch for you.
 
-**E2E stories are cut last.** Create the branch only after every other story
-under that epic has merged into the epic branch — otherwise the code its tests
-walk through isn't there yet, and the run will stop.
+**A cross-story test story is cut after the stories it tests.** Create its
+branch once those have merged into the epic branch — not after every story in
+the epic, just the ones its coverage needs. Cut it early and the code it
+exercises isn't underneath it yet.
 
 ---
 
 ## The prompt
 
-Pick the specialist file matching the story's assignment label —
-`specialist:backend`, `specialist:frontend`, `specialist:tests`, or
-`specialist:e2e`.
+There is one specialist definition now. The story's `surface:` label says where
+it works, not which file to load.
 
 ```
 Read these three files now — they define your role and the contracts you work
 to:
 
-- <FRAMEWORK_PATH>/agents/<SPECIALIST_FILE>
+- <FRAMEWORK_PATH>/agents/specialist.md
 - <FRAMEWORK_PATH>/skills/story-contract/story-contract.md
 - <FRAMEWORK_PATH>/skills/epic-writing/epic-writing.md
 
-You are the <SPECIALIST_NAME> Specialist those files describe. Follow that
-definition; this message only tells you which story and where.
+You are the Specialist those files describe. Follow that definition; this
+message only tells you which story and where.
 
 Assignment: story <STORY_ID> — "<STORY_TITLE>", under epic <EPIC_ID>.
 
-Your target surface is ./<SURFACE_REPO>. Every write you make goes there and
-nowhere else. It is checked out on <STORY_BRANCH>; the epic branch is
+Your target surface is ./<SURFACE_REPO>, per the story's `surface:` label(s).
+Every write you make goes there and nowhere else. It is checked out on <STORY_BRANCH>; the epic branch is
 <EPIC_BRANCH>. Both names come from the tracker, and I set the chain up before
 dispatching you — verify it, do not repair it.
 
@@ -158,8 +157,6 @@ deciding for yourself. A blocker you surface is the useful output of this run.
 | Placeholder | Where it comes from |
 |---|---|
 | `<FRAMEWORK_PATH>` | Absolute path to your `intent-to-production` clone |
-| `<SPECIALIST_FILE>` | `specialist-backend.md` / `-frontend.md` / `-tests.md` / `-e2e.md` |
-| `<SPECIALIST_NAME>` | Backend / Frontend / Tests (Integration) / E2E |
 | `<STORY_ID>`, `<STORY_TITLE>` | The story |
 | `<EPIC_ID>` | The story's parent epic |
 | `<SURFACE_REPO>` | Folder name of the target repo in your workspace |

@@ -49,7 +49,69 @@ The epic arrives already specified: its capabilities were confirmed at intake, a
 - Scope boundary defined — what is explicitly in and out?
 - Directional definition of done?
 - **A resolved API map present, with every row resolved** (`existing` / `extend` / `new`)? An unresolved or missing map means the Specification Agent's gate has not cleared — you cannot decompose; surface it rather than guessing existence.
-- **A recorded repo base for every surface this decomposition will actually assign** — not just the surfaces the API map touches. Draft the specialist assignments now (you already estimate story count from the map, so you can see this too): if any story will carry `specialist:tests` or `specialist:e2e`, confirm the epic's thread already has a `Repo base — tests: ...` / `Repo base — e2e: ...` line (specification-agent.md's own recording format — `Repo base — <surface>: <host>/<org>/<repo>/<ref>`). The Specification Agent has no way to anticipate this: it resolves repo bases from the API map's own surfaces (typically backend/frontend) before you ever assign a specialist type, so an integration-test or e2e story is a gap it structurally cannot have filled. Do not assume a missing surface shares another surface's repo — ask; a monorepo where every surface lives together is common but not guaranteed. If any needed surface is missing, that is a readiness gap like any other — `ask` for it directly, naming every missing surface together in one question, in the exact recording format so branch is never left implicit (e.g. "This epic will need repo bases recorded for its integration-test and e2e work — could you confirm: `Repo base — tests: <host>/<org>/<repo>/<ref>` and `Repo base — e2e: <host>/<org>/<repo>/<ref>`? If either shares the same repo and branch as frontend, say so explicitly rather than leaving it implied.").
+- **A complete surface manifest, and a conventions spec on every surface in it.**
+  This is a blocking gate and the most common way an epic is not actually ready.
+
+  A **surface** is a place work happens: a repo, or a project inside one. `web`,
+  `mobile`, `api`, `e2e` are surfaces. So is a dedicated integration-test
+  project. The vocabulary is open — a surface is whatever this engagement
+  actually has, not a fixed list — and a story's `surface:<name>` label names
+  one of them.
+
+  Before decomposing, draft your surface assignments (you already estimate story
+  count from the map, so you can see this too) and confirm the thread records a
+  line for **every surface this epic could need**, in the Specification Agent's
+  recording format:
+
+  ```
+  Repo base — <surface>: <host>/<org>/<repo>/<ref>
+  ```
+
+  Three rules make this a manifest rather than a scavenger hunt:
+
+  1. **Every surface gets a line, including the ones that do not exist.** A
+     surface with no repo is recorded as `Repo base — <surface>: none`. A
+     missing line means the question was never asked; `none` means it was asked
+     and answered. Those are different states and the difference matters —
+     `none` tells you not to assign stories there, and silence tells you to ask.
+  2. **The ref is the surface's own BRD branch**, not a bare repo. Each surface
+     carries its own branch chain, and a repo without a ref leaves the base
+     implicit at exactly the moment a specialist needs it explicit.
+  3. **Every surface with a repo must carry a conventions spec** — a
+     `CONVENTIONS.md` at the surface root on that ref (some repos keep the same
+     material in `CONTRIBUTING.md`). Read the surface and confirm it is there.
+     **Its absence blocks decomposition.** This is not a style preference: the
+     specialist definition is deliberately generic about *how* to build, and the
+     conventions spec is the only place the answer lives. Dispatching into a
+     surface without one produces plausible code in nobody's house style, which
+     is more expensive to review than no code at all.
+
+  The Specification Agent cannot have filled this in for you. It resolves repo
+  bases from the API map's own surfaces, before any story is assigned, so a
+  test or e2e surface is a gap it structurally cannot anticipate — and a
+  surface that does not exist yet is one nobody notices until a story is
+  dispatched into it. Do not assume a missing surface shares another surface's
+  repo; a monorepo is common but not guaranteed.
+
+  If anything is missing — an unrecorded surface, a repo without a ref, or a
+  surface without a conventions spec — that is a readiness gap. `ask` for all of
+  it in one question, naming each surface and using the exact recording format,
+  so nothing is left implicit:
+
+  > "Before I decompose this epic I need its surfaces confirmed. Could you
+  > record a line for each, using `none` where a surface doesn't exist?
+  > `Repo base — web: <host>/<org>/<repo>/<ref>`,
+  > `Repo base — api: <host>/<org>/<repo>/<ref>`,
+  > `Repo base — e2e: <host>/<org>/<repo>/<ref>`.
+  > I also couldn't find a `CONVENTIONS.md` at the root of `e2e` — that one
+  > blocks decomposition, since it's the only place a specialist learns how you
+  > build there."
+
+  Honor what is already recorded. If the project thread or an earlier epic in
+  the same project already carries these lines, read them rather than re-asking
+  — re-litigating a recorded decision is ceremony a real team will not perform.
+  Ask only for what is genuinely unrecorded, or for a surface this epic needs
+  that no earlier epic did.
 
 **Logical correctness:**
 - Is the described approach consistent with the stated problem?
@@ -139,32 +201,53 @@ not test code), codebase anchors where you have codebase access (the real files
 and routes it touches or mirrors), evidence pointers on user-facing stories, and
 a scope boundary.
 
-**Test taxonomy — fixed.** Never create unit-test stories: unit tests are
-intrinsic to each implementation story and enumerated in its scenario section —
-every backend and frontend story ships with its own, and nothing blocks them;
-they run "at leisure," on every change, with no dependency on anything else in
-the epic.
+**Test taxonomy — fixed.**
 
-Dedicated test stories exist only for cross-story verification, and the two
-kinds are not symmetric:
+Never create a test-only story for coverage a single story could write itself.
+Tests belong to the work that produces them, at the levels that surface's
+conventions spec names. That is part of being done, not a separate deliverable,
+and it is never enumerated as its own story.
 
-- **Integration-test stories are backend-only.** They verify API behavior
-  through real components and cross-story data flows — seams that only exist
-  between backend touchpoints. **Create one only if the epic's resolved API map
-  includes backend work.** A frontend-only epic (no backend touchpoint in the
-  map) never gets an integration-test story — its stories carry unit tests
-  only, and nothing else verifies them until E2E. When an integration-test
-  story is warranted, its "Blocking dependencies" section names **every backend
-  story in the epic**, not just the one or two nearest the seam it targets —
-  integration testing is a phase that starts only once all of the epic's
-  backend work has merged, not a per-seam check that can run against a partial
-  backend.
-- **The E2E story runs last, once all other epic work is done.** Its
-  "Blocking dependencies" section names every implementation story in the
-  epic — backend and frontend — and every integration-test story the epic has,
-  not just the stories on its primary flow's critical path. It is the final,
-  combined verification pass; nothing in the epic should still be unmerged
-  when it starts.
+That includes flow tests. If a story completes a user-visible capability on its
+own, the flow test proving it belongs to that story — label the story with both
+surfaces so its specialist can write in the test project, and the feature and
+its proof land in one pull request.
+
+**What each surface tests, and what it calls those levels, is the conventions
+spec's answer, not yours.** One surface may run unit tests only; another unit
+and integration; another flow tests. Do not assign a story a tier its surface
+does not run, and do not decide that a surface needs one it has not declared.
+That is architect judgment recorded in the surface, not decomposition judgment.
+
+A dedicated test story exists for one reason: **the coverage needs more than one
+story's work merged, so no single story could write it.** The conventions spec
+says what tier that coverage is; the story graph only says when it becomes
+possible. Three shapes:
+
+- Data written by one story's work, read correctly by another's.
+- A contract holding across touchpoints the API map assigns to different
+  stories.
+- A user journey that only exists once several stories are merged — signing in,
+  being resolved to a role, and seeing the navigation that role allows, when
+  those are three stories.
+
+Two rules apply to every test story:
+
+- **Its "Blocking dependencies" names exactly the stories the coverage needs,
+  and no others. Place it immediately after them.** Never place a test story
+  after work it does not test. A flow is testable the moment its own stories
+  merge; blocking it on unrelated siblings only moves the failure further from
+  its cause. An epic may carry several test stories at different depths, which
+  is better than one large one at the end — for feedback and for review both.
+- **A test story needs a surface to hold it.** Check the manifest. If the epic
+  records no surface for this kind of coverage, there is no story to create —
+  and that is an answer, not a gap to work around.
+
+**Multiple surface labels are allowed only when every label resolves to the same
+repo and ref.** Check the manifest before assigning them. Same repo means one
+branch, one pull request, one reviewer, one atomic merge. Different repos mean
+pull requests that have to land together across repositories, which nothing in
+this pipeline coordinates — split the story instead.
 
 Typically one E2E story per epic covering its primary user flows, and — for an
 epic with backend work — one integration story per meaningful seam (each still

@@ -2082,6 +2082,183 @@ line.
   pass. Reviewer-of-record and Tests/E2E dispatch remain exactly as named in
   the previous two entries above.
 
+## Specialist types collapse into surfaces (2026-08-08)
+
+Started from a failed e2e story — tests failing against a defect in
+already-merged work — and two questions: should a specialist be able to call up
+another specialist, and should e2e pair with frontend during development so the
+tests get written and run together. Both were the right instinct pointed at the
+wrong mechanism, and working through them collapsed a layer of the design.
+
+**The trigger for the collapse was a queued feature: not generalizing about
+"frontend."** It can mean web, mobile, or desktop, and the same is true of
+backend. `specialist:frontend` was already a leaky abstraction; the moment
+mobile arrives you either lie with the label or grow a taxonomy that never
+stops.
+
+So the four definitions were compared properly rather than assumed distinct.
+They are roughly 85% identical — same orientation, same dependency check, same
+branch verification, same conventions read, same hand-back. What differs is a
+scope boundary, which is already a field on the story, and a set of
+prohibitions. Every candidate for genuine type-specific behavior turned out to
+live somewhere else: "e2e must wait for siblings to merge" is the story's
+blocking dependencies, "e2e goes last" is the dependency graph, "don't
+duplicate unit coverage" is the story's scope. No case survived.
+
+**Decision: the label names a place, not a specialty.** `surface:e2e` means
+"work in the e2e project," exactly as `surface:mobile` would mean "work in the
+mobile app." One agent definition, told where it is standing and what the house
+rules are there. Renamed from `specialist:` to `surface:` because the old word
+describes a role the model no longer has — churn now is cheaper than churn
+after another two epics.
+
+Consequences, in the order they fall out:
+
+- **One `agents/specialist.md`.** What stays is universal craft: read before
+  you write, don't assume a contract you could read, write tests for what you
+  build, never weaken a test to make it pass. What leaves is surface-specific
+  craft — selector strategy, component structure, ORM patterns — which moves to
+  each surface's conventions spec, where it stops being generic advice and
+  becomes the team's actual rules.
+- **The label vocabulary opens.** It must match a surface recorded on the epic
+  as `Repo base — <surface>`. Nothing else constrains it.
+- **The code was already generic.** `resolve-repo-base.ts` parses
+  `Repo base — <surface>:` for any string. The only type coupling is
+  `SUPPORTED_SPECIALIST_TYPES` in three files and `` `specialist-${type}.md` ``
+  in the prompt builder; the second disappears with the collapse, and the first
+  is replaced by validating against the epic's recorded bases. That is a
+  strictly better check — it catches a story assigned to a surface the epic
+  never recorded, instead of rejecting a valid surface missing from a list.
+- **"Integration tests are backend-only" resolves itself.** It becomes "an
+  integration-test story exists only if there is a test-project surface to hold
+  it," which is a fact about the repo rather than a claim about testing
+  philosophy. That was a stack fact recorded in the invariant layer (open item,
+  2026-08-07); it moves out without needing a separate fix.
+
+**CONVENTIONS.md becomes mandatory — a reversal, and a necessary one.** The
+2026-08-04 position was that a conventions spec is optional and architect-owned,
+that its absence is never a blocker, and that output quality tracking architect
+effort is the honest outcome. That held while each specialist definition carried
+its own surface craft as a fallback. It does not hold now: with the definition
+deliberately generic about *how* to build, the conventions spec is the only
+place that answer exists. Dispatching into a surface without one produces
+plausible code in nobody's house style, which is more expensive to review than
+no code at all. The principle survives — quality still tracks architect effort,
+legibly — but the floor moved from zero to one.
+
+**The catch that makes it work: a surface manifest, gated at Decompose.** From a
+real failure — an epic ran its implementation stories to completion before
+anyone noticed the e2e project and its conventions file had never been created.
+Nothing looked until the e2e story was dispatched into a surface that did not
+exist.
+
+Decompose's readiness gate is rewritten from "ask if a repo base is missing" to
+a complete manifest with three rules. Every surface the epic could need gets a
+line, **including the ones that do not exist**, recorded as
+`Repo base — <surface>: none` — a missing line means nobody asked, `none` means
+someone asked and answered, and those are different states. The ref is the
+surface's own BRD branch rather than a bare repo, since each surface carries its
+own branch chain. And every surface with a repo must carry a conventions spec at
+its root on that ref, verified by reading it, with absence blocking
+decomposition.
+
+Specification cannot cover this: it resolves repo bases from the API map's own
+surfaces, before any story is assigned, so a test or e2e surface is a gap it
+structurally cannot anticipate. The division is now clean — Specification gates
+the surfaces the map touches, Decompose gates every surface the stories will
+need.
+
+**What this does not change.** No specialist dispatches another specialist. That
+question started this session and the answer stayed no: it would break the human
+gate, break reviewer-of-record, and recurse without bound. What replaces it is
+the epic branch as an authority boundary — a specialist may fix anything on its
+own epic branch in its own PR, and a defect tracing below the epic branch is a
+prompt, because it cannot go in this PR anyway. That is the same known-area /
+outside-the-area line the architect's own Claude Code sessions run on, with stories
+serving as the prompt.
+
+## Test tiers move into the conventions spec (2026-08-08)
+
+Follow-on from the surface collapse, driven by reading the three real
+`CONVENTIONS.md` files the architect has written — frontend, backend, e2e.
+
+**The framework stops defining test tiers.** Evidence: the backend spec names two
+levels in .NET terms (xUnit unit projects; `WebApplicationFactory` integration
+tests against the real DI graph, "mock at the boundary — network, clock,
+external services — never internal collaborators"). The frontend spec names one,
+component specs via TestBed, and correctly has no integration tier at all. The
+e2e spec names flow tests with accessible locators and `@smoke`/`@regression`
+tags. Three surfaces, three stack-native vocabularies, each more precise than
+anything the framework could have asserted — and any framework-level definition
+of "integration" would have been wrong for at least one of them.
+
+So: **conventions own the tiers; Decompose owns only the question the story graph
+can answer** — can one story write this coverage, or does it need several
+merged? That resolves the "integration tests are backend-only" open item without
+a separate fix. It becomes a fact each surface records about itself.
+
+Consequences in `decompose-agent.md`'s taxonomy, all replacing phase rules:
+
+- **Tests belong to the work that produces them**, including flow tests. A story
+  completing a user-visible capability on its own writes the flow test proving
+  it, carrying both surface labels so its specialist can write in the test
+  project. Feature and proof land in one pull request.
+- **A dedicated test story exists only when the coverage needs more than one
+  story's work merged.** Backend integration tests turn out to be
+  single-story-writable — an endpoint story adds its own `WebApplicationFactory`
+  test the moment the endpoint exists — which shrinks this to genuine
+  cross-story data flow, cross-story contracts, and cross-story journeys.
+- **"E2E goes last, blocking on everything" is deleted**, along with "integration
+  blocks on every backend story." A test story's dependencies name exactly the
+  stories its coverage needs and it is placed immediately after them. A flow is
+  testable the moment its own stories merge; blocking it on unrelated siblings
+  only moves the failure further from its cause.
+
+**Multiple surface labels, gated on same-repo.** A story may carry several
+`surface:` labels only when all resolve to the same repo and ref — then it is one
+branch, one PR, one reviewer, one atomic merge, and the labels widen what the
+specialist may write. Different repos would mean PRs that must land in step
+across repositories, which nothing here coordinates. This also answers the parked
+full-stack-story question (the designer's, from the slicing session): full-stack is
+allowed when the stack lives in one repo, and the layout decides rather than a
+philosophy about story size.
+
+**The gap the three real files exposed, and the reason a flow suite goes
+brittle.** The e2e spec declares accessible locators only — `getByRole`,
+`getByLabel`, explicitly no `data-testid` — reasoning that the app's markup
+already carries proper label associations and semantic roles. That is a hard
+dependency on the frontend surface. The frontend spec mentions accessibility
+zero times. One surface depends on a property the surface providing it was never
+told to maintain, and nothing in the pipeline would have caught it.
+
+Hence the new `conventions-writing` **Test levels** section, five questions:
+which levels this surface runs, what each means *here*, **how each is invoked**
+(none of the three files gives a command, and the specialist is now expected to
+run existing suites before handing back), **what this surface deliberately does
+not test because something else covers it**, and **what this surface owes the
+surfaces that test it**. The last two are the ones no single surface's author has
+reason to think about unprompted, and they are where the framework earns its
+keep now that it has stopped defining tiers.
+
+Two devices lifted from the architect's files into the skill as named requirements,
+because both do something a codebase cannot do for itself. **"Gap to close, not
+a pattern to copy"** — twenty components declaring `readonly` will teach an agent
+that is the house style, so a spec that wants `protected` has to say so and say
+what to do about the existing ones. And a **Status** section grading the codebase
+as precedent: the backend spec's "the `Contact` module's comments describe it as
+a Temporal orchestration demo — that framing is not real" saves an agent from a
+serious wrong turn that no amount of reading the code would prevent.
+
+Also noted, not yet acted on: the e2e spec's CI already runs the suite on every
+PR touching `e2e/**` or `frontend/**` — "a specialist's own PR triggering a real
+CI run is the actual point either way" — which is the trigger point argued for
+earlier this session and contradicts `specialist-e2e.md`'s epic→BRD gating. The
+conventions file is right and the agent definition was wrong; the agent
+definition is now deleted, so the contradiction resolves by removal. And that
+suite's `webServer` boots `npm start` against the frontend, no docker-compose —
+further evidence the "Fargate cannot run the stack" constraint was
+over-generalized from a full-stack scenario that does not exist yet.
+
 ## Open items
 
 - **RESOLVED: design-intent capture.** (Kept here as the trail from problem to
@@ -3101,3 +3278,61 @@ GitHub Actions piece two entries up, confirmed still unbuilt in
 `example-app`. Verified: typecheck and test:unit clean across all three
 packages (92 webhook-listener, 77 dispatch-worker, 24 specialist-runner
 tests) before this entry was written, not assumed after.
+
+### First real E2E dispatch: the self-verify fix held up, and a real image gap (2026-08-07)
+
+PROJ-70 actually ran through app-dispatch — the real validation this whole
+sandbox exercise exists to produce, not another simulated pass. Two things
+came back from it worth recording.
+
+**The self-verify fix worked exactly as designed.** The specialist tried to
+sanity-check its own spec locally — `specialist-e2e.md` explicitly allows
+this ("if you can stand up and exercise the app locally as you write, do")
+— and hit a real wall: `chromium`/`chromium-headless-shell` both failed to
+launch with "error while loading shared libraries" (`libglib-2.0.so.0`,
+plus `nss`/`atk`/`X11`), and the sandbox has no root access to fix it
+(`apt-get install` returns permission denied even in elevated tool mode).
+Rather than getting stuck or reporting `blocked`, it fell back to Angular's
+`TestBed`/`RouterTestingHarness` — exercising the real router, guards, and
+services, no mocks of the code under test — and proceeded to hand back.
+This is precisely the behavior the fix earlier this session was written to
+produce: a missing live environment is informational, never a blocker. The
+specialist also correctly reasoned that a real GitHub Actions runner would
+likely fare better here (matching the decided design two entries up), while
+being explicit that this doesn't change the underlying defect in this
+sandbox.
+
+**The underlying defect was real and worth fixing anyway.** Even though CI
+is the actual verification gate, letting the specialist's own sandbox run
+Playwright too is a genuine, designed-for sanity check — and it was
+silently impossible. Root-caused: `specialist-runner/Dockerfile` never
+installed Chromium's OS-level shared libraries, and the runtime user
+(`USER node`) has no install permission by design (same reasoning as every
+other `node`-not-`root` runtime choice in this project). Fixed by adding
+`npx playwright@latest install-deps chromium` to the build stage, while
+still root, before the `USER node` switch — deliberately not baking in the
+browser *binary* itself, which stays downloaded fresh per run so its
+version always matches whatever `@playwright/test` version the actual
+target repo's `e2e/` project pins, rather than whatever was current when
+this image was built. Verified for real: built the image, then — as the
+non-root `node` user, matching actual runtime conditions — installed and
+launched `chromium-headless-shell` against a `data:` URL. It launched
+cleanly; before the fix, the identical sequence crashed immediately with
+the shared-library error. Not claimed without running it.
+
+**A real ambiguity, resolved and flagged:** the specialist's report says
+"per `e2e/CONVENTIONS.md`, `.github/workflows/e2e.yml` already installs
+Chromium there" — repeating what the conventions doc's own "CI" section
+states as fact. Checked directly: `.github/workflows/e2e.yml` does not
+exist on the epic branch. Only `backend.yml`/`frontend.yml` do (confirmed
+identically several entries up, still true). `e2e/CONVENTIONS.md` describes
+this workflow in present tense ("`.github/workflows/e2e.yml` runs on every
+push to `main`...") as if it's already built and running, when it isn't —
+the same still-deferred GitHub Actions piece named throughout this session.
+The specialist took the doc at its word rather than verifying the file
+exists, which is defensible (`specialist-e2e.md` tells it to trust an
+architect-owned conventions doc as authoritative) but means this specific
+claim in its hand-back is inaccurate. Not fixed in this pass — flagged for
+the architect to either correct the conventions doc's tense (describe the workflow
+as planned, not running) or actually build it, since both the doc and the
+underlying CI piece point at the same gap.

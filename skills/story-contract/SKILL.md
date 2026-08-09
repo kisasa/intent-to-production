@@ -193,14 +193,23 @@ without depending on any particular wording after it.
 Every story carries three assignment fields, applied as labels at
 decomposition time:
 
-- `specialist` — applied as `specialist:<type>` (e.g. `specialist:backend`),
-  one of backend, frontend, tests, or e2e. This prefix is fixed — it's what
-  the specialist-dispatch trigger reads mechanically to route a story, so it
-  isn't a per-engagement choice the way the label's *values* are. Which
-  specialists exist and what their domains cover is engagement context, not
-  part of this contract. (There is no outcome label — removed 2026-08-07;
-  the specialist's own comment is the only record of what happened on a
-  run.)
+- `surface` — one or more, applied as `surface:<name>` (e.g. `surface:web`).
+  Each names a place work happens — a repo, or a project inside one — recorded
+  on the epic as `Repo base — <name>`. The prefix is fixed, because the
+  dispatch trigger reads it mechanically to route a story. The vocabulary is
+  not: a surface is whatever this engagement actually has, so `web`, `mobile`,
+  `api`, and `e2e` are equally valid, and nothing is gained by forcing a mobile
+  app to be labelled "frontend."
+
+  A story may carry several surface labels **only when they all resolve to the
+  same repo and ref**. Then it is one branch, one pull request, one reviewer,
+  one atomic merge, and the labels simply widen what the specialist may write —
+  a feature and the flow test proving it, together. Labels resolving to
+  different repos would mean pull requests that must land in step across
+  repositories, which nothing coordinates; that is two stories.
+
+  (There is no outcome label — removed 2026-08-07; the specialist's own comment
+  is the only record of what happened on a run.)
 - `size` — small, medium, or large: relative effort within this epic. A story
   dramatically larger than its siblings fails the decomposition size band
   even when the count passes.
