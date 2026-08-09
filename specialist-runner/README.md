@@ -121,6 +121,25 @@ without `gh` can't do. Same category of flagged-not-confirmed assumption as
 `webhook-listener/src/activation-runner.ts`'s own MCP notes — verify against a
 live run.
 
+## Playwright/Chromium support
+
+The image installs Chromium's OS-level shared libraries
+(`npx playwright@latest install-deps chromium`) at build time, as root,
+before the runtime switch to `USER node` — confirmed missing live
+(2026-08-07, PROJ-70): a real E2E specialist run tried to sanity-check its
+spec locally per `specialist-e2e.md`'s "if you can stand up and exercise the
+app locally as you write, do," and chromium/chromium-headless-shell both
+failed to launch ("error while loading shared libraries"), with no root
+access at runtime to fix it. The browser *binary* itself is deliberately not
+baked in — a specialist downloads it fresh per run
+(`npx playwright install chromium`) inside whichever surface repo's `e2e/`
+project it's actually working in, matching that project's own pinned
+`@playwright/test` version rather than whatever was current when this image
+was built. Verified for real, not assumed: built the image and, as the
+non-root `node` user, installed and launched `chromium-headless-shell`
+against a `data:` URL — no crash, where before the fix it failed
+immediately.
+
 ## Known gaps
 
 - **Node-only target surfaces.** The image ships `node` + `git`, nothing else.
@@ -130,8 +149,6 @@ live run.
   full-stack epic's frontend story confirming the real backend contract needs
   the app to know which sibling repos exist for a given epic — nothing does
   yet.
-- **No caller.** Nothing invokes `ecs:RunTask` with the env vars above — that's
-  the Temporal worker, not built in this pass.
 
 ## Working with it
 

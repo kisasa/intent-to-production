@@ -10,6 +10,22 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates git \
   && rm -rf /var/lib/apt/lists/*
 
+# Chromium's OS-level shared libraries (libglib-2.0.so.0, libnss3, libatk*,
+# libx11*, etc.) — confirmed missing live (2026-08-07, PROJ-70): a specialist
+# tried to sanity-check its own E2E spec locally, per specialist-e2e.md's "if
+# you can stand up and exercise the app locally as you write, do," and
+# chromium/chromium-headless-shell both failed to launch with "error while
+# loading shared libraries." The runtime user (USER node, below) has no
+# install permissions, so this has to happen here, as root, at build time.
+# Deliberately NOT the browser *binary* itself — that stays out of the image
+# so it's downloaded fresh per run (`npx playwright install chromium` inside
+# whatever surface repo's `e2e/` project actually gets cloned), matching
+# that project's own pinned `@playwright/test` version instead of whatever
+# was current when this image was built. `install-deps` runs its own
+# `apt-get update` internally, so the removed package lists above don't
+# matter here.
+RUN npx --yes playwright@latest install-deps chromium
+
 WORKDIR /app
 
 # Install deps (incl. tsx/typescript — runs TS via tsx, no build step, same
