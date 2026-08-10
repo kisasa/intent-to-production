@@ -3,7 +3,7 @@
   "app": "npx tsx main.ts",
   "output": "cdktn.out",
   "sendCrashReports": false,
-  "terraformProviders": [],
+  "terraformProviders": ["temporalio/temporalcloud@~> 0"],
   "terraformModules": [],
   "targetVersions": {
     "terraform": ">=1.10.0",
@@ -40,6 +40,26 @@
       "linear-mcp-url": null,
       "github-mcp-url": null,
       "product-context-paths": null
+    },
+    "specialist-sandbox": {
+      "environment-name": "prod",
+      "ecr-repository-name": "intent-to-production-specialist",
+      "image-tag": "REPLACE_ME",
+      "cpu": 1024,
+      "memory": 2048,
+      "log-retention-days": 30,
+      "parameter-prefix": "/example/prod/specialist/"
+    },
+    "temporal": {
+      "environment-name": "prod",
+      "namespace-name": "intent-to-production-prod",
+      "ecr-repository-name": "intent-to-production-temporal-worker",
+      "image-tag": "REPLACE_ME",
+      "cpu": 512,
+      "memory": 1024,
+      "desired-count": 1,
+      "log-retention-days": 30,
+      "parameter-prefix": "/example/prod/temporal/"
     }
   },
   "projectId": "181a046c-3409-4a14-a5b9-f827800976cf"

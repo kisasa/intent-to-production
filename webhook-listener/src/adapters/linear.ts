@@ -44,18 +44,41 @@
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { TrackerAdapter } from "./tracker-adapter";
-import type { EntityType, TrackerEvent } from "../tracker-event.js";
+import type { EntityType, TrackerActor, TrackerEvent } from "../tracker-event.js";
 import { createLogger } from "../logger.js";
 import { envOr } from "../env.js";
 
 const log = createLogger("linear");
 
+interface LinearWebhookActor {
+  id: string;
+  name: string;
+  email?: string;
+  type?: string;
+}
+
 interface LinearWebhook {
   action: "create" | "update" | "remove";
   type: "Issue" | "Project" | "Comment" | string;
+  actor?: LinearWebhookActor;
   data: Record<string, unknown>;
   updatedFrom?: Record<string, unknown>;
   webhookTimestamp?: number;
+}
+
+/**
+ * The top-level `actor` object is present on every Linear webhook regardless
+ * of type — confirmed against live payloads 2026-08-06, both a human move
+ * and an agent-driven one (the pipeline's own bot user, distinguishable by
+ * id/email) on the same issue. `email` is technically optional in Linear's
+ * own schema, so this still degrades to null rather than a partial object —
+ * reviewer-of-record needs email to resolve a GitHub login and a partial
+ * actor is useless for that.
+ */
+function extractActor(hook: LinearWebhook): TrackerActor | null {
+  const actor = hook.actor;
+  if (!actor || !actor.email) return null;
+  return { id: actor.id, name: actor.name, email: actor.email };
 }
 
 const LINEAR_API = envOr("LINEAR_API_URL", "https://api.linear.app/graphql");
@@ -224,6 +247,7 @@ export function createLinearAdapter(webhookSecret: string, agentApiKey: string):
           : new Map<string, string>();
         const currentLabels = currentLabelIds.map((id) => labelNames.get(id)).filter((n): n is string => n !== undefined);
         reqLog.trace(`${entityType} ${entityId}: status=${status} labels=[${currentLabels.join(", ")}]`);
+        const actor = extractActor(hook);
 
         if (hook.action === "create") {
           // Nothing existed before creation — every current label is newly "added,"
@@ -242,6 +266,7 @@ export function createLinearAdapter(webhookSecret: string, agentApiKey: string):
             labels: currentLabels,
             authorId: null,
             addedLabels: currentLabels,
+            actor: actor,
           };
         }
 
@@ -273,6 +298,7 @@ export function createLinearAdapter(webhookSecret: string, agentApiKey: string):
             labels: currentLabels,
             authorId: null,
             addedLabels: addedLabels,
+            actor: actor,
           };
         }
 
@@ -288,6 +314,7 @@ export function createLinearAdapter(webhookSecret: string, agentApiKey: string):
             labels: currentLabels,
             authorId: null,
             addedLabels: [],
+            actor: actor,
           };
         }
 
@@ -327,6 +354,7 @@ export function createLinearAdapter(webhookSecret: string, agentApiKey: string):
           labels: ctx.labels,
           authorId: authorId,
           addedLabels: [],
+          actor: extractActor(hook),
         };
       }
 
@@ -364,6 +392,7 @@ export function createLinearAdapter(webhookSecret: string, agentApiKey: string):
           labels: ctx.labels,
           authorId: authorId,
           addedLabels: [],
+          actor: extractActor(hook),
         };
       }
 

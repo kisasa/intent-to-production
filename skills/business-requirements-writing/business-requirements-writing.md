@@ -88,25 +88,75 @@ behavior the users rely on, prior decisions, organizational constraints
 merchant list already exists and staff use it daily" is context; "it calls
 GET /merchants" is not — that is engineering's to determine later.
 
-### Capability map — the `confirm` mechanism
+### Capability map — resolved in this session, before anything is created
 The capabilities the business wants the system to provide — what a user
 should be able to *do*. One row per capability observable in or implied by
 the evidence.
 
-| Capability | Explanation | Notes |
+| Capability | Explanation | Status |
 |---|---|---|
-| \<what a user can do\> | \<plain-language description\> | \<`confirm`, or resolved\> |
+| \<what a user can do\> | \<plain-language description\> | `confirm`, then `in-scope` or `out` |
 
-The mechanism, adapted to the PM's level:
 - Every capability the machine proposes is born `confirm` — meaning "machine
   drafted this from the evidence; a human must confirm it's actually wanted."
 - Only the PM resolves a row, to `in-scope` or `out`. This is a decision the
   PM genuinely owns: is this a capability we want in this body of work?
 - You never invent a capability the evidence does not support, and you never
   self-resolve a `confirm` row.
-- Unresolved `confirm` rows do not block project creation — they block
-  *slicing*. The Intake Agent will not slice past a capability the PM has not
-  confirmed is wanted.
+- **Every row must be resolved before the document becomes a project.** An
+  unresolved row does not enter the tracker at all.
+
+That last rule replaces an earlier design where unresolved rows were carried
+into the tracker and resolved in the project's comment thread, blocking only
+the Intake Agent's slicing. Three things were wrong with it. A thread resolves
+one voice at a time over days, when the same conversation takes minutes with
+the people who know in one room. An unresolved row sitting in a tracker is an
+invitation to slice around it rather than settle it. And — the structural
+reason — a comment thread on one project cannot see another project's
+capability map, which is exactly what resolving a capability sometimes
+requires. Intake's gate stays as a backstop; it should now never fire.
+
+#### Working the map — one row at a time, with answers offered
+
+Do not present the whole map and ask for resolutions. Walk it row by row, and
+for each row do three things:
+
+1. **State what the evidence supports** — the specific artifact and what it
+   shows. A row you cannot ground is a row you should not have drafted.
+2. **Offer a resolution and the case against it.** Say which way you would
+   resolve it and why, then give the strongest reason someone would resolve it
+   the other way. A proposal with only one side gets agreed to rather than
+   decided, and an agreed capability is not a confirmed one.
+3. **Record the decision in the human's words, attributed.** Not your
+   paraphrase upgraded into a rationale they did not give.
+
+This is deliberately a live, multi-person format. Capability scope is where
+the PM, a designer, and whoever owns the budget will disagree productively,
+and one session where they disagree out loud is worth a week of thread.
+
+**A row nobody in the room can decide is not resolved by default.** Say who
+needs to decide it and what they need to know. An undecided row blocks
+creation exactly as a placeholder does — that is the point of resolving before
+the tracker, not after.
+
+#### Cross-document impact — check this before you resolve
+
+Where several requirements documents are in flight, a capability resolved in
+one can change another: a capability moved `out` here may be something another
+document assumed it could build on, and one moved `in-scope` may duplicate or
+contradict work already scoped elsewhere.
+
+Before working the map, read the capability maps of the other requirements
+documents in scope — ask the PM which are live, and read them from the tracker
+where they already exist. Then, for any row whose resolution touches another
+document, name that document and the specific row while the decision is being
+made.
+
+**This is the moment to catch it.** Once these become separate projects,
+nothing looks across them: not the Intake Agent, which slices one project at a
+time, and not a comment thread, which cannot see a sibling project at all. A
+cross-document conflict missed here surfaces as contradictory epics weeks
+later, and by then both have stories under them.
 
 This map is deliberately **not technical**. Whether "filter the merchant
 list" needs a new endpoint, extends an existing one, or is pure client work
@@ -161,13 +211,15 @@ The Intake Agent applies the epic-count band from the other side.
 
 Before offering to create the project: **could the Intake Agent read this
 document and its evidence cold and propose slice boundaries without asking a
-question the document should already answer?** `confirm` capability rows are
-exempt — those are designed to be resolved in the thread. Anything else that
-would force a question is a gap; fix it or mark it.
+question the document should already answer?** There is no exemption for
+capability rows: every one is resolved, or the document is not ready. Anything
+that would force a question is a gap; fix it or mark it.
 
 ## Procedure — placing the document into the pipeline
 
-Only after the PM approves the document:
+Only after the PM approves the document **and every capability row is
+resolved** — no `confirm` row reaches the tracker, and an undecided row blocks
+creation the same way a placeholder does:
 
 1. Confirm the target team with the PM.
 2. Create the project in the issue tracker under that team, in `Backlog`.
@@ -272,7 +324,13 @@ slicing that already happened is a regeneration candidate.
 
 - Never invent facts; ask one question at a time; placeholders for skipped
   gaps.
-- Never resolve a `confirm` capability row — that is the PM's call.
+- Never resolve a `confirm` capability row — that is the PM's call. Never
+  create the project with one outstanding, and never carry one into the
+  tracker to be settled later.
+- Work the capability map row by row, offering a resolution and the case
+  against it. Never present the whole map at once for bulk agreement.
+- Read sibling requirements documents' capability maps before resolving; name
+  the cross-document impact of a row while it is being decided.
 - Never include technical content: no endpoints, data models, or judgments
   about backend work. If evidence contains technical detail, translate it to
   the capability it enables; do not carry it into the document.

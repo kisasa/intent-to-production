@@ -24,6 +24,39 @@ context that a Specialist can write a failing test before touching any code.
 
 ## Required components
 
+**Title**
+Prefixed `Story: `, then a verb phrase naming the change being made. Epics are
+noun phrases naming an area; stories are verbs naming work. The grammar alone
+tells a reader which one they are looking at.
+
+The prefix carries the hierarchy into the places the tracker's own display does
+not reach — a flat search, a filtered list, a Slack unfurl, a notification.
+
+**Sibling stories must be distinguishable by their first few words.** This is
+the rule that matters most in practice and the one most often broken.
+Decomposition produces stories that share a subject, so they come out sharing
+an opening: five titles that all begin "Add payment status…" are five identical
+rows in every truncated view. Front-load the word that separates this story
+from the ones next to it.
+
+- Good: "Story: Seed the employee roster with role and department"
+- Good: "Story: Resolve role and department at login"
+- Bad: "Story: Employee roster" — no verb, and it names an area, so it reads as
+  an epic.
+- Bad: "Story: Add employee roster data model and seed it with multiple records
+  spanning all four tiers" — the body's job.
+- Bad: "Story: API: expose payment status" — one prefix only. The
+  `surface:*` label already says which surface this is, and the tracker
+  shows labels wherever it shows titles.
+
+Do not repeat the epic's title in the story's. A reader arriving at the story
+can see its parent, and the words spent restating it are words not spent saying
+what makes this story different.
+
+Linear derives `gitBranchName` from the title, so the prefix appears in the
+branch name too. That is fine and mildly useful — it marks the branch's level
+in the chain.
+
 **User value statement**
 Identifies who the story serves, what they need to do, and why it matters.
 The user type must come from the epic — never a generic "user."
@@ -87,6 +120,33 @@ Dedicated test stories still exist only for integration tests (Tests
 Specialist) and E2E flows (E2E Specialist), which verify across stories and
 carry dependencies on the development they verify.
 
+**Scope boundary**
+State what this story does not cover if anything adjacent might be assumed in
+scope. Prevents scope creep at the Specialist stage.
+
+## The references footer
+
+Everything that points somewhere else lives at the bottom of the story, under
+a `## References` heading, and nowhere else. Paths, identifiers, and design
+assets do not appear in the middle of a requirement.
+
+This is a readability rule with a real cost attached, and the trade is
+deliberate: a requirement and its anchor are no longer in the same sentence, so
+the anchor entry has to say which requirement it serves. That is a small price
+for prose a person can read straight through. See `tracker-writing.md` for the
+house standard this follows.
+
+Leave the heading out when there is nothing to reference.
+
+```
+## References
+
+- Existing employee model — `frontend: core/models/auth/employee.model.ts`
+- List and modal pattern, for the roster table — `frontend: features/gateways/gateways.page.ts:233-237`
+- Login screen mockup — design issue, "Sign in" frame
+- Blocked by — PROJ-42 Add refund data model
+```
+
 **Codebase anchors**
 Required whenever the story was drafted with codebase access. Requirements
 that say "follow the existing pattern" must name the pattern: the file
@@ -113,10 +173,6 @@ the image resolves it. A pointer must be specific enough that the specialist
 can retrieve the artifact itself through the tracker — nothing is pre-resolved
 and handed to it.
 
-**Scope boundary**
-State what this story does not cover if anything adjacent might be assumed in
-scope. Prevents scope creep at the Specialist stage.
-
 **Blocking dependencies**
 Lists the sibling stories that must be complete before this story can begin
 — each entry carrying the blocker's issue identifier and title (the tracker
@@ -126,19 +182,46 @@ renders it from its own dependency graph, in dependency order so identifiers
 exist at render time. The specialist honors it, and looks each entry's state up
 itself through the tracker — completion status is never handed to it.
 
+Format, one requirement added for mechanical readability: each entry is its
+own bullet line, and the blocker's bare issue identifier is the first token
+on that line — e.g. `- PROJ-42 — Add refund data model`. Whatever prose
+follows the identifier is free; the identifier's position is the only fixed
+part, and it's what lets a pre-dispatch check confirm every blocker is Done
+without depending on any particular wording after it.
+
 **Assignment metadata**
 Every story carries three assignment fields, applied as labels at
 decomposition time:
 
-- `specialist` — backend, frontend, tests, or e2e. Which specialists exist
-  and what their domains cover is engagement context, not part of this
-  contract.
+- `surface` — one or more, applied as `surface:<name>` (e.g. `surface:web`).
+  Each names a place work happens — a repo, or a project inside one — recorded
+  on the epic as `Repo base — <name>`. The prefix is fixed, because the
+  dispatch trigger reads it mechanically to route a story. The vocabulary is
+  not: a surface is whatever this engagement actually has, so `web`, `mobile`,
+  `api`, and `e2e` are equally valid, and nothing is gained by forcing a mobile
+  app to be labelled "frontend."
+
+  A story may carry several surface labels **only when they all resolve to the
+  same repo and ref**. Then it is one branch, one pull request, one reviewer,
+  one atomic merge, and the labels simply widen what the specialist may write —
+  a feature and the flow test proving it, together. Labels resolving to
+  different repos would mean pull requests that must land in step across
+  repositories, which nothing coordinates; that is two stories.
+
+  (There is no outcome label — removed 2026-08-07; the specialist's own comment
+  is the only record of what happened on a run.)
 - `size` — small, medium, or large: relative effort within this epic. A story
-  dramatically larger than its siblings fails the decomposition size band
-  even when the count passes.
+  dramatically larger than its siblings fails the decomposition size band even
+  when the count passes. Also feeds the specialist's turn budget mechanically
+  now — see `tier`, below.
 - `tier` — small, mid, or large: which execution tier (model class) runs the
   specialist for this story. This is cost control applied per story — routine
   stories run on cheaper tiers; stories with architectural surface run on
-  stronger ones. Specialists are dispatched by a developer, not routed by the
-  app, so today this label informs a human's model choice rather than driving
-  automated routing.
+  stronger ones. Model-class selection itself is not yet automated from it, so
+  the tier still only informs that choice today — but dispatch is app-driven
+  (`webhook-listener`'s specialist-dispatch lane), and `tier` and `size`
+  together already size the specialist's turn budget mechanically
+  (`dispatch-trigger.ts`'s `resolveMaxTurns`): each independently multiplies a
+  base turn count, since the two are genuinely different axes — tier is
+  architectural weight, size is volume of work, and a story can be light on
+  one and heavy on the other.

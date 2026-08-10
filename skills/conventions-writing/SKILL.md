@@ -5,10 +5,20 @@ description: Use when an architect needs to author or extend a CONVENTIONS.md fo
 
 # Skill: conventions-writing
 
-An org-level skill invoked by an **architect** in a session at a codebase
-surface, to produce a well-formed **`CONVENTIONS.md`** at that surface's root.
-You interview; the architect decides. The output is the rules a specialist
-reads on every run, before it writes any code.
+An org-level skill invoked by an **architect** in a session at a **surface** —
+a repo, or a project inside one — to produce a well-formed **`CONVENTIONS.md`**
+at that surface's root. You interview; the architect decides. The output is the
+rules a specialist reads on every run, before it writes any code.
+
+A test project is a surface. An `e2e/` directory with its own Playwright config
+gets its own conventions spec, exactly as the application does. So does a mobile
+app, a separate API, or anything else the engagement records as a surface.
+
+**This document is now required, not optional.** Decomposition blocks on a
+surface that has no conventions spec, and a specialist dispatched into one stops
+and reports rather than proceeding. That changed when the specialist definition
+became deliberately generic about *how* to build: this file is the only place
+that answer lives now, so its absence is a hole rather than a thin spot.
 
 **This skill ships no conventions.** It ships the questions. Nothing in here
 asserts how software should be built — no framework preferences, no testing
@@ -75,15 +85,32 @@ Say what is missing and what a specialist will therefore decide on its own.
 ## The document — required sections
 
 *(Variant: the section set below suits a backend service surface. For a
-frontend surface, replace §3–§5 with component structure, state management, and
-styling, and §10 with component/interaction testing. Teams add domain sections.
-The readiness test is the fixed bar any fork must clear.)*
+frontend surface, the API-surface, data-access, and validation sections become
+component structure, state management, and styling. A flow-test surface drops
+most of them entirely and grows a selector-strategy section instead. Teams add
+domain sections and delete ones that do not apply — the section list is a prompt,
+not a checklist to satisfy. Status, Test levels, and Never in this codebase are
+the three no surface should skip.)*
 
 Each section below gives the question to ask and the shape of a useful answer.
 The contrast pairs are there to show the architect the difference — an answer a
 specialist can act on versus one it cannot.
 
-### 1. Orientation
+### 1. Status — how much of this codebase is real precedent
+Before anything else: how much of what is here should be copied? A specialist
+reads the code as evidence of house style and cannot tell deliberate patterns
+from accidents, template leftovers, or abandoned experiments. You can.
+
+Name what is real, and name what is not, with the reason.
+
+- Useful: "The `Contact` module's comments describe it as a Temporal
+  orchestration demo — that framing is not real, there is no Temporal package
+  anywhere. Treat it as disposable sample code, not precedent."
+- Useful: "`features/payment.component/` is an empty `ng generate` leftover.
+  It is not routed and should be deleted, not extended."
+- Useless: silence. A specialist will assume everything it reads is intentional.
+
+### 2. Orientation
 Where does a specialist start reading, and which file best shows how this
 codebase works? Naming the exemplar saves it guessing which of forty files is
 representative.
@@ -91,7 +118,7 @@ representative.
   the reference shape for a read endpoint — mirror it."
 - Useless: "The code is organized by feature." (It can see that.)
 
-### 2. Where things go
+### 3. Where things go
 Given a new endpoint, model, or service — which folder, and named what? The
 most common way generated code looks foreign is correct logic in the wrong
 place with the wrong name. Cover folder organization, file and type naming, and
@@ -101,7 +128,7 @@ where tests live relative to the code under test.
   `tests/`."
 - Useless: "Follow standard project structure."
 
-### 3. API surface
+### 4. API surface
 What does a new endpoint look like before anyone has written it? The API map
 says *which* endpoints exist; it never says what shape they take. Cover routing
 style, URL conventions, versioning or explicitly none, request and response
@@ -112,7 +139,7 @@ body shape, which status codes mean what, pagination, response envelope or not.
   we can anticipate."
 - Useless: "RESTful conventions."
 
-### 4. Data access
+### 5. Data access
 How does code reach the data store, and who owns a transaction? Transaction
 boundaries are exactly the decision a specialist will make silently and
 consistently wrongly. Cover the access layer, whether a repository wrapper
@@ -123,7 +150,7 @@ succeed exactly once.
   generated and committed, never applied at startup."
 - Useless: "Use the ORM appropriately."
 
-### 5. Validation and errors
+### 6. Validation and errors
 Where does validation live, what does a caller see when it fails, and which
 failures are exceptions versus results? The story lists fringe cases; this says
 how to express them.
@@ -132,7 +159,7 @@ how to express them.
   Domain rule violations return a result type; only unexpected conditions throw."
 - Useless: "Handle errors gracefully."
 
-### 6. Logging and observability
+### 7. Logging and observability
 What gets logged, at what level, and what must never appear in a log line? Left
 unspecified, generated code logs nothing or logs everything. Be specific about
 level semantics — they mean different things to different people. State the
@@ -143,7 +170,7 @@ prohibitions explicitly.
   at any level, including inside exception messages."
 - Useless: "Log important events."
 
-### 7. Configuration and secrets
+### 8. Configuration and secrets
 How does a value reach the code, and where can it never be read from? This is
 the convention most often violated invisibly and caught only in review.
 - Useful: "Options bound at startup and injected. Nothing reads the environment
@@ -151,7 +178,7 @@ the convention most often violated invisibly and caught only in review.
   reference — no secret value in a config file, in source, or in a fixture."
 - Useless: "Do not commit secrets."
 
-### 8. Composition and dependencies
+### 9. Composition and dependencies
 How is a new service wired up, and what is the bar for adding a package? Cover
 registration style and lifetimes, whether interfaces are expected by default,
 the approved library set, and who decides on a new dependency.
@@ -161,7 +188,7 @@ the approved library set, and who decides on a new dependency.
   question, do not add one."
 - Useless: "Keep dependencies minimal."
 
-### 9. Async and concurrency
+### 10. Async and concurrency
 What are the non-negotiables that cause real bugs here? Cover async policy,
 cancellation propagation, outright prohibitions, and how work that must not run
 twice is handled.
@@ -170,24 +197,46 @@ twice is handled.
   idempotent — assume it can run twice."
 - Useless: "Use async/await."
 
-### 10. Unit tests
-What does a good unit test look like here, and what may be faked? The story
-enumerates unit-test *scenarios*; this defines their *form*. It is also where
-"tests pass" can hide tests that assert nothing.
-- Useful: "xUnit with FluentAssertions. One test class per class under test,
-  method names read as sentences. Mock only what crosses a process boundary —
-  never our own domain types. A test that asserts a mock was called is not
-  coverage."
-- Useless: "Write good unit tests."
+### 11. Test levels
 
-### 11. Integration tests
-What is real in an integration test, and how does data get there? The Tests
-Specialist writes across stories and will otherwise invent a fixture strategy
-that conflicts with yours.
-- Useful: "Real HTTP through `WebApplicationFactory`, real database in a
-  container. Seed through the `TestData` builders, never raw SQL. Each test gets
-  its own schema — never rely on ordering or shared state."
-- Useless: "Test the integration points."
+This is the section that replaces a framework-wide testing taxonomy, so it
+carries more weight than its length suggests. The pipeline does not define what
+"integration" means — you do, here, for this surface. Five questions.
+
+**Which levels does this surface run?** Name them. One surface may run unit
+tests only. Another runs unit and integration. A flow-test project runs one
+level and calls it something else entirely. There is no expected number.
+
+**What does each one mean here?** This is where a name becomes actionable.
+- Useful: "Integration tests spin up the real app via `WebApplicationFactory`
+  and exercise the real DI graph. Mock at the boundary — network, clock,
+  external services — never internal collaborators."
+- Useless: "Integration tests test integration."
+
+**How is each invoked?** The exact command, and how to run one level alone. A
+specialist is expected to run the suites that already exist before handing back,
+and it cannot do that from a framework name.
+- Useful: "`npm test` for unit. `npm run test:smoke` for smoke-tagged flows.
+  `dotnet test tests/Foo.IntegrationTests` for integration alone."
+- Useless: naming the test runner and stopping there.
+
+**What does this surface deliberately *not* test, because something else
+covers it?** Without this, a specialist cannot tell a considered gap from an
+oversight, and will either duplicate coverage or assume something is proven that
+is not.
+- Useful: "No flow or multi-screen tests here — those live in the `e2e` surface.
+  Component specs stop at the component boundary."
+
+**What does this surface owe the surfaces that test it?** The obligation runs
+downhill and is invisible from below. A flow-test suite that locates elements by
+role and label depends on this surface maintaining accessible markup — if that
+is never written down here, the dependency breaks silently and the flow tests
+look flaky.
+- Useful: "The `e2e` surface locates elements by role and label. Every
+  interactive element keeps a real `<label for>` association or an accessible
+  name. This is a hard requirement, not an accessibility nice-to-have."
+- Useful: "`/health` and the seeding endpoint exist for the flow suite. Do not
+  change their shape without changing it there."
 
 ### 12. Deliberately the specialist's call
 What is the architect *not* specifying? An unmentioned topic reads as an
@@ -240,6 +289,31 @@ rules is a good outcome.
    - sections left empty, and what a specialist will now decide for itself
    - anything the architect said they needed to go think about
    - any contradiction you flagged that is still unresolved
+
+## Two devices worth using deliberately
+
+**"Gap to close, not a pattern to copy."** The most valuable thing a conventions
+spec can do, because it is the one thing the codebase cannot say about itself. A
+specialist reading twenty components that all do X will conclude X is the house
+style. If you want X changed, say so explicitly, and say what to do about the
+existing ones.
+
+- "Every `.cs` file uses 2-space indent today. 4-space is now canonical. Don't
+  hand-fix piecemeal — reformat a file when you're already touching it."
+- "Most specs today only assert `toBeTruthy()`. That's a smoke test, not
+  coverage. New tests assert behaviour."
+
+Ask the architect for these directly. They will not volunteer them, because from
+inside a codebase the gaps read as normal.
+
+**Deliberate under-specification with an instruction.** Where something is
+genuinely undecided, say so *and* say what to do meanwhile. An unmentioned topic
+reads as an oversight; a named one converts a would-be blocker into a decision
+the specialist makes and reports.
+
+- "Persistence is intentionally undecided. Don't pick a database or ORM — define
+  the interface and provide an in-memory implementation until a real decision
+  lands. That's a deliberate placeholder, not a shortcut to fix."
 
 ## Keeping it current
 

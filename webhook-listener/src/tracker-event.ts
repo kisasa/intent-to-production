@@ -24,6 +24,17 @@
 
 export type EntityType = "project" | "issue";
 
+// Whoever performed the underlying tracker action — a real human or the
+// pipeline's own bot user (distinguishable by id/email). Every Linear webhook
+// carries this at the top level regardless of event kind, confirmed against
+// live payloads 2026-08-06 (see docs/design-ledger.md, "reviewer-of-record") —
+// unlike authorId below, which only ever existed for comments.
+export interface TrackerActor {
+  readonly id: string;
+  readonly name: string;
+  readonly email: string;
+}
+
 export interface TrackerEvent {
   kind: "label_added" | "status_changed" | "comment_added";
   entityType: EntityType;
@@ -33,6 +44,7 @@ export interface TrackerEvent {
   labels: string[]; // the entity's current label set, post-event
   authorId: string | null; // populated for comment_added; null for label/status events
   addedLabels: string[]; // populated for label_added — every label newly applied in this event (usually one)
+  actor: TrackerActor | null; // whoever performed this event's action, populated for every kind
 }
 
 // "first" = the lane's first-touch trigger fired; agent activates fresh.
@@ -43,9 +55,12 @@ export type Pass = "first" | "follow-up";
 // traceId correlates this call back to the webhook delivery that caused it
 // (see trace-id.ts) — carried through so a debounced follow-up's eventual
 // activation still traces back to whichever reply reset the timer last.
+// actor is the event's TrackerActor (see above) — most lanes ignore it;
+// specialist-dispatch reads it to record reviewer-of-record.
 export type AgentFn = (
   entityId: string,
   pass: Pass,
   entityTitle: string | null,
   traceId: string,
+  actor: TrackerActor | null,
 ) => void | Promise<void>;

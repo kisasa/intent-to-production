@@ -3,15 +3,70 @@
 The AWS infrastructure that runs [webhook-listener](../webhook-listener/README.md) as a long-lived
 service, defined in TypeScript with [CDK Terrain](https://cdktn.io/docs) (CDKTN).
 
-Two stacks, each with its own state file:
+Four stacks, each with its own state file:
 
 | Stack | State key | What it holds |
 |---|---|---|
 | `network` | `network.tfstate` | VPC, internet gateway, two public subnets, route table |
 | `listener` | `listener.tfstate` | ACM certificate, load balancer, DNS record, ECS cluster, task definition, service, IAM roles, log group |
+| `specialist-sandbox` | `specialist-sandbox.tfstate` | ECS cluster, Fargate task definition (no service), security group, IAM roles, log group |
+| `temporal-workers` | `temporal-workers.tfstate` | Temporal Cloud namespace + service account + API key, PrivateLink (VPC endpoint, private hosted zone), ECS cluster, Fargate service, IAM roles, log group |
 
-The split follows rate of change: the network never changes, while the listener stack is re-applied
-every time an image tag moves. `listener` reads the network's outputs through S3 remote state.
+The split follows rate of change: the network never changes, while the other three stacks are re-applied
+every time an image tag moves. All three read the network's outputs through S3 remote state.
+
+## Specialist sandbox — a task definition, not a service
+
+`specialist-sandbox` registers a Fargate task definition meant for on-demand `ecs:RunTask`, one task per
+story dispatch, as many concurrent as there are stories being worked. It is not an `EcsService`: nothing
+in this stack launches a task, sets a desired count, or registers with a load balancer. That's the job of
+the Temporal-based orchestrator (`temporal-workers`), which reads this stack's outputs (cluster arn, task
+definition arn/family, role arns) via remote state — the same way `listener.ts` reads `network`'s — and
+calls `RunTask` itself, from `dispatch-worker/src/activities/dispatch-specialist.ts`.
+
+It gets its own ECS cluster, separate from the listener's, so that `RunTask`/`PassRole` IAM scoping for
+that orchestrator never has to reach into anything touching the always-on listener service. The
+security group carries no ingress rules at all: nothing connects to this task over the network (`RunTask`
+is an AWS API call, not a network request), so there's nothing to accept a connection from.
+
+Two things this stack does not yet do, both recorded in Known gaps below rather than built speculatively:
+egress is unrestricted rather than allowlisted, and its secrets are read directly from SSM rather than
+through a credential-injection proxy.
+
+## Temporal workers — a service, and why PrivateLink
+
+`temporal-workers` registers the Temporal Cloud namespace the automated-dispatch design sequences
+dispatch → wait-for-specialist → CI → human-review-gate through, plus an always-on ECS Fargate **service**
+running the worker that polls it — unlike the specialist sandbox, this is a service, not a bare task
+definition, because a Temporal worker is a long-lived poller, not a one-shot dispatch target. It is not
+pinned to a single task the way the listener is: Temporal workers are safely concurrent pollers with no
+in-process shared state to split, so `desired_count` is a plain config value, not an asserted `1`.
+
+Namespace traffic reaches Temporal Cloud over **PrivateLink** (an Interface VPC Endpoint plus a private
+Route53 zone for `tmprl.cloud`), not Temporal Cloud's public endpoint — chosen because PrivateLink doesn't
+need a NAT gateway, so it layers onto the existing public-subnet-only `network` stack without reopening
+the no-NAT decision made there, at a modest fixed cost. The pattern is ported from the Example Payments reference
+project's `CloudPrivateLink`/`NamespaceWithApikey` constructs.
+
+**One deliberate exception to this project's secrets discipline lives here.** Everywhere else, Terraform
+only ever holds an SSM parameter's ARN — the value itself reaches a container at task start, never synth.
+The `temporalcloud` Terraform provider can't work that way: it authenticates with an admin API key that
+has to be a real string at synth time, so that one value (read from its own out-of-band SSM parameter,
+`/example/prod/temporal-admin/API_KEY`) does reach Terraform state. The namespace's own generated worker API
+key has the same shape: the `temporalcloud` provider hands back a token as a resource attribute, not
+something already living in SSM, so `temporal-workers.ts` writes it into a new SSM parameter itself before
+handing it to the worker service the normal ARN-based way. Both are recorded in Known gaps, not hidden.
+
+**The worker application code, and the wiring to dispatch against `specialist-sandbox`, both exist now** —
+[`dispatch-worker/`](../dispatch-worker) is the Temporal workflow/activities/worker; this stack passes it
+the `SPECIALIST_*` env vars it needs and grants its task role the `ecs:RunTask`/`ecs:DescribeTasks`/
+`iam:PassRole` permission to actually dispatch (see `constructs/temporal-worker-service.ts`'s
+`dispatchTarget` config). The trigger exists too, on the app side rather than in this stack:
+`webhook-listener`'s `specialist-dispatch` lane (`src/lanes/specialist-dispatch.ts`, `src/dispatch-
+trigger.ts`) calls `WorkflowClient.start(dispatchStoryWorkflow, ...)` when a story enters `In Progress` —
+see that package's own README. What's still open: neither `specialist-sandbox` nor `temporal-workers` has
+ever had a real image built and deployed — `cdktf.json`'s `image-tag` is still the `REPLACE_ME` placeholder
+for both, since the CI workflows that push a real one only trigger on a merge to `main`.
 
 ## Why a Fargate service, and why exactly one task
 
@@ -40,8 +95,14 @@ process outside it.
 |---|---|
 | S3 state bucket, versioned | Cannot live in the state it holds |
 | Route53 hosted zone for the domain | Usually predates the project; the certificate and DNS record attach to it |
-| ECR repository | The image must exist before a task can start from it, and CI pushes it independently of any Terraform run — see [`build-and-push-ecr.yml`](../.github/workflows/build-and-push-ecr.yml), which creates the repository idempotently. Read here as a data source. |
-| The five SSM parameters | See below — keeping creation out-of-band is what keeps secret values out of state |
+| ECR repository (listener) | The image must exist before a task can start from it, and CI pushes it independently of any Terraform run — see [`build-and-push-webhook-listener-ecr.yml`](../.github/workflows/build-and-push-webhook-listener-ecr.yml), which creates the repository idempotently. Read here as a data source. |
+| ECR repository (specialist sandbox) | Same posture as the listener's — the application code, Dockerfile, and CI workflow now exist ([`specialist-runner/`](../specialist-runner), [`build-and-push-specialist-ecr.yml`](../.github/workflows/build-and-push-specialist-ecr.yml)), so this repository gets created and populated the same idempotent way the listener's is. `specialist-sandbox` still won't apply until the first merge to `main` under `specialist-runner/` actually runs that workflow. |
+| The listener's five SSM parameters | See below — keeping creation out-of-band is what keeps secret values out of state |
+| The specialist sandbox's SSM parameters | Same mechanism, separate prefix (`specialist-sandbox.parameter-prefix`) — provisioned separately from the listener's so a specialist run never has access to production credentials |
+| ECR repository (Temporal worker) | Same posture as the other two — the application code, Dockerfile, and CI workflow now exist ([`dispatch-worker/`](../dispatch-worker), [`build-and-push-dispatch-worker-ecr.yml`](../.github/workflows/build-and-push-dispatch-worker-ecr.yml)). `temporal-workers` still won't apply until the first merge to `main` under `dispatch-worker/` actually runs that workflow. |
+| The temporal-workers stack's SSM parameters | Same mechanism, `temporal.parameter-prefix` |
+| A Temporal Cloud account, with an admin API key | Out-of-band, same category as the AWS account itself — the `temporalcloud` provider creates namespaces *within* an existing account, it doesn't create the account. The admin key goes in its own SSM parameter (`/example/prod/temporal-admin/API_KEY`), read directly (not by ARN) at synth — see the Temporal workers section above and Known gaps |
+| The `temporalcloud` provider's generated bindings | No prebuilt `@cdktn/provider-temporalcloud` package exists — run `npx cdktn get` locally (needs Terraform on PATH) before this stack will typecheck or synth. See Known gaps |
 | An AWS profile named in `aws.profile` | |
 | Terraform or OpenTofu **>= 1.10** on PATH | Required for S3-native state locking (`use_lockfile`), which is why there is no DynamoDB lock table |
 
@@ -76,6 +137,54 @@ at task start, so Terraform has nothing to re-apply:
 aws ecs update-service --region "us-east-1" --profile example --cluster example-prod --service webhook-listener-prod-svc --force-new-deployment
 ```
 
+### Creating the specialist sandbox's SSM parameters
+
+Same mechanism as the listener's, under `specialist-sandbox.parameter-prefix` instead — a distinct set of
+values so a specialist run is never holding a production credential:
+
+```bash
+PREFIX=/example/prod/specialist
+PROFILE=kisasa
+for name in ANTHROPIC_API_KEY LINEAR_AGENT_API_KEY GITHUB_TOKEN; do
+  read -rsp "$name: " value; echo
+  aws ssm put-parameter --region "us-east-1" --profile "$PROFILE" --name "$PREFIX/$name" --type SecureString --value "$value" --overwrite
+done
+```
+
+Confirmed against `specialist-runner/`'s own env var reads — same three names, same mechanism as the
+listener's parameter list mirroring `webhook-listener`'s. (No longer provisional: this used to name the
+minimum the automated-dispatch design committed to before the application code existed; it now matches
+the actual reads in `specialist-runner/src/run.ts` and `mcp-servers.ts`.)
+
+### Creating the Temporal admin API key parameter
+
+Read directly by the `temporalcloud` provider at synth, not by ARN — the one place in this project a
+secret value legitimately reaches Terraform state (see the Temporal workers section above):
+
+```bash
+read -rsp "Temporal Cloud admin API key: " value; echo
+aws ssm put-parameter --region "us-east-1" --profile example --name /example/prod/temporal-admin/API_KEY --type SecureString --value "$value" --overwrite
+```
+
+The worker's own three container secrets (same provisional list as the specialist sandbox's) go under
+`temporal.parameter-prefix` the same way as every other stack's — see the pattern above. The namespace's
+own worker API key does **not** go here: `temporal-workers.ts` writes it into SSM itself, generated fresh
+each apply from the `temporalcloud` provider's `Apikey` resource.
+
+### Generating the `temporalcloud` provider bindings
+
+No prebuilt `@cdktn/provider-temporalcloud` npm package exists (confirmed via `npm view`) — unlike
+`@cdktn/provider-aws`, this one has to be generated locally, once, before `temporal-workers.ts` will
+typecheck or synth:
+
+```bash
+npx cdktn get
+```
+
+This shells out to the Terraform CLI to introspect the provider schema, so it needs Terraform or OpenTofu
+on PATH (already a prerequisite above). The generated code lands in `.gen/providers/temporalcloud/` and is
+gitignored, same as `cdktn.out/` — regenerate it after a fresh clone, same as `npm install`.
+
 ## Configuration
 
 Every setting comes from the `context` block of [`cdktf.json`](cdktf.json) — read once per stack in
@@ -104,12 +213,27 @@ manage. Values marked `REPLACE_ME` in the committed file must be filled in befor
 | `listener.log-level` | `info` | Passed through as `LOG_LEVEL` |
 | `listener.parameter-prefix` | `/example/prod/` | Trailing slash included |
 | `listener.linear-api-url`, `.linear-mcp-url`, `.github-mcp-url`, `.product-context-paths` | `null` | Optional. `null` means the application's own default applies; the keys are spelled out to document that they exist |
+| `specialist-sandbox.environment-name` | `prod` | Validated independently of `listener.environment-name`, though today they're the same value |
+| `specialist-sandbox.ecr-repository-name` | `intent-to-production-specialist` | Doesn't exist yet — see Prerequisites |
+| `specialist-sandbox.image-tag` | `REPLACE_ME` | Placeholder until the specialist has a Dockerfile and a CI push target |
+| `specialist-sandbox.cpu` / `.memory` | `1024` / `2048` | Task-level Fargate sizing |
+| `specialist-sandbox.log-retention-days` | `30` | |
+| `specialist-sandbox.parameter-prefix` | `/example/prod/specialist/` | Trailing slash included; deliberately distinct from `listener.parameter-prefix` |
+| `temporal.environment-name` | `prod` | Validated independently of the other stacks' `environment-name`, though today they're the same value |
+| `temporal.namespace-name` | `intent-to-production-prod` | Base name — Temporal Cloud appends an account-id suffix to form the fully-qualified namespace id |
+| `temporal.ecr-repository-name` | `intent-to-production-temporal-worker` | Doesn't exist yet — see Prerequisites |
+| `temporal.image-tag` | `REPLACE_ME` | Placeholder until the worker has a Dockerfile and a CI push target |
+| `temporal.cpu` / `.memory` | `512` / `1024` | Task-level Fargate sizing |
+| `temporal.desired-count` | `1` | Not a singleton constraint like the listener's — safe to raise once there's real load to justify it |
+| `temporal.log-retention-days` | `30` | |
+| `temporal.parameter-prefix` | `/example/prod/temporal/` | Trailing slash included; holds the worker's own three provisional secrets, not the Temporal admin key or the generated worker API key (see above) |
 
 ### Image tags
 
-`listener.image-tag` is pinned rather than tracking `:latest`, so that Terraform sees a real diff and
-the running version is auditable in git. Deploying a new build is: read the tag CI pushed, edit the
-key, apply. Tracking `:latest` would leave Terraform with nothing to plan.
+`listener.image-tag` (and `specialist-sandbox.image-tag`, `temporal.image-tag`) is pinned rather than
+tracking `:latest`, so that Terraform sees a real diff and the running version is auditable in git.
+Deploying a new build is: read the tag CI pushed, edit the key, apply. Tracking `:latest` would leave
+Terraform with nothing to plan.
 
 ## Working with it
 
@@ -119,14 +243,42 @@ npm run synth
 ```
 
 ```bash
-npx cdktn diff --skip-synth network && npx cdktn diff --skip-synth listener
+npx cdktn diff --skip-synth network
+npx cdktn deploy --skip-synth --auto-approve network
 ```
+
+`specialist-sandbox` synths and diffs the same way, but deploying it will fail until its ECR repository
+and first image exist (see Prerequisites):
 
 ```bash
-npx cdktn deploy --skip-synth --auto-approve network listener
+npx cdktn diff --skip-synth specialist-sandbox
+npx cdktn deploy --skip-synth --auto-approve specialist-sandbox
 ```
 
-The first deploy blocks while ACM validates the certificate through DNS — several minutes is normal.
+`temporal-workers` needs `npx cdktn get` run first (see above), and will fail to deploy until its ECR
+repository, its SSM parameters, and the Temporal Cloud admin API key all exist — same not-yet-applyable
+posture as `specialist-sandbox`:
+
+```bash
+npx cdktn get
+npx cdktn diff --skip-synth temporal-workers
+npx cdktn deploy --skip-synth --auto-approve temporal-workers
+```
+
+**`listener` now depends on `temporal-workers` having deployed first** — it reads that stack's remote
+state (namespace address, namespace id, task queue name) for the webhook listener's own Temporal client,
+plus the `TEMPORAL_API_KEY` SSM parameter `temporal-workers.ts` creates (read, not created again, under
+`temporal.parameter-prefix`, not `listener.parameter-prefix` — the two are deliberately distinct
+per-stack values). On a from-scratch stand-up, deploy `temporal-workers` before `listener`, not the two
+together the way `network`+`listener` used to be a single step:
+
+```bash
+npx cdktn diff --skip-synth listener
+npx cdktn deploy --skip-synth --auto-approve listener
+```
+
+The first `listener` deploy blocks while ACM validates the certificate through DNS — several minutes is
+normal.
 
 `npx cdktn output listener` reports the webhook URL to register with the tracker, the service name,
 the log group, and the exact image URI running.
@@ -142,8 +294,17 @@ main.ts                  Stack construction and dependency wiring
 common.ts                Name formatting and state keys
 cdktf.json               Project config; the context block is all the settings
 models/                  Typed configuration and stack outputs, with fromContext factories
-constructs/              Reusable pieces: VPC, certificate, load balancer, single-instance service
-stacks/                  base-stack.ts (base) plus network.ts and listener.ts
+constructs/              Reusable pieces: VPC, certificate, load balancer, single-instance service,
+                         specialist task, Temporal PrivateLink/namespace/worker service. Every
+                         construct with real branching logic or a security-relevant invariant
+                         (region guards, AZ-count guard, singleton desiredCount, ingress scoping,
+                         the container_definitions JSON/token double-encoding gotcha) has a
+                         `Testing.synthScope`-based test — see `testing/synth-assertions.ts` for
+                         the shared container_definitions check
+stacks/                  base-stack.ts (base) plus network.ts, listener.ts, specialist-sandbox.ts,
+                         temporal-workers.ts
+.gen/                    Locally generated `temporalcloud` provider bindings (gitignored) — run
+                         `npx cdktn get` after cloning, same as `npm install`
 ```
 
 The shape follows the C# reference project this was modelled on (`example-infra.CDKTF`):
@@ -184,3 +345,28 @@ Honest about what this does not do.
 - **One environment.** Adding a second means a second context — either a `<env>.cdktf.json` copied
   into place, following the reference project, or a second directory of stacks. Nothing in the code
   assumes one environment; only `cdktf.json` does.
+- **Specialist-sandbox egress is unrestricted, not allowlisted.** The design calls for locking egress to
+  the Anthropic API, GitHub, Linear, and the gateway-processor test endpoints specifically — but none of
+  those publish IP ranges stable enough for a security-group rule, unlike AWS's own services. Real
+  enforcement needs a NAT gateway plus a forward proxy, or AWS Network Firewall's domain-name filtering,
+  either of which is its own build. Until then, the task's egress is `0.0.0.0/0`, same as the listener's,
+  with zero inbound.
+- **Specialist-sandbox secrets are read directly, not through a credential-injection proxy.** The design
+  calls for a proxy outside the sandbox that injects GitHub/Linear/gateway-processor credentials into
+  requests, so the specialist container never holds one directly. That proxy doesn't exist yet — its own
+  design questions (where it runs, how it authenticates a sandbox task, its request-signing story) aren't
+  settled. For now the task reads its own sandbox-scoped SSM parameters directly via its execution role,
+  same mechanism the listener already uses, just under a separate prefix — so a specialist run is never
+  holding a *production* credential, even though it is still holding a raw one.
+- **Two secret values reach Terraform state in `temporal-workers`, not just an ARN.** The `temporalcloud`
+  provider's admin API key (read directly from SSM) and the namespace's generated worker API key (written
+  into SSM by this stack, since the provider hands it back as a resource attribute rather than something
+  already living there) both break this project's otherwise-universal "only an ARN reaches synth" rule —
+  unavoidable, since Terraform provider authentication doesn't support the ARN-indirection ECS container
+  secrets use. See the Temporal workers section above.
+- **Temporal worker egress is unrestricted**, same reasoning and same gap as the specialist sandbox's.
+- **Neither `specialist-sandbox` nor `temporal-workers` has ever had a real image deployed.** Both
+  applications, their Dockerfiles, and their CI push workflows all exist now, but those workflows only
+  push on a merge to `main` — until one lands, `cdktf.json`'s `image-tag` for both stacks stays the
+  `REPLACE_ME` placeholder and a `deploy` against either would fail resolving it. See the Temporal
+  workers section above for what's already wired and ready once a real image exists.

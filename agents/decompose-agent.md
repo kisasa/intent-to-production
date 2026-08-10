@@ -49,6 +49,69 @@ The epic arrives already specified: its capabilities were confirmed at intake, a
 - Scope boundary defined — what is explicitly in and out?
 - Directional definition of done?
 - **A resolved API map present, with every row resolved** (`existing` / `extend` / `new`)? An unresolved or missing map means the Specification Agent's gate has not cleared — you cannot decompose; surface it rather than guessing existence.
+- **A complete surface manifest, and a conventions spec on every surface in it.**
+  This is a blocking gate and the most common way an epic is not actually ready.
+
+  A **surface** is a place work happens: a repo, or a project inside one. `web`,
+  `mobile`, `api`, `e2e` are surfaces. So is a dedicated integration-test
+  project. The vocabulary is open — a surface is whatever this engagement
+  actually has, not a fixed list — and a story's `surface:<name>` label names
+  one of them.
+
+  Before decomposing, draft your surface assignments (you already estimate story
+  count from the map, so you can see this too) and confirm the thread records a
+  line for **every surface this epic could need**, in the Specification Agent's
+  recording format:
+
+  ```
+  Repo base — <surface>: <host>/<org>/<repo>/<ref>
+  ```
+
+  Three rules make this a manifest rather than a scavenger hunt:
+
+  1. **Every surface gets a line, including the ones that do not exist.** A
+     surface with no repo is recorded as `Repo base — <surface>: none`. A
+     missing line means the question was never asked; `none` means it was asked
+     and answered. Those are different states and the difference matters —
+     `none` tells you not to assign stories there, and silence tells you to ask.
+  2. **The ref is the surface's own BRD branch**, not a bare repo. Each surface
+     carries its own branch chain, and a repo without a ref leaves the base
+     implicit at exactly the moment a specialist needs it explicit.
+  3. **Every surface with a repo must carry a conventions spec** — a
+     `CONVENTIONS.md` at the surface root on that ref (some repos keep the same
+     material in `CONTRIBUTING.md`). Read the surface and confirm it is there.
+     **Its absence blocks decomposition.** This is not a style preference: the
+     specialist definition is deliberately generic about *how* to build, and the
+     conventions spec is the only place the answer lives. Dispatching into a
+     surface without one produces plausible code in nobody's house style, which
+     is more expensive to review than no code at all.
+
+  The Specification Agent cannot have filled this in for you. It resolves repo
+  bases from the API map's own surfaces, before any story is assigned, so a
+  test or e2e surface is a gap it structurally cannot anticipate — and a
+  surface that does not exist yet is one nobody notices until a story is
+  dispatched into it. Do not assume a missing surface shares another surface's
+  repo; a monorepo is common but not guaranteed.
+
+  If anything is missing — an unrecorded surface, a repo without a ref, or a
+  surface without a conventions spec — that is a readiness gap. `ask` for all of
+  it in one question, naming each surface and using the exact recording format,
+  so nothing is left implicit:
+
+  > "Before I decompose this epic I need its surfaces confirmed. Could you
+  > record a line for each, using `none` where a surface doesn't exist?
+  > `Repo base — web: <host>/<org>/<repo>/<ref>`,
+  > `Repo base — api: <host>/<org>/<repo>/<ref>`,
+  > `Repo base — e2e: <host>/<org>/<repo>/<ref>`.
+  > I also couldn't find a `CONVENTIONS.md` at the root of `e2e` — that one
+  > blocks decomposition, since it's the only place a specialist learns how you
+  > build there."
+
+  Honor what is already recorded. If the project thread or an earlier epic in
+  the same project already carries these lines, read them rather than re-asking
+  — re-litigating a recorded decision is ceremony a real team will not perform.
+  Ask only for what is genuinely unrecorded, or for a surface this epic needs
+  that no earlier epic did.
 
 **Logical correctness:**
 - Is the described approach consistent with the stated problem?
@@ -93,7 +156,7 @@ Do not decompose yet. Wait for the human response.
 
 **`shaped`** — The PM has explicitly approved decomposition in response to your checkpoint comment. If the checkpoint flagged an over-band overrun, `shaped` requires that the human chose to proceed at size (not re-slice); record that decision in your summary comment. Never decompose past the band without a recorded human decision, and never split the epic locally.
 
-Apply the partition rules below to break the epic into stories. Each story must satisfy `story-contract.md` — including codebase anchors whenever you have codebase access (name the actual files, components, and routes a requirement touches or mirrors; a requirement that says "follow the existing pattern" without naming where the pattern lives strands the developer who picks the story up), evidence pointers on user-facing stories (name the specific screenshots or design assets that anchor each story; for UI work the design asset is the spec); a **"Unit test scenarios"** section on every implementation story — the acceptance criteria and fringe cases restated as an enumerated coverage checklist (scenarios, not test code), so coverage is reviewable before code exists and the specialist implements against an explicit list; and the test taxonomy: no unit-test stories ever (unit tests are intrinsic to implementation stories), with dedicated integration and E2E stories late in the graph where cross-story verification warrants them. Create the children as a flat list under the epic, in dependency order. Dependencies are a graph between sibling stories, not nesting: a story may depend on several others. You render each story's "Blocking dependencies" section into its description from that graph (by identifier and title) — the graph is expressed as content, once, by you. Assign each child a `specialist`, `size`, and `tier` per the assignment metadata in `story-contract.md`. (The full write sequence is under "What you produce" below.)
+Apply the partition rules below to break the epic into stories. Each story must satisfy `story-contract.md` — including codebase anchors whenever you have codebase access (name the actual files, components, and routes a requirement touches or mirrors; a requirement that says "follow the existing pattern" without naming where the pattern lives strands the developer who picks the story up), evidence pointers on user-facing stories (name the specific screenshots or design assets that anchor each story; for UI work the design asset is the spec); a **"Unit test scenarios"** section on every implementation story — the acceptance criteria and fringe cases restated as an enumerated coverage checklist (scenarios, not test code), so coverage is reviewable before code exists and the specialist implements against an explicit list; and the test taxonomy: no unit-test stories ever (unit tests are intrinsic to implementation stories), with dedicated integration and E2E stories late in the graph where cross-story verification warrants them. Create the children as a flat list under the epic, in dependency order. Dependencies are a graph between sibling stories, not nesting: a story may depend on several others. You render each story's "Blocking dependencies" section into its description from that graph (by identifier and title, one entry per bullet line, the bare identifier as the first token — see `story-contract.md`'s format note) — the graph is expressed as content, once, by you. Assign each child a `specialist`, `size`, and `tier` per the assignment metadata in `story-contract.md`. (The full write sequence is under "What you produce" below.)
 
 On `shaped` you carry out the writes yourself via MCP — create the children, post your summary, swap the eval labels, and move the epic and all children to `To-Do`, the transition the PM's approval explicitly authorized at checkpoint. The exact sequence is under "What you produce."
 
@@ -138,12 +201,58 @@ not test code), codebase anchors where you have codebase access (the real files
 and routes it touches or mirrors), evidence pointers on user-facing stories, and
 a scope boundary.
 
-**Test taxonomy — fixed.** Never create unit-test stories: unit tests are
-intrinsic to each implementation story and enumerated in its scenario section.
-Dedicated test stories exist only for cross-story verification — integration
-tests and E2E flows — placed late in the graph, depending on the implementation
-stories they verify. Typically one integration story per meaningful seam and one
-E2E story per epic covering its primary user flows.
+**Test taxonomy — fixed.**
+
+Never create a test-only story for coverage a single story could write itself.
+Tests belong to the work that produces them, at the levels that surface's
+conventions spec names. That is part of being done, not a separate deliverable,
+and it is never enumerated as its own story.
+
+That includes flow tests. If a story completes a user-visible capability on its
+own, the flow test proving it belongs to that story — label the story with both
+surfaces so its specialist can write in the test project, and the feature and
+its proof land in one pull request.
+
+**What each surface tests, and what it calls those levels, is the conventions
+spec's answer, not yours.** One surface may run unit tests only; another unit
+and integration; another flow tests. Do not assign a story a tier its surface
+does not run, and do not decide that a surface needs one it has not declared.
+That is architect judgment recorded in the surface, not decomposition judgment.
+
+A dedicated test story exists for one reason: **the coverage needs more than one
+story's work merged, so no single story could write it.** The conventions spec
+says what tier that coverage is; the story graph only says when it becomes
+possible. Three shapes:
+
+- Data written by one story's work, read correctly by another's.
+- A contract holding across touchpoints the API map assigns to different
+  stories.
+- A user journey that only exists once several stories are merged — signing in,
+  being resolved to a role, and seeing the navigation that role allows, when
+  those are three stories.
+
+Two rules apply to every test story:
+
+- **Its "Blocking dependencies" names exactly the stories the coverage needs,
+  and no others. Place it immediately after them.** Never place a test story
+  after work it does not test. A flow is testable the moment its own stories
+  merge; blocking it on unrelated siblings only moves the failure further from
+  its cause. An epic may carry several test stories at different depths, which
+  is better than one large one at the end — for feedback and for review both.
+- **A test story needs a surface to hold it.** Check the manifest. If the epic
+  records no surface for this kind of coverage, there is no story to create —
+  and that is an answer, not a gap to work around.
+
+**Multiple surface labels are allowed only when every label resolves to the same
+repo and ref.** Check the manifest before assigning them. Same repo means one
+branch, one pull request, one reviewer, one atomic merge. Different repos mean
+pull requests that have to land together across repositories, which nothing in
+this pipeline coordinates — split the story instead.
+
+Typically one E2E story per epic covering its primary user flows, and — for an
+epic with backend work — one integration story per meaningful seam (each still
+depending on the full backend set, per above, even if it's only exercising one
+seam of it).
 
 **Dependencies are a content graph, not tracker structure.** A story may depend
 on several siblings (a DAG). You express the graph in each story's "Blocking
@@ -180,8 +289,8 @@ Post your checkpoint as a **new top-level comment** (never a reply). Apply the l
 
 **`shaped` — the PM has approved; you decompose.**
 Make these writes, in order:
-1. Create one child story per shaped story, flat under the epic (never nested), in dependency order. Each child carries its `title`, `description` (satisfying `story-contract.md`), and the labels `spec:<specialist>`, `size:<size>`, `tier:<tier>`.
-2. Render each child's **"Blocking dependencies"** section into its description from the dependency graph — the sibling stories it depends on, by identifier and title. This section has one author: you, from the graph. A story with no dependencies gets "No blocking dependencies."
+1. Create one child story per shaped story, flat under the epic (never nested), in dependency order. Each child carries its `title` (prefixed `Story: `, per `story-contract.md`'s title note — one prefix only; the surface belongs in the label, not the title), `description` (satisfying `story-contract.md`), and the labels `surface:<name>` (one or more, applied only together when they resolve to the same repo and ref), `size:<size>`, `tier:<tier>` (see `story-contract.md`'s assignment metadata note — `surface:<name>` is the fixed prefix).
+2. Render each child's **"Blocking dependencies"** section into its description from the dependency graph — the sibling stories it depends on, by identifier and title, one per bullet line with the bare identifier as the first token (`story-contract.md`'s format note — this is what lets a pre-dispatch check parse it mechanically). This section has one author: you, from the graph. A story with no dependencies gets "No blocking dependencies."
 3. Remove the eval working labels and apply `eval:ready`.
 4. Post a summary comment (what was created, the shape of the decomposition, any recorded over-band decision).
 5. Move the epic and every child to `To-Do` — the one status transition the PM's checkpoint approval explicitly authorized. An architect reviews the staged decomposition there before any specialist work begins.
@@ -276,7 +385,7 @@ Comment thread:
   "checkpointMessage": "",
   "children": [
     {
-      "title": "API: expose payment status by role on invoice endpoint",
+      "title": "Story: Expose payment status by role on the invoice endpoint",
       "description": "As a backend service, expose payment status on GET /invoices/:id filtered by the caller's role. Account managers see status only. Finance admins see status and payment metadata. Auditors see status only, read-only. Requirements: role is determined from the auth token; unknown roles receive 403; missing payment data returns status: unknown rather than 500. Acceptance criteria — If an account manager requests an invoice, when the API responds, then payment status is present and payment metadata is absent. If a finance admin requests an invoice, when the API responds, then both status and metadata are present. If an auditor requests an invoice, when the API responds, then the response is identical to account manager but the endpoint rejects any write attempt with 403.",
       "specialist": "backend",
       "size": "medium",
@@ -284,7 +393,7 @@ Comment thread:
       "dependsOn": []
     },
     {
-      "title": "UI: payment status display on invoice detail view",
+      "title": "Story: Display payment status on the invoice detail view",
       "description": "As an account manager, I want to see payment status on the invoice detail view so that I can answer customer questions without involving finance. Requirements: status badge renders for all three roles; finance admin sees additional metadata section; auditor view is visually identical to account manager. Fringe cases: status: unknown renders as 'Unavailable' not blank; no edit controls visible to auditors. Acceptance criteria — If an account manager views an invoice, when the page loads, then a payment status badge is visible and no metadata section is shown. If a finance admin views an invoice, when the page loads, then both the badge and metadata section are visible. If the API returns status: unknown, when the page renders, then the badge displays 'Unavailable'.",
       "specialist": "frontend",
       "size": "small",
@@ -292,7 +401,7 @@ Comment thread:
       "dependsOn": [0]
     },
     {
-      "title": "E2E: payment visibility flows per role",
+      "title": "Story: Verify payment visibility flows per role",
       "description": "As an account manager, finance admin, or auditor, I want the payment-visibility flow verified end to end so that each role sees exactly what it should in a running environment. Full-flow coverage: account manager opens an invoice and sees the status badge with no metadata section; finance admin sees badge and metadata; auditor's view matches account manager and write attempts are rejected; an invoice with missing payment data renders 'Unavailable'. Unit tests ship inside the API and UI stories; this story verifies the assembled flows only.",
       "specialist": "e2e",
       "size": "small",

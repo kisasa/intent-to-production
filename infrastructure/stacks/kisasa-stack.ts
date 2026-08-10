@@ -5,6 +5,11 @@ import type { Construct } from "constructs";
 import { formatTerraformId } from "../common";
 import { type AwsConfiguration, awsConfigurationFromContext } from "../models/aws-configuration";
 import { type ListenerConfiguration, listenerConfigurationFromContext } from "../models/listener-configuration";
+import {
+  type SpecialistSandboxConfiguration,
+  specialistSandboxConfigurationFromContext,
+} from "../models/specialist-sandbox-configuration";
+import { type TemporalConfiguration, temporalConfigurationFromContext } from "../models/temporal-configuration";
 import { type ContextNode, requireNode, requireString, requireStringMap } from "../models/context";
 
 /**
@@ -20,6 +25,8 @@ export abstract class BaseStack extends TerraformStack {
   private static readonly contextKeys: string[] = [
     "aws",
     "listener",
+    "specialist-sandbox",
+    "temporal",
     "global-tags",
     "domain-name",
     "hosted-zone-id",
@@ -29,6 +36,8 @@ export abstract class BaseStack extends TerraformStack {
 
   protected readonly aws: AwsConfiguration;
   protected readonly listener: ListenerConfiguration;
+  protected readonly specialistSandbox: SpecialistSandboxConfiguration;
+  protected readonly temporal: TemporalConfiguration;
   protected readonly globalTags: Record<string, string>;
   protected readonly domainName: string;
   protected readonly hostedZoneId: string;
@@ -43,6 +52,10 @@ export abstract class BaseStack extends TerraformStack {
 
     this.aws = awsConfigurationFromContext(requireNode(context, "aws", "context"));
     this.listener = listenerConfigurationFromContext(requireNode(context, "listener", "context"));
+    this.specialistSandbox = specialistSandboxConfigurationFromContext(
+      requireNode(context, "specialist-sandbox", "context"),
+    );
+    this.temporal = temporalConfigurationFromContext(requireNode(context, "temporal", "context"));
     this.globalTags = requireStringMap(context, "global-tags", "context");
     this.domainName = requireString(context, "domain-name", "context");
     this.hostedZoneId = requireString(context, "hosted-zone-id", "context");

@@ -59,9 +59,13 @@ export function securityGroupDescription(description: string): string {
 export interface TfStateKeys {
   readonly network: string;
   readonly listener: string;
+  readonly specialistSandbox: string;
+  readonly temporalWorkers: string;
 }
 
 export const tfStateKeys: TfStateKeys = {
   network: "network.tfstate",
   listener: "listener.tfstate",
+  specialistSandbox: "specialist-sandbox.tfstate",
+  temporalWorkers: "temporal-workers.tfstate",
 };

@@ -7,6 +7,7 @@ const AGENT_USER_ID = "agent-123";
 const intakeAgent = vi.fn();
 const specificationAgent = vi.fn();
 const decomposeAgent = vi.fn();
+const specialistDispatchAgent = vi.fn();
 
 const lanes: LaneConfig[] = [
   {
@@ -33,6 +34,13 @@ const lanes: LaneConfig[] = [
     awaitingLabels: ["eval:awaiting-answers", "eval:awaiting-approval"],
     statusRequiredForFollowUp: "Evaluation",
   },
+  {
+    name: "specialist-dispatch",
+    entityType: "issue",
+    agent: specialistDispatchAgent,
+    firstPass: { on: "status_entered", status: "In-Process", requireLabelsPresentPrefix: "surface:" },
+    awaitingLabels: [],
+  },
 ];
 
 const cfg: SwimLaneRoutingConfig = { agentUserId: AGENT_USER_ID, lanes: lanes };
@@ -47,6 +55,7 @@ function event(overrides: Partial<TrackerEvent>): TrackerEvent {
     labels: [],
     authorId: null,
     addedLabels: [],
+    actor: null,
     ...overrides,
   };
 }
@@ -184,6 +193,41 @@ describe("route — Decompose (label_added, presence-gated)", () => {
       cfg,
     );
     expect(decision).toMatchObject({ fire: true, pass: "follow-up", lane: "decompose" });
+  });
+});
+
+describe("route — specialist-dispatch (status_entered, presence-gated, stories not epics)", () => {
+  it("fires first pass when a story (carrying a surface:* label) enters In-Process", () => {
+    const decision = route(
+      event({ kind: "status_changed", entityType: "issue", status: "In-Process", labels: ["surface:backend"] }),
+      cfg,
+    );
+    expect(decision).toMatchObject({ fire: true, pass: "first", lane: "specialist-dispatch" });
+  });
+
+  it("carries the event's actor through as entityActor — reviewer-of-record's source", () => {
+    const mover = { id: "user-1", name: "Example User", email: "user@example.com" };
+    const decision = route(
+      event({ kind: "status_changed", entityType: "issue", status: "In-Process", labels: ["surface:backend"], actor: mover }),
+      cfg,
+    );
+    expect(decision).toMatchObject({ fire: true, entityActor: mover });
+  });
+
+  it("does not fire for an epic entering In-Process with no surface:* label — the presence gate", () => {
+    const decision = route(
+      event({ kind: "status_changed", entityType: "issue", status: "In-Process", labels: ["size:medium"] }),
+      cfg,
+    );
+    expect(decision.fire).toBe(false);
+  });
+
+  it("does not fire when entering a different status", () => {
+    const decision = route(
+      event({ kind: "status_changed", entityType: "issue", status: "To-Do", labels: ["surface:frontend"] }),
+      cfg,
+    );
+    expect(decision.fire).toBe(false);
   });
 });
 

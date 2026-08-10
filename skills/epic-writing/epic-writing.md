@@ -27,6 +27,29 @@ a story breakdown; those are what the pipeline produces *from* it.
 
 ## Required components
 
+**Title**
+Prefixed `Epic: `, then a noun phrase naming the capability area in the user's
+language.
+
+The prefix is there for the places the tracker's own hierarchy does not travel
+— a flat search result, a filtered list, a Slack unfurl, a notification. Inside
+Linear the parent/child relationship is already visible; outside it, nothing
+carries it.
+
+Keep the part after the prefix short. Titles get truncated in exactly the views
+where they matter most, so put the distinguishing words first and leave
+qualifiers for the body.
+
+- Good: "Epic: Identity, role resolution, and navigation"
+- Good: "Epic: Invoice payment visibility"
+- Bad: "Epic: Payment stuff" — names nothing.
+- Bad: "Epic: Add a payment status dashboard to the invoice page" — a solution
+  and a story-sized one. An epic names the area, not the change.
+- Bad: "Identity, role resolution, and navigation" — no prefix.
+
+Do not put an issue identifier, a team name, or a surface in the title. The
+tracker supplies the first two, and labels carry the third.
+
 **Business problem statement**
 What is broken, missing, or needed — and why it matters. Never opens with a
 solution.

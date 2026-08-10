@@ -62,6 +62,14 @@ targeted question naming the surfaces you need bases for. A repo base is:
 host, org, repo name, and ref (e.g. `github / kisasa / example-web /
 main`).
 
+When you record a resolved base, the comment carries one fixed-format line
+per surface: `Repo base — <surface>: <host>/<org>/<repo>/<ref>` (e.g. `Repo
+base — frontend: github/example-org/example-web/main`). Surrounding prose
+is free; that one line per surface is what lets a downstream mechanical
+reader (branch creation at dispatch time) find and parse it without scanning
+for your particular wording. When reading a base someone already recorded,
+look for this same line rather than free-form phrasing.
+
 You record these as content and cite codebase locations as **relative paths**
 within a recorded base — you do not write absolute URLs. Composing an absolute
 URL from a base and a relative path is deterministic string work the

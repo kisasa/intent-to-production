@@ -18,3 +18,10 @@ dist/
 
 .claude/
 CLAUDE.md
+
+# docker-compose local dev — localstack-bootstrap's generated output
+/local/
+
+# Real secret values for the local dev stack — copy from
+# docker-compose.override.yml.example, never commit the filled-in copy.
+docker-compose.override.yml

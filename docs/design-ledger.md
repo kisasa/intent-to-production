@@ -797,7 +797,14 @@ renamed to Decompose.
   present. Validated in reasoning (not yet a run) by PROJ-24's self-containment:
   the story carried its own why + the architect's map ruling + exact anchors, so
   a lean specialist can execute it — which is the evidence that decomposition
-  thoroughness is what makes lean specialists possible.
+  thoroughness is what makes lean specialists possible. (Superseded in part,
+  2026-08-04: this remains correct as the specialist's own behavior and
+  orientation logic. "A Claude Code agent driven by a developer prompt"
+  described manual dispatch specifically — with dispatch now app-triggered, the
+  execution surface is the Claude Agent SDK, the library form of the same
+  engine, meant to be embedded in the app's own orchestration rather than run
+  interactively from a developer's terminal. See the automated-dispatch session
+  below.)
 
 - **Decomposition is invariant; only the band VALUE is tunable (resolves the
   general-vs-rich framing).** "General agent fed skills" and "rich specialist"
@@ -826,7 +833,8 @@ renamed to Decompose.
   narrate it (the two-failure-mode error handler). `code-review-agent.md` is
   still a draft and still carries old framing — the one un-reconciled agent.
   (Superseded 2026-08-03 on both counts: `code-review-agent.md` was retired to
-  `docs/archive/`, and "the one un-reconciled agent" turned out to be wrong —
+  `docs/archive/` — and then deleted entirely in `9afef91`; it survives only in
+  git history — and "the one un-reconciled agent" turned out to be wrong —
   `decompose-agent.md`, `intake-agent.md`, and `specification-agent.md` all still
   carry app-hands-context phrasing, tracked as an open item. See the
   development-tier session below.)
@@ -894,7 +902,11 @@ Code against a local checkout. The rationale is the standing one: the scarce
 resource is human review throughput, so the person who will review the PR
 decides when it gets written. Consequence for the specialist definitions —
 they run with local git plus tracker MCP, unlike the shaping agents, which
-never touch a working copy.
+never touch a working copy. (Superseded 2026-08-04 — see the automated-dispatch
+session below: dispatch moved to a status-move trigger, keeping the human act
+but relocating it from a local terminal to the tracker; the reviewer-commitment
+property this paragraph protects is preserved by recording the status-mover as
+reviewer-of-record, not by requiring manual dispatch.)
 
 **The comment thread is context, and it is the point.** While a story sits in
 To-Do the developer reads it and asks the architect questions *in the story's
@@ -942,8 +954,11 @@ and the bases are correct," and "the given story branch," meaning it pre-exists.
 But the question came back unprompted, which is worth recording: the strict
 reading makes a developer do a mechanical step (cut a branch off an epic branch,
 using a name the tracker already supplies) that an agent could do safely,
-because nobody can be working in a branch that does not exist yet. Still
-unresolved — the follow-up never got answered.
+because nobody can be working in a branch that does not exist yet. RESOLVED
+2026-08-04: the instinct behind the question was right, but the answer wasn't
+"let the specialist do it" — it went to the app instead, since matching a
+recorded field to a git operation is mechanical, not the specialist's judgment
+to make. See the automated-dispatch session below.
 
 **Story-PR review is CI plus a human developer; `code-review-agent.md` is
 retired.** Unit and integration tests run in CI on the PR; a developer other
@@ -952,9 +967,13 @@ into the epic branch. The agent draft was never built and was two architectures
 stale (verdict object, app-applied). What remained between "CI can check it"
 and "a human must judge it" did not justify a third actor — and inserting one
 before the first specialist run would add a variable to the experiment that run
-exists to measure. Moved to `docs/archive/` with a retirement header rather than
-deleted; if mechanical review returns, it starts from the CI checks that
-replaced it. Epic-branch review, and the PR from epic branch to BRD branch,
+exists to measure. Moved to `docs/archive/` with a retirement header rather
+than deleted, so the trail survived — **and then deleted outright in `9afef91`
+("Clean up"), along with the `docs/archive/` directory itself.** Recovering it
+means `git show af358e7:docs/archive/code-review-agent.md`. Noted rather than
+undone: the file was two architectures stale and describes an agent that was
+never built, so git history is a defensible home for it. But the ledger claimed
+twice that it had been preserved on disk, and it had not. Epic-branch review, and the PR from epic branch to BRD branch,
 remain the architect's.
 
 **E2E runs at the epic level.** An E2E story's branch is cut from the epic
@@ -1086,16 +1105,1159 @@ the application makes no AWS calls at all.
 share of that base class's complexity and earns nothing when Docker already
 covers local.
 
-**Three things only building it revealed.** S3-native state locking
-(`use_lockfile`) replaces the reference project's DynamoDB lock table, but synth
-validates it against a declared `targetVersions` — both Terraform and OpenTofu
-floors are 1.10, not the 1.9 assumed. Cross-stack subnet lists arrive from
-remote state as opaque tokens, so `Array.join` on one fails at synth and
-`Fn.join` is required. And AWS's security-group description charset rejects the
-em dash and the apostrophe, which surfaced several minutes into an apply — now a
+**Two things only building it revealed** (corrected 2026-08-04 from three — see
+below). S3-native state locking (`use_lockfile`) replaces the reference
+project's DynamoDB lock table, but synth validates it against a declared
+`targetVersions` — both Terraform and OpenTofu floors are 1.10, not the 1.9
+assumed. And AWS's security-group description charset rejects the em dash and
+the apostrophe, which surfaced several minutes into an apply — now a
 `securityGroupDescription` guard that throws at synth with the offending
 characters named, because prose-style punctuation in a description is a mistake
 that will be made again.
+
+**Correction (2026-08-04, code audit against `infrastructure/`):** this entry
+originally also claimed a third finding — that cross-stack subnet lists arrive
+from remote state as opaque tokens, so `Array.join` on one fails at synth and
+`Fn.join` is required. No `Fn.join` call exists anywhere in the shipped code:
+`network-stack-output.ts` hands `publicSubnetIds` through as a plain `string[]`
+straight into the `subnets`/`subnetIds` props on the load balancer and the
+service, with no stringification of the list anywhere. Whatever prompted the
+original note either got resolved by removing the join rather than switching
+to `Fn.join`, or never reproduced in the code that shipped — either way, the
+claim didn't survive contact with the actual file, so it's struck rather than
+carried forward unverified. If a synth-time failure on a remote-state list
+recurs, capture the real repro then.
+
+## Development tier — automated dispatch and BRD closure (2026-08-04)
+
+Session input: replacing the developer-manual dispatch settled in the prior
+development-tier session with an app-triggered pipeline, for the same story
+tier, plus designing everything from an epic's completion through to a BRD
+merging into `main` — the two gaps the prior session and the open items both
+flagged directly. No code written this session; this is the design the
+webhook-listener extension and a new CDKTN construct should be built against.
+
+**Supersedes, explicitly: "Dispatch is human, not app-driven."** That rule
+solved a real problem — the scarce resource is human review throughput, so the
+person who reviews decides when it gets written — and this session does not
+discard the problem, it re-solves it under a different trigger. What changes:
+the developer's act of opening Claude Code against a local checkout is
+replaced by moving the story `To-Do` → `In-Process` on the tracker. What's
+preserved: it's still a human, still deliberate, still visible on the board.
+Two consequences fall out of removing the local terminal from the sequence,
+each with its own fix below rather than being waved past: the branch used to
+get created as part of the same manual act, and the reviewer used to be
+whoever was sitting at that terminal.
+
+**The app creates the branch, mechanically, before dispatch.** This resolves
+the item the prior session left "left strict — strict is reversible" and its
+same-day, never-answered follow-up both at once, and it resolves them the same
+way: not "the developer does it" (there's no developer act to hang it on
+anymore) and not "the specialist self-serves it" (the layering principle
+already draws this line — matching a tracker's `gitBranchName` field to a `git
+branch` command is mechanical, no judgment involved, so it's the app's job,
+not an agent's). The specialist's own behavior is unchanged: it still verifies
+the chain against real git history rather than trusting the name, and a
+mismatch is still `specialist:blocked`. What's new is that by the time the
+specialist runs, the branch already exists, created by the app in the same
+action that dispatches.
+
+**Reviewer-of-record replaces "whoever dispatched."** The app records whoever
+moved the status as the requested reviewer on the specialist's eventual PR
+(a mechanical git-host call, same category as branch creation). This is the
+literal re-implementation of the property the old rule protected — the person
+who will review decides when it gets written — just moved from an implicit
+binding (you're at the terminal, so it's you) to an explicit one (you moved
+the status, so it's you).
+
+**A pre-dispatch dependency check, generalized across every tier the app
+wakes, not written yet anywhere.** Before creating a branch and dispatching —
+a specialist for a story, or Specification for an epic — the app reads that
+issue's `dependsOn` and confirms every entry is Done. This is a plain tracker
+read, not agent judgment, which is why it belongs in the app and why it runs
+before the Anthropic call rather than being left for the dispatched agent to
+discover mid-run (today, a premature dispatch burns a real activation before
+anything notices — moving the check earlier is strictly better, since it's
+free to run and prevents the spend instead of wasting it). On failure the app
+does not touch status — humans move statuses, the app doesn't get to undo
+one — it declines to dispatch and posts a comment naming which dependency
+isn't Done, leaving the issue visibly inert rather than silently stuck. This
+is a third comment case alongside the two the write-path collapse already
+named (infra failure, tool failure): **dependency not satisfied**, caught
+deterministically, never a crash. Proposed label for board visibility,
+parallel to the specialist's own `specialist:blocked`: `dispatch:blocked` —
+distinguishes "the app declined to fire" from "the specialist ran and found a
+broken chain." One implementation note that matters: "Done" is relative to
+the dependency's own tier — a story's dependency is Done when it merges into
+the epic branch; an epic's dependency (the closing epic's case, below) is
+Done when it merges into the BRD branch. The check is the same shape at every
+tier; the definition of Done it resolves against is not, and the code should
+not hardcode one.
+
+**Execution surface: Claude Agent SDK, not Claude Code.** Same correction as
+the dispatch rule, same reason. "A Claude Code agent driven by a developer
+prompt" described the CLI, built for a human driving it interactively. With
+dispatch app-triggered, the correct surface is the Agent SDK — the library
+form of the same engine, meant to be embedded in the app's own orchestration.
+Nothing about the specialist's own definition changes: same two MCPs, same
+orientation logic, same PR-not-merge handoff. Only how it gets woken and what
+process embeds it changes.
+
+**Isolation: a custom container on the team's existing ECS Fargate, distinct
+from the listener's Fargate service.** Worth stating as its own line because
+the name is shared and the shape isn't: the webhook listener is a single
+always-on task (`desired_count = 1`, in-memory dedupe and debounce state, per
+the hosting session above) — the specialist sandbox is the opposite shape,
+one ephemeral task per dispatch, as many concurrent as there are stories being
+worked. They should not share a task definition or a scaling policy; whether
+they share a cluster is an infrastructure convenience question, not a design
+one. Unit tests run in this same sandbox — mocked, no nested Docker needed.
+Standard container isolation per Anthropic's own documented tiers; nothing
+exotic required here.
+
+**Integration and E2E run in GitHub Actions, not a new AWS service.** Fargate
+cannot run the team's docker-compose stack — no privileged mode, no Docker
+socket mount, by AWS's own design, not a workaround-with-effort gap. GitHub
+Actions runners are full VMs and ship with Docker and Compose already, which
+is what the team's existing CI already runs on. Reuses infrastructure and
+tooling already in place rather than introducing a second CI system to do the
+same job. The dedicated integration-test story's PR and the E2E story's PR are
+what trigger this stage; every other story's PR stays on the Fargate sandbox's
+unit runner.
+
+**Cross-repo checkout policy for any docker-compose run, three cases.** The
+point of docker-compose — everyone runs the same services the same way,
+every time — only holds if every service is checked out at the right ref, and
+"the right ref" has three answers depending on the service's relationship to
+what's under test: a surface this epic touches → that epic's branch; a
+surface this BRD touches but this epic doesn't → that surface's current BRD
+branch, so a running epic's tests reflect the BRD's actual in-flight state and
+can catch a cross-epic break before the closing epic's suite is the only
+thing looking for it; a surface this BRD doesn't touch at all → `main`.
+`actions/checkout`'s native support for multiple repos at multiple refs into
+named subdirectories is a direct match for this, mirroring the developer
+workspace layout already in place (sibling surface repos plus the framework
+clone).
+
+**Temporal, not a new AWS orchestration service, sequences the multi-stage
+async flow.** Dispatch → wait for the specialist → trigger CI → wait for the
+result → gate on human review → proceed is exactly the shape of a long-running,
+human-gated, durable workflow, and it's infrastructure the team already
+operates. Exact workflow/activity boundaries are implementation, not design,
+and belong to whichever session writes the code — the design commitment is
+only that this orchestration lives in Temporal rather than being built new.
+
+**Carried over unchanged from earlier in this design conversation, restated
+here because this is the section a future session will read for the full
+picture:** the specialist never holds a raw GitHub, Linear, or gateway-processor
+credential directly — a proxy outside its sandbox injects them into requests.
+Network egress is allowlisted to the Anthropic API (or configured provider),
+GitHub, Linear, and the specific gateway-processor test endpoints the
+integration suite reaches — nothing broader, and this needs verifying as
+sandbox-only credentials, separate from anything with production reach, not
+assumed. `maxTurns` is set on every Agent SDK session, since sessions do not
+time out on their own. The specialist has no write access to test files during
+the integration/E2E stage, and no write access to whatever environment/gateway
+configuration determines which endpoint or credential set gets used; a diff
+that touches either anyway is a mandatory-human-review flag on the resulting
+PR regardless of what else passed.
+
+**BRD closure, the second half of this session.** A fourth epic, created at
+slice time alongside the design and evidence issues, not added by the
+architect after the fact. The original idea — have the architect author a
+cross-epic epic once the real ones are visibly built — asks too much from a
+blank issue, exactly the "empty box gets ignored" failure the seed-don't-blank
+principle already exists to prevent. Creating it at Intake time, in the same
+slice action as the other epics, also resolves a mechanical problem that a
+later-created epic wouldn't have solved as cleanly: `gitBranchName` is
+assigned by the tracker the instant an issue exists, independent of repo
+coordinates (those arrive later, at Specification), so Intake already holds
+every sibling epic's branch name at the moment it creates this one and can
+seed the closing epic's description with them as literal text — no
+placeholder, no forward reference. Same `dependsOn` mechanic that already
+orders every other slice handles the blocking (closing epic depends on all
+three others); nothing new to build there. **Inherited, not fixed:** an epic
+spanning two surfaces still gets two epic branches "related by naming
+convention and nothing else" (open item, prior session) — the closing epic's
+seed is only as reliable as that convention already is, and a wrong pairing
+there now also produces a wrong seed here.
+
+**The dependency block gates any epic's Specification pass, not just
+Decompose — a general rule the closing epic merely was first to force, not a
+special case of it.** Every epic's Specification runs against the codebase as
+it stands when Specification wakes; if that epic's own `dependsOn` names
+another epic that hasn't merged yet, Specification is reading that
+dependency's *plan*, not its *code* — the same map-fiction risk the
+specialist model already rejected at the story tier ("read the dependency's
+actual merged code, not the story's description of it"), one tier up. The
+pre-dispatch dependency check already covers this generically at the
+mechanism level; what changes here is recognizing the rule applies to every
+epic-to-epic dependency the slice map records, not only the closing epic's
+dependency on the other three — that dependency was simply the first one to
+exist and force the question. (the architect's question, generalizing the
+closing-epic case: shouldn't a dependent epic not be sliced or shaped until
+its dependency is actually ready, since cross-cutting things a dependency
+introduces can only be picked up once it's real?)
+
+**Consequence for release, not just Specification: the human release
+decision stays as-is, and the mechanical check is the backstop, not a
+redesign of metering.** An epic still only reaches Evaluation when a human
+releases it from Backlog — release remains deliberate and human, unchanged.
+What's new is only that releasing a downstream epic before its dependency
+has merged no longer silently produces a bad map: the pre-dispatch check
+catches it and posts the same dependency-not-satisfied comment as any other
+case, rather than requiring whoever decides release to already hold the
+dependency graph in their head.
+
+**Real cost, named rather than absorbed silently: this trades shaping-tier
+parallelism for correctness, and that's worth someone noticing before it's
+felt.** Previously only a dependent epic's *story execution* waited on its
+dependency merging; gating Specification too means the dependent epic's
+whole shaping tier — architect and designer review time included — now
+waits as well. For a BRD with a real dependency chain across epics, that
+stretches elapsed time beyond what the current design assumed — the same
+throughput-for-correctness trade the spec-readiness gate and release
+metering already make elsewhere in this system. Mapping fiction is worse
+than mapping late, so the trade stands, but it should be visible, not
+discovered.
+
+**Open, not decided: dependency granularity.** As recorded today, an
+epic-to-epic dependency appears to block on the *whole* upstream epic, so a
+downstream epic waits for everything in it to merge even when only one
+story's output is actually depended on. Recording the dependency at the
+story or capability grain instead would let Specification start the moment
+the specific depended-on thing is real, without waiting on unrelated work in
+the same upstream epic. More precise, more to build; worth revisiting once
+it's clear how often epic-to-epic dependencies are narrow versus genuinely
+epic-wide in practice, rather than guessed at now.
+
+**Consequence worth being explicit about, flagged rather than smoothed over:
+this epic's Specification pass asks a different question than every other
+epic's.** Every other epic's architect/designer gate is existence — does this
+endpoint, this field, this behavior already exist or need building. Nothing
+in the closing epic is newly built; everything it references was already
+classified by whichever epic built it. What the architect and designer are
+actually confirming here is closer to "are these the right anchors for this
+cross-epic flow" than "does this exist yet." Same two-reviewer mechanism,
+genuinely different verification underneath it. **Decided 2026-08-04: leave
+`specification-agent.md` unmodified for now** (the architect). Generic phrasing runs
+against the closing epic as-is — every row it produces should simply resolve
+`existing`, which is a faster gate, not a broken one. Consistent with this
+ledger's standing practice of fixing what a real run shows rather than what a
+session anticipates: revisit only if an actual closing-epic run produces a
+confused map or a checkpoint that reads like the wrong question, per the two
+options weighed above.
+
+**No new product code is written here — but new test code is, and that's
+worth being precise about rather than saying "no code" flatly.** The closing
+epic's stories are E2E-type only; nothing implementation-tier belongs in it.
+But a cross-epic flow by definition has zero existing coverage anywhere — no
+single epic's own E2E story could have tested it, since that story only ever
+exercised what its one epic delivered. The design issue's cross-cutting
+experience rules (the artifact already established as the one place such
+rules live) and the BRD's capability map are what Intake seeds this epic's
+scenarios from — marked inferred, same surmised/confirm discipline as
+everywhere else this pattern is used, not authoritative until whoever reviews
+confirms or corrects it.
+
+**Three-way sign-off, on the closing epic issue, not the BRD project.** Not a
+style preference — the project object can't host it. A comment on a Linear
+project doesn't fire the webhook; only project updates do, and the entire
+ask/checkpoint/reply mechanism every agent in this pipeline already leans on
+depends on replies waking an agent, which requires an issue. Confirmed
+separately: Linear projects do carry labels, but not the same label set as
+issues, so even if the webhook problem didn't exist, the label vocabulary
+wouldn't transfer cleanly either. Labels, same AND-gate shape as the spec
+tier's: `brd:awaiting-architect`, `brd:awaiting-pm`, `brd:awaiting-designer`,
+each cleared independently the moment that reviewer signs off, in any order;
+`brd:resolved` once all three are clear.
+
+**Each reviewer is checking something different, and the PM's check is a
+different verification mode than anything else in this pipeline.** Architect:
+technical completeness — every epic merged into BRD branch, cross-epic E2E
+green, no open blockers. Designer: the cross-cutting experience rules from the
+design issue actually hold once epics are merged together — the first point
+in the whole pipeline where that's even checkable, since no single epic could
+verify it alone. PM: not a technical or artifact-comparison judgment at all —
+sees what shipped, confirms it works, can speak to it. Deliberately kept
+low-ceremony: no capability-row rollup, no recorded walkthrough, no required
+artifact — if the PM says it's good, it's good. Verified against the
+redeployed environment, not a report; the same environment already being
+stood up for the closing epic's own E2E suite, redeployed on demand rather
+than kept running, so nothing new needs building to host this. **Not pinned
+down:** what actually triggers the on-demand redeploy for this specific
+walkthrough — app-triggered the moment the closing epic's gates open, or a
+manual act by whoever's reviewing. Implementation detail, not a design gap,
+but a real one to close before this is coded.
+
+**`brd:resolved` is a pure human-to-human signal — the only resolved-label in
+this pipeline that doesn't wake anything.** Every other `*:resolved` label is
+an agent trigger (`spec:resolved` wakes Decompose). This one isn't, because
+there's no tier above the BRD for anything to wake into. The architect sees
+all three approvals landed and merges BRD branch into `main` directly in
+GitHub — no webhook, no automation, a single terminal action per BRD that
+isn't worth building a trigger for.
+
+**Project → Done is a separate, manual, asymmetric act — confirmed, not a
+gap.** Every issue underneath a BRD reaches Done as a side effect of a PR
+merge (stories into their epic branch, epics including the closing one into
+BRD branch), which Linear already manages without the app doing anything.
+The project itself doesn't get this for free: Linear doesn't tie project
+status to PR merges the way it does issues, so there's no event for the app
+to hang a move-to-Done on, and by the time it would fire every child issue
+is already Done anyway — nothing to race or reconcile. The architect moves
+the project to Done by hand, right after the `main` merge. This is
+deliberately asymmetric with the project's other end: Backlog → In Progress
+is app-executed, authorized by the slice checkpoint approval, because
+something downstream needed a legible signal at that end. Nothing downstream
+needs one at Done, so it isn't built, and that's a design choice, not an
+oversight to fix later.
+
+**Managed Agents, resurfaced and set aside a second time.** Came up early in
+this design conversation as the Anthropic-hosted alternative to everything
+above, and never explicitly closed out — worth recording honestly as
+considered, not silently dropped. Set aside again on the same non-technical
+grounds as the first time: the specialist sandbox lands on infrastructure the
+team already operates, and a payment-processing client engagement puts real
+weight on being able to state precisely where its code executes.
+
+## Specialist-sandbox infra, first PR — two scoped-down gaps (2026-08-04)
+
+The automated-dispatch session above committed to a specialist sandbox with
+egress allowlisted to Anthropic/GitHub/Linear/gateway-processor-test endpoints
+only, and a credential-injection proxy so the specialist container never
+holds a raw external credential directly. Building the CDKTN infra
+(`infrastructure/constructs/specialist-task.ts`,
+`infrastructure/stacks/specialist-sandbox.ts`) surfaced that neither is a
+same-session build, and both were narrowed rather than silently dropped —
+recorded here per this document's own provenance contract.
+
+- **Egress is unrestricted (`0.0.0.0/0`), not allowlisted, in this first PR.**
+  Security groups filter by CIDR/prefix list only, and none of Anthropic,
+  GitHub, or Linear publish IP ranges stable enough to allowlist that way —
+  unlike AWS's own services, which is what makes prefix-list rules workable
+  elsewhere in this project. Real domain-level filtering needs a NAT gateway
+  plus a forward proxy, or AWS Network Firewall's domain-name rules, either of
+  which is its own design and build. Narrowed, not dropped: recorded as a
+  Known gap in `infrastructure/README.md`, same treatment as the listener's
+  own two accepted gaps, so it stays visible rather than reading as done.
+- **Secrets are direct, sandbox-scoped SSM parameters, not a
+  credential-injection proxy.** The proxy has its own unsettled design
+  questions — where it runs, how it authenticates a sandbox task, its
+  request-signing story — none of which are answered yet. What's preserved is
+  the substance of "never a production credential": the sandbox reads its own
+  parameters under a prefix distinct from the listener's
+  (`specialist-sandbox.parameter-prefix`), through the same
+  execution-role-scoped-`ssm:GetParameters` mechanism the listener already
+  uses. The proxy remains the target design; this is the interim that keeps
+  the sandbox buildable without it.
+- **The task definition has no caller yet.** Nothing calls `ecs:RunTask`
+  against it — that's the Temporal-workers piece, not built this session.
+  This stack only registers the task definition and publishes its outputs
+  (cluster arn, task definition arn/family, role arns) via remote state, the
+  same handoff shape `network` already uses for `listener`.
+- **The specialist's ECR repository and container image do not exist.** No
+  Dockerfile, no application code, no CI push target — `specialist-sandbox`
+  reads the repository as a data source exactly like `listener` does, but
+  unlike the listener's, this one will not successfully apply until something
+  populates it. Recorded as a prerequisite, not a bug.
+- **The secret parameter list (`ANTHROPIC_API_KEY`, `LINEAR_AGENT_API_KEY`,
+  `GITHUB_TOKEN`) is provisional.** No specialist entrypoint exists to define
+  a real `.env.example` the way the listener's parameter list mirrors
+  `webhook-listener`'s — this is the minimum the automated-dispatch design
+  names, not a verified contract. Revisit once the specialist's own code
+  exists.
+
+## Temporal-workers infra, first PR — PrivateLink, infra-only, and a real tooling gap (2026-08-04)
+
+Second piece of the automated-dispatch design, following the specialist
+sandbox above. Three decisions confirmed with the architect before designing:
+Temporal Cloud account and admin API key already exist (out-of-band
+prerequisite, same category as the AWS account itself); connect via
+PrivateLink rather than Temporal Cloud's public endpoint (an Interface VPC
+Endpoint doesn't need a NAT gateway, so it doesn't reopen the no-NAT decision
+the `network` stack already made — cheaper than the NAT gateway rejected
+there, and matches the Example Payments reference project's own
+`CloudPrivateLink`/`NamespaceWithApikey` constructs); infra only, no worker
+application code, same scoping precedent as the specialist sandbox.
+
+- **RESOLVED same day: a genuine verification gap, surfaced by the tooling
+  itself, not by choice.** Unlike `@cdktn/provider-aws`, there is no prebuilt
+  `@cdktn/provider-temporalcloud` npm package (confirmed via `npm view`) —
+  the Example Payments reference project generates its bindings locally via
+  `cdktn get`, which shells out to the Terraform CLI, and this session had
+  neither `terraform` nor `tofu` on PATH. `constructs/temporal-namespace.ts`
+  and `stacks/temporal-workers.ts` were written against the conventional
+  generated import path and property casing, inferred from the reference
+  project's C# namespace rather than confirmed against real bindings —
+  recorded as "not yet typecheckable in this session," a different category
+  of gap than "not yet applyable." the architect ran `npx cdktn get` on his own
+  machine the same day: every inferred import path and property name was
+  correct on the first try — `npm run typecheck`, `npm run test:unit`, and
+  `npm run synth` all pass clean, and the synthesized JSON confirms the real
+  resource types (`temporalcloud_namespace`, `temporalcloud_service_account`,
+  `temporalcloud_apikey`, `temporalcloud_connectivity_rule`, plus a real
+  `aws_ecs_service`). The gap was real while it lasted; it didn't cost a
+  rewrite.
+- **Two secret values reach Terraform state here, the one exception to this
+  project's "only an ARN reaches synth" rule established across every other
+  stack.** The `temporalcloud` provider authenticates with an admin API key
+  that has to be a literal string at synth time — Terraform providers don't
+  support the ARN-indirection ECS container secrets use, so that one value
+  (read from its own out-of-band SSM parameter) is unavoidably in state. The
+  namespace's generated worker API key has the same shape from the other
+  direction: the provider hands back a token as a resource attribute rather
+  than something already in SSM, so the stack writes it into a new SSM
+  parameter itself before handing it to the worker service the normal way.
+  Both flagged in the class comment and README, not hidden.
+- **A worker service, not a task definition, unlike the specialist
+  sandbox.** A Temporal worker is a long-lived poller; `desiredCount` is a
+  plain config value rather than an asserted singleton, since Temporal
+  workers are safely concurrent with no in-process shared state to split —
+  the opposite constraint from the listener.
+- **The worker's own ECR repository, Dockerfile, and application code don't
+  exist**, same posture as the specialist sandbox's own not-yet-populated
+  repository.
+
+## `specialist-runner` — the first specialist application code (2026-08-04)
+
+Third piece of the automated-dispatch design, and the first that isn't pure
+infra: the program that actually runs inside the `specialist-sandbox` ECS
+task. Confirmed with the architect: backend and frontend specialists only (tests/e2e
+need the GitHub Actions cross-repo checkout this session already deferred);
+also ships a Dockerfile and CI workflow so `intent-to-production-specialist`
+(the ECR repo `specialist-sandbox` has read as an empty data source since it
+was built) finally gets an image.
+
+- **A real ambiguity in the specialist definitions, resolved rather than
+  guessed past.** `agents/specialist-backend.md` and `-frontend.md` both say
+  "you work in a local checkout... run git directly" in one section and "you
+  touch two systems, each through its own MCP: source control... and the
+  issue tracker" in another. Resolved as: local git handles
+  clone/checkout/commit/push (unavoidable — the definition requires running
+  the actual test suite and verifying acceptance criteria against real
+  output, which no MCP tool can do, and step 3's branch-ancestry check needs
+  real repository history a shallow clone doesn't carry). GitHub's MCP server
+  is attached specifically for opening the pull request — the one action
+  local git without `gh` can't do. Flagged with the same "VERIFY before
+  relying on this in production" honesty `activation-runner.ts` already
+  applies to its own MCP assumptions, not presented as confirmed.
+- **The framework clone's staleness gap (flagged as an open item under the
+  manual dispatch session) is closed by construction, not by discipline.**
+  `workspace.ts` clones `intent-to-production` fresh every run rather than
+  baking `agents/`/`skills/` into the image — a per-run clone cannot go stale
+  the way a human's forgotten `git pull` could.
+- **Execution surface confirmed: `@anthropic-ai/claude-agent-sdk` is a real,
+  installable package** (checked `npm view`, then inspected its shipped
+  `sdk.d.ts` directly — `query()`, `McpHttpServerConfig`, `permissionMode:
+  'bypassPermissions'` paired with `allowDangerouslySkipPermissions: true`,
+  `maxTurns` — rather than guessing at the API the way the `temporalcloud`
+  provider bindings had to be guessed at before `cdktn get` confirmed them).
+- **This runner does not decide complete/waiting/blocked.** Same posture as
+  the shaping tier's `activation-runner.ts`: the specialist's own Linear MCP
+  writes are the outcome record. The one direct tracker write this package
+  makes (`tracker-fallback.ts`) exists only for the case the specialist's own
+  writes can't cover — a startup failure before Claude gets a turn at all —
+  mirroring exactly why `postErrorComment` exists in `tracker-notifier.ts`.
+- **Named limitations, not solved here:** Node-only target surfaces (the
+  image ships `node` + `git` only); no sibling-repo reads (a full-stack
+  epic's frontend story confirming the real backend contract needs the app to
+  know which sibling repos exist for a given epic — nothing does yet); no
+  caller (`RunTask` invocation is the Temporal worker's job, not built this
+  session).
+- **RESOLVED same day: the image build itself.** Docker Desktop's engine
+  wasn't reachable when this was first written; once it was up, `docker build
+  -f specialist-runner/Dockerfile specialist-runner` succeeded clean. Spot-
+  checked further: `git` and `node` are present, and `npm ci` resolved the
+  Agent SDK's platform-specific native binary
+  (`@anthropic-ai/claude-agent-sdk-linux-x64`) automatically via its own
+  optional dependencies — no special Dockerfile handling needed, confirming
+  that assumption rather than leaving it open. Ran the image with no dispatch
+  context set: it failed in under a second naming the first missing var
+  (`SPECIALIST_TYPE`) and exited `1` — the fail-fast behavior working exactly
+  as designed, not just as written. What's still unverified: a live dispatch
+  against real credentials and an actual story/epic/branch chain, which
+  needs a target repo and tracker state that don't exist yet.
+- **Model and effort made explicit, same day (the architect's correction).** The
+  first cut of `run.ts` left `model`/`effort` unset on the `query()` call,
+  relying on the Agent SDK's own default. the architect's rule: never default these —
+  an unset value silently tracks whatever the CLI's default happens to be on
+  a given build, drifting behavior out from under this codebase without a
+  line changing here. Fixed via a new `claude-config.ts`
+  (`CLAUDE_MODEL`/`CLAUDE_EFFORT` env vars, defaults `claude-sonnet-5`/`high`,
+  effort validated against the SDK's own five levels), mirroring
+  `activation-config.ts`'s existing separation of uniform tuning knobs from
+  per-dispatch identity. Generalizes beyond this one file: any future code in
+  this project that calls a Claude API/SDK should set model and effort
+  explicitly, never rely on a default.
+
+## `dispatch-worker` — the Temporal workflow that dispatches specialists (2026-08-05)
+
+Fourth piece of the automated-dispatch design, and the one that connects the
+previous three: `temporal-workers` (infra) had nothing running in it, and
+`specialist-sandbox` (infra) had no caller. Confirmed with the architect: stop at
+"dispatch → wait for the specialist" (CI-wait/human-review-gate deferred —
+no automation gap there, just an event this workflow doesn't block on for
+v1); build the workflow/worker only, not the webhook-listener trigger (a
+separate piece, kept apart from webhook-listener's own already-flagged
+routing rebuild); source the ECS RunTask target config from env vars the
+worker reads at startup, wiring those into `temporal-workers.ts`'s container
+environment deferred to whenever that stack is next touched.
+
+- **A real gap surfaced during design, not assumed away, tightened rather
+  than worked around.** Two things this workflow needs to read mechanically
+  — a story's blocking dependencies, and a surface's repo base — were
+  recorded as free-form prose by the shaping-tier agents, format-by-example
+  only. Confirmed with the architect: tighten both, surgically, same pass.
+  `skills/story-contract/story-contract.md` and `agents/decompose-agent.md`
+  now require each blocking-dependency entry to be its own bullet line with
+  the bare identifier as the first token. `agents/specification-agent.md`
+  now requires a fixed-form line per surface when a repo base is recorded
+  (`Repo base — <surface>: <host>/<org>/<repo>/<ref>`). Neither edit
+  relocates where the data lives — still a story description section, still
+  an epic thread comment — only the format, so `activities/check-
+  dependencies.ts` and `activities/resolve-repo-base.ts` can parse them
+  without depending on any particular wording around the fixed part.
+- **Package layout mirrors the reasoning already established for
+  `specialist-runner`:** activities are plain async functions doing real IO
+  (Linear GraphQL, GitHub REST, the AWS ECS SDK); the workflow
+  (`workflows/dispatch-story-workflow.ts`) runs in Temporal's deterministic
+  sandbox and imports only a type-only `activities/interface.ts`, never the
+  real implementations — `worker.ts` is the one module that imports both and
+  binds config-injected activity closures to the names the workflow calls.
+- **Confirmed, not guessed: `NativeConnection.connect({ address, tls,
+  apiKey })`** (`@temporalio/worker`, distinct from `@temporalio/client`'s
+  `Connection` — this process executes workflows, it doesn't start them) —
+  read directly from the installed package's own `connection-options.d.ts`.
+  Matches the container env vars `temporal-workers.ts` already sets
+  (`TEMPORAL_HOST`, `TEMPORAL_API_KEY`).
+- **Confirmed, not assumed: Temporal's own workflow bundler compiles the
+  `.ts` workflow file directly.** Ran `bundleWorkflowCode()` standalone
+  against `dispatch-story-workflow.ts` before trusting `Worker.create` to do
+  it implicitly — webpack compiled it into a 1.47MB bundle with no `ts-node`
+  step, confirming this works under `tsx` (no separate build step) the same
+  way it does for every other package here.
+- **`await-specialist-task.ts` is a long-running, heartbeating activity, not
+  a single call with a short timeout** — a specialist run can take a long
+  time, the same "does not time out on its own" property `maxTurns` exists
+  for one level down. Polls `ecs:DescribeTasks` until `STOPPED`, heartbeats
+  every poll so Temporal doesn't mistake a long-but-alive run for a hung one.
+- **The workflow never decides complete/waiting/blocked itself** — same
+  posture as the shaping tier's own activation runner. It reads the
+  specialist's own outcome label once the ECS task stops; `"unknown"` is a
+  real, named fourth outcome (the container could exit with no label at all
+  — a crash `specialist-runner`'s own fallback comment couldn't reach), never
+  silently folded into one of the three real ones.
+- **Named gaps, not silently dropped:** no `dispatch:blocked` label (a
+  comment carries the same information; applying the label correctly needs
+  the issue's current labels read first — Linear's label-write API replaces
+  the whole set — a small subsystem not built for the marginal gain); only
+  `github` supported as a repo-base host; the four new `SPECIALIST_*` env
+  vars aren't wired into `temporal-workers.ts` yet; no webhook-listener
+  trigger exists to actually start this workflow.
+- **Verified for real, not claimed:** typecheck, all 18 unit tests
+  (dependency/repo-base parsers, RunTask container-override construction,
+  outcome-label resolution), a real `docker build`, and running the built
+  image with no env vars set — failed in under a second naming
+  `TEMPORAL_HOST` as the first missing var, exit code 1. No live workflow
+  execution is possible or claimed — needs a real Temporal Cloud connection,
+  AWS credentials, and an actual story/epic/branch chain against live
+  tracker and GitHub state.
+
+**Correction, same day: this session didn't use the `temporal-developer`
+skill, and it should have.** the architect asked directly whether it had been —
+answer was no, this was built from general Temporal knowledge plus reading
+the installed SDK's own type definitions. Loading the skill's TypeScript
+reference afterward surfaced three real gaps, not stylistic ones:
+
+- **`worker.ts` used `workflowsPath` unconditionally** — the skill's own
+  gotchas doc calls this out by name: "runs the bundler at Worker startup,
+  which is slow and not suitable for production." Fixed: a new
+  `scripts/build-workflow-bundle.mjs` pre-builds `dist/workflow-bundle.js`
+  (the Dockerfile now runs it at image build time), and `worker.ts` prefers
+  that bundle when present, falling back to `workflowsPath` only when
+  running from source without a build step. Re-verified: a real
+  `docker build` produces the bundle at build time, and it's present in the
+  final image.
+- **No workflow-level test existed** — only the activities' pure helper
+  functions were tested; `dispatch-story-workflow.ts`'s actual sequencing
+  and branching were never exercised. Fixed:
+  `workflows/dispatch-story-workflow.test.ts` runs the real workflow code
+  against a real local Temporal test server
+  (`TestWorkflowEnvironment.createLocal()`) with every activity mocked —
+  covers the not-ready short-circuit and the full six-activity sequence,
+  asserting exact call order. This actually ran, downloading and starting a
+  real Temporal CLI dev server in this session — not a claim, both tests
+  passed.
+- **`resolveRepoBase`'s missing-base error and `createStoryBranch`'s
+  permanent failures threw a plain `Error`**, which Temporal retries
+  generously by default (up to 100 attempts) — for a config problem
+  (missing repo base, unsupported host, a 4xx from GitHub), that would have
+  kept re-fetching and re-posting the same "dispatch blocked" comment on
+  every retry, forever, since retrying can't fix a human-recording gap.
+  Fixed: both now throw `ApplicationFailure.nonRetryable`. Also added a
+  domain-specific `retry: { maximumAttempts: 3 }` to the workflow's four
+  quick activities (Linear/GitHub/AWS calls) — the skill's own advice is
+  "only set retry options if you have a domain-specific reason to," and
+  bounding retries against paid, rate-limited external APIs is one.
+
+What held up on review: the type-only activity import
+(`activities/interface.ts`), no Node.js modules in the workflow file, the
+workflows/activities file split, and the heartbeating long-running activity
+all already matched the skill's own patterns — arrived at independently,
+not by luck, but worth having the skill confirm rather than assume.
+
+**Same-day follow-up: "matched the pattern" wasn't the same as "was
+tested."** the architect asked to focus specifically on testing and pointed at the
+Temporal TypeScript SDK's own GitHub repo for examples rather than the
+skill's docs alone. Reading `temporalio/samples-typescript`'s `hello-world`
+sample confirmed the workflow test already written
+(`TestWorkflowEnvironment.createLocal()` + `Worker` + `worker.runUntil`)
+matches their own canonical pattern almost exactly. But it also surfaced
+that `await-specialist-task.ts` — the one activity calling
+`heartbeat()`/`sleep()` from `@temporalio/activity`, both of which need a
+real Activity Context to mean anything — had zero test coverage; only the
+activities with pure, context-free logic had tests. Reading
+`@temporalio/testing`'s own source
+(`packages/testing/src/mocking-activity-environment.ts`) directly (not
+guessing at its API) confirmed `MockActivityEnvironment` runs a function
+inside a real Context and exposes `heartbeat`/`cancel` as events/methods —
+exactly what this activity needed. Refactored it to take its ECS lookup as
+an injected function rather than constructing a client internally (same
+"explicit parameter" discipline as `create-story-branch.ts`'s `githubToken`
+already), added `await-specialist-task.test.ts`: polling-to-STOPPED with the
+right heartbeat sequence, already-stopped resolving immediately, an
+undefined ECS status heartbeating as `"unknown"`, and — the one that
+actually matters most — mid-poll cancellation genuinely rejecting the
+activity, confirmed rather than assumed. All 24 tests pass; a fresh
+`docker build` after the refactor still succeeds.
+
+## Finishing the wiring — `temporal-workers` can now actually dispatch (2026-08-05)
+
+The smallest remaining piece connecting what's already built: `temporal-
+workers.ts` reads `specialist-sandbox`'s outputs via remote state (a new
+`specialistSandboxStackOutputFromRemoteState`, mirroring the existing
+`network` reader) and passes `dispatch-worker` the five `SPECIALIST_*` env
+vars it already documented as its contract. `SPECIALIST_CONTAINER_NAME`
+needed no new output: `specialist-task.ts` derives the container name and
+the task definition family from the same `formatName(config.name)` call, so
+they're identical by construction — confirmed by re-reading that file rather
+than assumed.
+
+- **The worker's task role had zero IAM permission to dispatch anything —
+  caught before this was called "done," not after.** Registering the ECS
+  service and passing env vars isn't the same as being allowed to act on
+  them: `ecs:RunTask` and `ecs:DescribeTasks` need explicit permission
+  scoped to the specialist-sandbox cluster/task-definition, and `RunTask`
+  additionally requires `iam:PassRole` on both roles the target task
+  definition references — omitting that is the single most common cause of
+  `RunTask` failing with AccessDenied. Added a `dispatchTarget` config field
+  to `TemporalWorkerService` and a scoped policy (`ArnEquals` on
+  `ecs:cluster` for both actions, since `DescribeTasks` has no static
+  resource to scope to before a task exists) — confirmed by inspecting the
+  synthesized IAM policy JSON directly, not assumed correct from the code.
+- **A real synth-passes-but-apply-breaks bug, caught by inspecting the
+  actual synthesized output rather than trusting a clean `npm run synth`.**
+  `SPECIALIST_SUBNET_IDS` needed `network.publicSubnetIds` joined into one
+  string — this is precisely the "Array.join on a remote-state token list"
+  failure this ledger's own "Three things only building it revealed" entry
+  once claimed and then struck as unverified, since nothing in the shipped
+  code had ever actually attempted it. This is the first real instance.
+  `Fn.join` (Terraform's own join, not JS's) fixed the token-list problem,
+  but its own call syntax embeds literal quote characters (`join(",", ...)`)
+  which broke a level up: `temporal-worker-service.ts`'s
+  `container_definitions` field was built with plain `JSON.stringify`, and
+  CDKTF's token substitution splices a token's resolved HCL text in raw,
+  without JSON-escaping it — corrupting the surrounding JSON the moment any
+  embedded token contains a quote character. Confirmed by parsing the
+  synthesized `container_definitions` string a second time and watching it
+  fail; would have reached Terraform state as invalid JSON, which ECS itself
+  would have rejected at apply. Fixed with `Fn.jsonencode` for that one
+  construct's container definitions (Terraform does the JSON encoding after
+  all tokens resolve, no double-encoding) — scoped to
+  `temporal-worker-service.ts` only, since `single-instance-service.ts` and
+  `specialist-task.ts` don't currently carry any quote-containing tokens in
+  their own environment lists and aren't broken today; the same latent risk
+  exists there if one is ever added.
+- **Verified for real:** typecheck, all 10 infra unit tests, a full
+  `npm run synth` across all four stacks, and the synthesized JSON inspected
+  directly twice — once to catch the `container_definitions` corruption,
+  once more after the fix to confirm the resulting HCL (`jsonencode([{...}])`
+  with real expression references, not string literals) is now correct.
+- **What's still missing:** nothing calls
+  `WorkflowClient.start(dispatchStoryWorkflow, ...)` — the webhook-listener
+  trigger remains a separate, tracked follow-up, deliberately kept apart
+  from webhook-listener's own already-flagged column→label routing rebuild.
+
+## Ad-hoc synth checks became real tests (2026-08-05)
+
+the architect's correction: the previous entry's verification — one-off `node -e`
+scripts parsing `cdktf.out/` JSON by hand, run once and thrown away — caught
+a real bug but left nothing behind to catch a regression. "All of these
+little checks you are doing at each change should be tests. You should make
+a change, run the tests and catch things that break." Also asked whether the
+`cdkterrain` skill had been consulted for this infra work, the same question
+already asked of the `temporal-developer` skill earlier — it hadn't been.
+
+- **`infrastructure/testing/synth-assertions.ts`** — a shared
+  `assertSafeContainerDefinitions` helper encoding the exact check the `node
+  -e` scripts did by hand: every `aws_ecs_task_definition`'s
+  `container_definitions` must either parse as plain JSON (no token) or be
+  wrapped in exactly one `Fn.jsonencode(...)` (a token present). Reused
+  across every construct test below rather than re-implemented per file.
+- **Construct test files added**, one per construct with either real
+  branching logic or a security-relevant invariant worth locking down:
+  `specialist-task.test.ts`, `temporal-worker-service.test.ts` (plus a
+  regression test using a real `Fn.join` token — not a hand-typed
+  lookalike string, which can't reproduce the bug — verified by temporarily
+  reverting the `Fn.jsonencode` fix and confirming the test actually fails
+  before restoring it), `single-instance-service.test.ts` (the listener's
+  own construct, live production infrastructure with zero prior coverage —
+  asserts `desiredCount === 1` as a check, not just a config value, plus the
+  stop-before-start deployment percentages and the one place ingress is
+  *not* empty, unlike the other two constructs), `network-vpc.test.ts` (the
+  `availabilityZoneCount < 2` guard, one subnet per AZ, no NAT gateway ever
+  appears), `temporal-privatelink.test.ts` and `temporal-namespace.test.ts`
+  (each construct's own unsupported-region guard — two different, narrower-
+  than-you'd-guess region tables, confirmed they throw for a region the
+  *other* construct supports). 35 tests total across 7 files, all passing;
+  `application-load-balancer.ts` and `domain-certificate.ts` were read and
+  left untested — pure declarative resource wiring, no branching logic to
+  regress.
+- **cdkterrain skill audit — two findings, not applied.** The skill's own
+  checklist item ("test constructs with unit tests if they contain logic")
+  is what this entry acted on directly. Two other gotchas it names conflict
+  with decisions already made and documented in this repo, so they were
+  surfaced rather than silently overridden:
+  - *"Never read secrets directly from environment variables... use
+    `TerraformVariable` with `sensitive: true` instead."* This project
+    already made the opposite call, deliberately: `base-stack.ts`'s own
+    class comment states secrets are SSM parameters created out-of-band and
+    injected by the ECS agent at task start, not Terraform variables. The
+    one exception — the `temporalcloud` provider's admin API key, read via
+    `DataAwsSsmParameter` with `withDecryption: true` — is itself already
+    flagged in `infrastructure/README.md`'s Known gaps.
+  - *"`.gen/` should typically be committed to version control."* This
+    repo's `.gitignore` ignores `.gen/`; `infrastructure/README.md`
+    documents running `npx cdktn get` after cloning instead, same as `npm
+    install`. Pre-dates this session's work.
+  Neither has been changed — both are considered tradeoffs already on
+  record, not oversights this pass should quietly correct.
+- **Verified for real:** `npm run typecheck` and the full `npx vitest run`
+  (35 tests, 7 files) after every new test file, not just at the end.
+
+## The webhook-listener dispatch trigger — automated dispatch actually fires (2026-08-05)
+
+The piece named as deferred in both "`dispatch-worker`" and "Finishing the
+wiring" above: nothing called `WorkflowClient.start(dispatchStoryWorkflow,
+...)`. This session builds that caller — a fourth swim lane,
+`specialist-dispatch`, closing the loop the "automated dispatch and BRD
+closure" design (2026-08-04) described but didn't yet wire end to end.
+
+Two questions that session's own text left open, both settled here rather
+than assumed, since this pass is literally "the next dispatch" the earlier
+open item said to settle them before:
+
+- **`specialist:<type>` vs `spec:<type>`** — settled as `specialist:<type>`,
+  matching the already-built outcome-label prefix. `story-contract.md`'s
+  assignment-metadata section now states the literal prefix;
+  `decompose-agent.md`'s write-sequence step and
+  `docs/development-tier-dispatch.md`'s runbook (both still citing or
+  hedging the stale form) are corrected to match. See the resolved note
+  inline at this conflict's original observation, above.
+- **Reviewer-of-record** — deliberately *not* built this pass. Wiring it
+  needs a Linear webhook field (who moved the story's status) not yet
+  confirmed against a live payload, and would thread a value through three
+  packages (the trigger → the workflow input → `dispatch-specialist` →
+  `specialist-runner`'s dispatch context → its prompt). Named explicitly in
+  `webhook-listener/src/dispatch-trigger.ts`'s own docstring and in
+  `CLAUDE.md`'s Agent Roster, not silently dropped — same category as this
+  session's own precedent of naming what's deferred rather than building
+  against unconfirmed inputs.
+
+**Design: a fourth lane, not a new architecture — confirmed by trying it.**
+`swim-lanes.ts`'s own header comment claims adding a lane is "a registration,
+not a rearchitecture." Held here too, but with one small, real addition:
+`LaneConfig.agent` only has to satisfy `AgentFn`'s signature, and nothing
+requires going through `createActivationRunner`/`AgentLaneConfig` (built
+around an Anthropic-calling lane's shape — `agentFile`, `skills`, `model`,
+`templates`). `specialist-dispatch.ts` exports a plain `LaneConfig` directly
+instead, whose `agent` (`dispatch-trigger.ts`'s `createDispatchTrigger`)
+starts a Temporal workflow. `swim-lane-routing.ts` gained one small,
+symmetric addition — `requireLabelsPresentPrefix`, the mirror image of
+Specification's own `requireLabelsAbsentPrefix` — needed because both epics
+and stories are `entityType: "issue"` sharing one status workflow; only a
+story carries a `specialist:*` label, and that's already present
+synchronously on the event (no extra I/O, keeping `route()`'s "no I/O"
+property intact).
+
+**No dependency-check duplication.** `checkDependencies` already runs as
+`dispatchStoryWorkflow`'s own first activity and already posts its own
+"Dispatch blocked" comment on failure — confirmed by re-reading
+`check-dependencies.ts` before assuming otherwise. The trigger's only job is
+gathering input (`webhook-listener/src/story-context.ts`, a small direct
+Linear read: the story's `branchName`, its `specialist:*` label, its parent
+epic's `id`/`branchName` — mirroring `tracker-notifier.ts`'s own raw-fetch
+GraphQL pattern rather than importing `dispatch-worker/src/tracker.ts`
+directly, since the two are separate npm packages with no shared lib) and
+starting the workflow. `dispatchStoryWorkflow` itself is referenced by its
+string type name, `"dispatchStoryWorkflow"`, not imported — same
+separate-packages reasoning.
+
+**A real correctness question surfaced and resolved during the build, not
+assumed away:** should `webhook-listener/src/temporal-client.ts` read its
+four `TEMPORAL_*` env vars eagerly, at module load, and throw if any is
+missing — matching `server.ts`'s own `required()`/`process.exit(1)` posture
+for `AGENT_USER_ID`? Tried that first, then reversed it: `AGENT_USER_ID` is
+needed by every lane, but Temporal is needed by exactly one of four, and
+`temporal-workers` is independently documented elsewhere as "registered but
+not yet applyable" — a webhook-listener deployed before it exists would
+otherwise crash at startup and take Intake/Specification/Decompose down with
+it. Fixed to match `tracker-notifier.ts`'s own precedent instead: env read
+once at module load (still satisfying the "read env only at module init"
+rule), validated lazily on first real use (`getClient()`), so a missing
+Temporal config only fails the one dispatch that needed it.
+
+Also handled, once observed to matter: `WorkflowExecutionAlreadyStartedError`
+(a duplicate webhook delivery, or a story bounced back into `In-Process`
+while its own dispatch is still running) is caught and treated as a benign
+no-op — not surfaced as a failure comment, since starting the same
+`workflowId` twice is expected, not exceptional.
+
+**Cross-stack change:** `listener.ts` now reads `temporal-workers`'s remote
+state (namespace address/id, task queue name) and a second read (not a
+second SSM parameter — the same one `temporal-workers.ts` already creates)
+of `${temporal.parameterPrefix}TEMPORAL_API_KEY`, under `temporal`'s own
+prefix, not `listener`'s (deliberately distinct per-stack values, same point
+`specialist-sandbox-configuration.ts` already makes about its own prefix).
+Real deploy-ordering consequence, documented in `infrastructure/README.md`:
+on a from-scratch stand-up, `temporal-workers` now deploys before
+`listener`, where the two used to be independent.
+
+- **Verified for real:** `npm run typecheck` and `npx vitest run` in both
+  `webhook-listener/` (83 tests, 9 files) and `infrastructure/` (38 tests, 8
+  files, including a new stack-level test —
+  `infrastructure/stacks/listener.test.ts`, using `Testing.app({context})` +
+  `Testing.synth(stack)` rather than a construct-level test, since the
+  change under test is in `listener.ts` itself, not a construct) — plus a
+  full `npm run synth` across all four stacks.
+- **What's still missing:** the reviewer-of-record thread (above), and
+  Tests/E2E specialist dispatch (still the human-in-Claude-Code model,
+  `docs/development-tier-dispatch.md`).
+
+## Reviewer-of-record — built (2026-08-06)
+
+The Linear webhook field this session's "deliberately not built" note above
+was waiting on, confirmed against real payloads: the architect captured full logs
+from a live sandbox run and forwarded them. Every Issue/Project webhook —
+human or bot-authored — carries a top-level `actor` object
+(`{id, name, email, avatarUrl, url, type}`), including on a `status_changed`
+event, not only on comments. Confirmed on two real events on the same issue
+(a design-tier reference issue, PROJ-47): a human status move recorded
+`actor: {name: "Example User", email: "user@example.com"}`; an
+agent-driven one (Intake advancing the design issue to In Progress via MCP,
+per the design-issue entry above) recorded the pipeline's own bot user
+(`name: "Intent Agent", email: "agent@example.com"`) — the same field
+cleanly distinguishes the two, which is exactly what reviewer-of-record
+needs. `adapters/linear.ts` had been discarding it entirely for
+`status_changed` (`authorId: null`, unconditionally); `TrackerEvent` had no
+field to carry it at all outside `comment_added`.
+
+**Wired through, not re-architected.** `TrackerEvent` gained `actor`
+(populated for every event kind now, not just comments — `authorId` is left
+untouched since the self-comment guard's semantics are comment-specific by
+design). `AgentFn` gained a fifth parameter carrying it, threaded through
+`agent-scheduler.ts`'s `dispatch()` and `swim-lane-routing.ts`'s
+`RouteDecision` the same way `entityTitle` already was — every other lane
+(`createActivationRunner`'s Anthropic-driven agents) just ignores it,
+confirming `swim-lanes.ts`'s own "adding a lane is a registration" claim
+extends to widening the shared contract, not only to adding a new one.
+`dispatch-trigger.ts` reads it and carries it into
+`DispatchStoryWorkflowInput` as `mover`.
+
+**The one real decision: how to turn a Linear identity into a GitHub one.**
+Linear gives only `id`/`name`/`email`; GitHub's requested-reviewers API needs
+a login. Considered and rejected: resolving it live via GitHub's
+`search/users?q=<email>+in:email` — silently fails for anyone whose GitHub
+account doesn't expose a matching public email, and a silent gap here is
+worse than an explicit one. **Settled (the architect): a static, architect-maintained
+mapping** — `REVIEWER_EMAIL_TO_GITHUB_LOGIN`, a JSON object string parsed
+once at worker startup (`worker-config.ts`'s `parseReviewerMapping`, same
+"pure parse, tested directly" shape as `parseRepoBase`), same category of
+artifact as the conventions spec: reviewed and kept current by a human, not
+derived. Optional throughout — unset, or missing an entry for a given mover,
+just skips the reviewer request for that one dispatch rather than failing it.
+
+**`requestPullRequestReviewer` is deliberately best-effort, unlike every
+other activity in this package.** Every other activity here classifies
+failures into retryable/non-retryable and throws. This one never throws: a
+null `mover`, an unmapped email, or a GitHub error (unknown login, rate
+limit, transient failure) all just log through `@temporalio/activity`'s own
+`log` and return. Reasoning: by the time this activity runs, the PR already
+exists and a human is already going to review it regardless of whether this
+metadata landed — failing the whole dispatch over cosmetic reviewer-request
+metadata would be strictly worse than a silently-missing requested reviewer.
+Called from `dispatchStoryWorkflow` right after `findPullRequest` succeeds,
+before `awaitPullRequestOutcome` starts its (up to 14-day) wait.
+
+Preserves the property named when dispatch first moved from human-in-
+Claude-Code to app-driven (see "Dispatch is human, not app-driven," now
+superseded, in the development-tier session above): "the person who reviews
+decides when it gets written." Under manual dispatch that was automatic —
+the developer typing the dispatch command was the reviewer. Under app-driven
+dispatch it has to be reconstructed from the one human act that still
+exists: the tracker status move.
+
+## `dispatch-worker` — CI-wait and human-review-gate (2026-08-05)
+
+Closes the last link in the ledger's own stated chain — *dispatch → wait for
+the specialist → trigger CI → wait for the result → gate on human review →
+proceed* — for the one case it applies to: outcome `"complete"` (a PR
+exists). Session input: the architect confirmed the review gate is "wait for merged,
+full stop," settling the one real design fork this needed.
+
+**Two decisions, both settled rather than assumed:**
+
+- **Review-gate model: merged, not a separate tracked approval.** GitHub REST
+  has no clean single "review decision" field the way GraphQL does, and
+  CLAUDE.md already frames review as one human act ("a human developer...
+  who merges"), not approve-then-merge as two. Confirmed with the architect: model it
+  as a single wait for merged (success) or closed-without-merging
+  (rejected). A separate approval-tracking activity wouldn't have fully
+  solved anything anyway — merge can lag well behind approval, or happen
+  without one at all if branch protection isn't configured to require it.
+- **CI-wait and review-gate collapse into one activity, not two — a design
+  call, not asked, because it followed directly from the answer above.** A
+  red CI check on the PR's current head isn't a terminal state either: a
+  human can push a fix and CI goes green later. A two-activity split
+  (`awaitCiResult` then `awaitReview`) would have to decide what a CI
+  *failure* even returns, and would hit a real correctness trap doing it: the
+  PR's head sha can change (force-push, new commits), so an activity that
+  captured the sha once up front would silently stop tracking the right
+  commit's CI after a push. `await-pull-request-outcome.ts` avoids both
+  problems by re-fetching the PR (and therefore its current head sha) every
+  poll and only returning once it's genuinely terminal — merged or
+  closed-without-merging — heartbeating a CI/status summary
+  (`summarizeCheckRuns`) at every intermediate poll purely for observability.
+
+**How the PR is found: mechanically, not by parsing a comment.** The
+specialist's own "PR & branch" completion-report line
+(`agents/specialist-backend.md`/`-frontend.md`) is free prose — the same
+class of problem `story-contract.md` and `specification-agent.md` already
+solved twice by tightening a recording *format*. Not needed a third time
+here: the workflow already knows the exact story/epic branch names before it
+ever dispatches the specialist, so `find-pull-request.ts` just asks GitHub
+directly (`GET /repos/{owner}/{repo}/pulls?head=...&base=...&state=open`) —
+strictly more robust than parsing, and doesn't touch either agent
+definition's own prose.
+
+**A real, load-bearing consequence of "status is human-moved, always,"
+named rather than silently fixed.** Once `await-pull-request-outcome.ts`
+sees the PR merged, the workflow's job ends — it does not advance the
+story's Linear status to Done. `check-dependencies.ts`'s own
+`stateType !== "completed"` check (built in the original `dispatch-worker`
+session) already means every *other* story depending on this one stays
+blocked until a human notices the merge and moves the status by hand. This
+was surfaced while designing this pass, not fixed, because fixing it would
+mean the workflow itself moving a status — exactly the invariant CLAUDE.md
+states twice as a first-class primitive of this whole framework. Worth
+carrying forward as a real gap in the automated-dispatch story, not
+forgotten.
+
+**Small shared refactor:** `create-story-branch.ts`'s private `githubRequest`
+helper moved out to `dispatch-worker/src/github-request.ts` once a second and
+third activity needed the identical shape — three call sites is where this
+session's own construct-test work already drew the same extract-vs-duplicate
+line.
+
+- **Verified for real:** `npm run typecheck` and `npm run test:unit` in
+  `dispatch-worker/` — including the workflow-level test, which spins up a
+  real local Temporal test server (`TestWorkflowEnvironment.createLocal()`)
+  and now covers three paths (not-ready, not-complete, and the full
+  eight-activity sequence ending in a merged PR), and the new
+  `await-pull-request-outcome.test.ts`, which specifically confirms a
+  failing CI conclusion on an intermediate poll does not end the loop.
+- **What's still missing:** no live GitHub PR or Temporal Cloud execution is
+  possible or claimed — same standing caveat as every prior `dispatch-worker`
+  pass. Reviewer-of-record and Tests/E2E dispatch remain exactly as named in
+  the previous two entries above.
+
+## Specialist types collapse into surfaces (2026-08-08)
+
+Started from a failed e2e story — tests failing against a defect in
+already-merged work — and two questions: should a specialist be able to call up
+another specialist, and should e2e pair with frontend during development so the
+tests get written and run together. Both were the right instinct pointed at the
+wrong mechanism, and working through them collapsed a layer of the design.
+
+**The trigger for the collapse was a queued feature: not generalizing about
+"frontend."** It can mean web, mobile, or desktop, and the same is true of
+backend. `specialist:frontend` was already a leaky abstraction; the moment
+mobile arrives you either lie with the label or grow a taxonomy that never
+stops.
+
+So the four definitions were compared properly rather than assumed distinct.
+They are roughly 85% identical — same orientation, same dependency check, same
+branch verification, same conventions read, same hand-back. What differs is a
+scope boundary, which is already a field on the story, and a set of
+prohibitions. Every candidate for genuine type-specific behavior turned out to
+live somewhere else: "e2e must wait for siblings to merge" is the story's
+blocking dependencies, "e2e goes last" is the dependency graph, "don't
+duplicate unit coverage" is the story's scope. No case survived.
+
+**Decision: the label names a place, not a specialty.** `surface:e2e` means
+"work in the e2e project," exactly as `surface:mobile` would mean "work in the
+mobile app." One agent definition, told where it is standing and what the house
+rules are there. Renamed from `specialist:` to `surface:` because the old word
+describes a role the model no longer has — churn now is cheaper than churn
+after another two epics.
+
+Consequences, in the order they fall out:
+
+- **One `agents/specialist.md`.** What stays is universal craft: read before
+  you write, don't assume a contract you could read, write tests for what you
+  build, never weaken a test to make it pass. What leaves is surface-specific
+  craft — selector strategy, component structure, ORM patterns — which moves to
+  each surface's conventions spec, where it stops being generic advice and
+  becomes the team's actual rules.
+- **The label vocabulary opens.** It must match a surface recorded on the epic
+  as `Repo base — <surface>`. Nothing else constrains it.
+- **The code was already generic.** `resolve-repo-base.ts` parses
+  `Repo base — <surface>:` for any string. The only type coupling is
+  `SUPPORTED_SPECIALIST_TYPES` in three files and `` `specialist-${type}.md` ``
+  in the prompt builder; the second disappears with the collapse, and the first
+  is replaced by validating against the epic's recorded bases. That is a
+  strictly better check — it catches a story assigned to a surface the epic
+  never recorded, instead of rejecting a valid surface missing from a list.
+- **"Integration tests are backend-only" resolves itself.** It becomes "an
+  integration-test story exists only if there is a test-project surface to hold
+  it," which is a fact about the repo rather than a claim about testing
+  philosophy. That was a stack fact recorded in the invariant layer (open item,
+  2026-08-07); it moves out without needing a separate fix.
+
+**CONVENTIONS.md becomes mandatory — a reversal, and a necessary one.** The
+2026-08-04 position was that a conventions spec is optional and architect-owned,
+that its absence is never a blocker, and that output quality tracking architect
+effort is the honest outcome. That held while each specialist definition carried
+its own surface craft as a fallback. It does not hold now: with the definition
+deliberately generic about *how* to build, the conventions spec is the only
+place that answer exists. Dispatching into a surface without one produces
+plausible code in nobody's house style, which is more expensive to review than
+no code at all. The principle survives — quality still tracks architect effort,
+legibly — but the floor moved from zero to one.
+
+**The catch that makes it work: a surface manifest, gated at Decompose.** From a
+real failure — an epic ran its implementation stories to completion before
+anyone noticed the e2e project and its conventions file had never been created.
+Nothing looked until the e2e story was dispatched into a surface that did not
+exist.
+
+Decompose's readiness gate is rewritten from "ask if a repo base is missing" to
+a complete manifest with three rules. Every surface the epic could need gets a
+line, **including the ones that do not exist**, recorded as
+`Repo base — <surface>: none` — a missing line means nobody asked, `none` means
+someone asked and answered, and those are different states. The ref is the
+surface's own BRD branch rather than a bare repo, since each surface carries its
+own branch chain. And every surface with a repo must carry a conventions spec at
+its root on that ref, verified by reading it, with absence blocking
+decomposition.
+
+Specification cannot cover this: it resolves repo bases from the API map's own
+surfaces, before any story is assigned, so a test or e2e surface is a gap it
+structurally cannot anticipate. The division is now clean — Specification gates
+the surfaces the map touches, Decompose gates every surface the stories will
+need.
+
+**What this does not change.** No specialist dispatches another specialist. That
+question started this session and the answer stayed no: it would break the human
+gate, break reviewer-of-record, and recurse without bound. What replaces it is
+the epic branch as an authority boundary — a specialist may fix anything on its
+own epic branch in its own PR, and a defect tracing below the epic branch is a
+prompt, because it cannot go in this PR anyway. That is the same known-area /
+outside-the-area line the architect's own Claude Code sessions run on, with stories
+serving as the prompt.
+
+## Test tiers move into the conventions spec (2026-08-08)
+
+Follow-on from the surface collapse, driven by reading the three real
+`CONVENTIONS.md` files the architect has written — frontend, backend, e2e.
+
+**The framework stops defining test tiers.** Evidence: the backend spec names two
+levels in .NET terms (xUnit unit projects; `WebApplicationFactory` integration
+tests against the real DI graph, "mock at the boundary — network, clock,
+external services — never internal collaborators"). The frontend spec names one,
+component specs via TestBed, and correctly has no integration tier at all. The
+e2e spec names flow tests with accessible locators and `@smoke`/`@regression`
+tags. Three surfaces, three stack-native vocabularies, each more precise than
+anything the framework could have asserted — and any framework-level definition
+of "integration" would have been wrong for at least one of them.
+
+So: **conventions own the tiers; Decompose owns only the question the story graph
+can answer** — can one story write this coverage, or does it need several
+merged? That resolves the "integration tests are backend-only" open item without
+a separate fix. It becomes a fact each surface records about itself.
+
+Consequences in `decompose-agent.md`'s taxonomy, all replacing phase rules:
+
+- **Tests belong to the work that produces them**, including flow tests. A story
+  completing a user-visible capability on its own writes the flow test proving
+  it, carrying both surface labels so its specialist can write in the test
+  project. Feature and proof land in one pull request.
+- **A dedicated test story exists only when the coverage needs more than one
+  story's work merged.** Backend integration tests turn out to be
+  single-story-writable — an endpoint story adds its own `WebApplicationFactory`
+  test the moment the endpoint exists — which shrinks this to genuine
+  cross-story data flow, cross-story contracts, and cross-story journeys.
+- **"E2E goes last, blocking on everything" is deleted**, along with "integration
+  blocks on every backend story." A test story's dependencies name exactly the
+  stories its coverage needs and it is placed immediately after them. A flow is
+  testable the moment its own stories merge; blocking it on unrelated siblings
+  only moves the failure further from its cause.
+
+**Multiple surface labels, gated on same-repo.** A story may carry several
+`surface:` labels only when all resolve to the same repo and ref — then it is one
+branch, one PR, one reviewer, one atomic merge, and the labels widen what the
+specialist may write. Different repos would mean PRs that must land in step
+across repositories, which nothing here coordinates. This also answers the parked
+full-stack-story question (the designer's, from the slicing session): full-stack is
+allowed when the stack lives in one repo, and the layout decides rather than a
+philosophy about story size.
+
+**The gap the three real files exposed, and the reason a flow suite goes
+brittle.** The e2e spec declares accessible locators only — `getByRole`,
+`getByLabel`, explicitly no `data-testid` — reasoning that the app's markup
+already carries proper label associations and semantic roles. That is a hard
+dependency on the frontend surface. The frontend spec mentions accessibility
+zero times. One surface depends on a property the surface providing it was never
+told to maintain, and nothing in the pipeline would have caught it.
+
+Hence the new `conventions-writing` **Test levels** section, five questions:
+which levels this surface runs, what each means *here*, **how each is invoked**
+(none of the three files gives a command, and the specialist is now expected to
+run existing suites before handing back), **what this surface deliberately does
+not test because something else covers it**, and **what this surface owes the
+surfaces that test it**. The last two are the ones no single surface's author has
+reason to think about unprompted, and they are where the framework earns its
+keep now that it has stopped defining tiers.
+
+Two devices lifted from the architect's files into the skill as named requirements,
+because both do something a codebase cannot do for itself. **"Gap to close, not
+a pattern to copy"** — twenty components declaring `readonly` will teach an agent
+that is the house style, so a spec that wants `protected` has to say so and say
+what to do about the existing ones. And a **Status** section grading the codebase
+as precedent: the backend spec's "the `Contact` module's comments describe it as
+a Temporal orchestration demo — that framing is not real" saves an agent from a
+serious wrong turn that no amount of reading the code would prevent.
+
+Also noted, not yet acted on: the e2e spec's CI already runs the suite on every
+PR touching `e2e/**` or `frontend/**` — "a specialist's own PR triggering a real
+CI run is the actual point either way" — which is the trigger point argued for
+earlier this session and contradicts `specialist-e2e.md`'s epic→BRD gating. The
+conventions file is right and the agent definition was wrong; the agent
+definition is now deleted, so the contradiction resolves by removal. And that
+suite's `webServer` boots `npm start` against the frontend, no docker-compose —
+further evidence the "Fargate cannot run the stack" constraint was
+over-generalized from a full-stack scenario that does not exist yet.
 
 ## Open items
 
@@ -1132,7 +2294,12 @@ that will be made again.
   Agents (server-hosted stateful agents with Anthropic-managed sandbox, Skills +
   MCP, file mounts — surfaced in the agent-development research) are a plausible
   substrate; a reason to keep specialist definitions clean enough to become a
-  managed-agent spec later.
+  managed-agent spec later. Resurfaced 2026-08-04 when designing automated
+  dispatch and set aside again — not on technical grounds, but because the
+  specialist sandbox landed on infrastructure the team already operates, and a
+  payment-processing client engagement puts weight on being able to state
+  precisely where code executes. Recorded as considered twice now, not
+  rejected once.
 - **PARKED: right-sized pipeline entry (bug fixes).** Not all work should enter
   at the top (BRD). A small bug fix has no intent to map or epic to slice —
   forcing it through five gates would discredit the framework. Likely shape:
@@ -1222,6 +2389,18 @@ that will be made again.
   decomposed one rather than trusting the value recorded here. Settle it before
   the next dispatch; a run that cannot find its own assignment label is a stupid
   way to lose one.
+
+  **RESOLVED 2026-08-05, building the next dispatch (the webhook-listener
+  trigger):** `specialist:<type>` — confirmed with the architect. Matches the
+  outcome-label prefix, which was always the stronger argument.
+  `story-contract.md`'s assignment-metadata section now states the literal
+  prefix explicitly; `decompose-agent.md`'s own write-sequence step (was
+  citing the stale `spec:<specialist>` form) and
+  `docs/development-tier-dispatch.md`'s runbook (was hedging both spellings)
+  are both corrected to match. `webhook-listener/src/story-context.ts`'s
+  `parseSpecialistType` is the first mechanical reader of this label —
+  confirmed there is no other code in the repo reading either prefix today,
+  so this is a clean settling, not a migration.
 - **RESOLVED 2026-08-03: story contract described the app-hands-context model.**
   `story-contract.md` said the app "resolves each entry and provides completion
   status in the specialist's context payload" (blocking dependencies) and
@@ -1249,6 +2428,181 @@ that will be made again.
   are the wrong words for it, and the phrasing predates the collapse rather than
   describing what survived it. Worth one pass before the shaping tier is
   published as reference material.
+- **Title conventions, and a `Epic: ` / `Story: ` prefix (2026-08-06).** Asked
+  whether a prefix rule existed. It did not — neither `epic-writing.md` nor
+  `story-contract.md` said anything about titles at all, which is a strange gap
+  for the most-read text in the tracker. The title is what appears in the board,
+  the search result, the notification, and the Slack unfurl, and Linear derives
+  `gitBranchName` from it, so a vague title becomes a vague branch.
+
+  Three patterns were in play and nothing arbitrated: `decompose-agent.md`'s
+  worked examples used surface prefixes (`API:`, `UI:`, `E2E:`), real stories on
+  the sandbox tracker used none, and no rule existed anywhere.
+
+  Settled: **`Epic: ` + noun phrase naming the area; `Story: ` + verb phrase
+  naming the change.** The grammar carries information the prefix does not —
+  epics name where you are, stories name what is being done — so the two are
+  distinguishable even where the prefix is cut off.
+
+  The argument against the prefix was real and was overruled deliberately: it
+  restates hierarchy the tracker already holds, which is the thing rule 4 of
+  `tracker-writing` tells agents not to do. It wins anyway because the tracker's
+  hierarchy does not travel — a flat search, a filtered list, a notification,
+  and a Slack unfurl all lose it, and those are where titles are read most.
+
+  The surface prefix is dropped rather than stacked. `Story: API: expose payment
+  status` reads badly, and unlike parent/child, the surface *is* carried by the
+  `specialist:*` label, which the tracker shows wherever it shows titles. One
+  prefix only. Decompose's three examples were rewritten accordingly.
+
+  One rule earned its place from practice rather than principle: **sibling
+  stories must be distinguishable by their first few words.** Decomposition
+  produces stories that share a subject, so they come out sharing an opening,
+  and five titles beginning "Add payment status…" are five identical rows in
+  every truncated view.
+- **`docs/specialist-prompt.md` is an engagement artifact in a framework
+  directory, and it is stale.** Added in `b238e6f` as a working copy of the
+  dispatch prompt, specialized for a frontend story: it hardcodes
+  `example-web` as the target surface and names "the frontend Specialist."
+  Three problems, in ascending order of consequence.
+
+  It is a *copy* of the prompt in `docs/development-tier-dispatch.md`, and has
+  already drifted from it — the framework paths became bare filenames
+  (`specialist-<NAME>.md`), which contradicts the read-from-a-local-clone
+  decision the runbook states. Two copies of one prompt is the duplication the
+  `CONVENTIONS.md` template was folded into `conventions-writing` to avoid.
+
+  It names a client repository, in `docs/`, in a repo intended for open
+  publication. Engagement-specific material belongs in `examples/`, which is
+  gitignored precisely for this.
+
+  And frontend dispatch is now app-driven, so a hand-pasted frontend prompt no
+  longer describes how that work starts. Whatever it is kept for, it is not
+  that.
+
+  Not resolved here — the call is the architect's, since it may still be serving a live
+  purpose the framework does not know about.
+- **A house prose standard for tracker text — `tracker-writing` (2026-08-06).**
+  Feedback from people reading the output: issue descriptions and comments are
+  hard to read as English. Not layout — sentences. Three complaints, all
+  specific. The text constantly justifies its own decisions. It interrupts
+  itself with paths and issue identifiers. It is written in a clipped,
+  aphoristic register that is tiring at length.
+
+  Root cause, and it is not the tracker: **agents imitate the prose of their own
+  instructions.** `decompose-agent.md:96` is one 400-word sentence carrying six
+  parenthetical asides. The agent definitions and skills are written in a dense
+  justificatory style throughout, and the output mirrors it faithfully. Worth
+  recording plainly because the same failure will recur every time a definition
+  is edited by someone writing in that register — including in this session,
+  which produced several.
+
+  The skill states four rules: state the decision and leave out the argument for
+  it; put references in a footer under `## References` rather than inline; one
+  idea per sentence, no mid-sentence asides; use ordinary words and avoid the
+  correction pattern ("this is not X, it is Y"), the emphatic fragment, and
+  restating the rule being followed. Each rule carries a before/after pair drawn
+  from real artifacts.
+
+  Scope boundary, stated in the skill because it is the obvious way to misapply
+  it: **this governs tracker text only.** The ledger, the agent definitions, and
+  the skills exist to carry reasoning, and rule 1 would gut them. The provenance
+  contract at the top of this document and rule 1 are in direct tension by
+  design — they serve different readers.
+
+  `story-contract.md` restructured to match. The story body is now the prose a
+  person reads (user value, component breakdown, acceptance criteria, unit-test
+  scenarios, scope boundary), and the three reference-bearing sections —
+  codebase anchors, evidence pointers, blocking dependencies — collect into a
+  `## References` footer. The trade is real and stated in the contract: a
+  requirement and its anchor are no longer in the same sentence, so the anchor
+  entry has to name the requirement it serves. Accepted for prose a person can
+  read straight through.
+
+  Not yet wired: no agent declares `tracker-writing` as a loaded skill, so today
+  it changes nothing at runtime. Wiring it means editing every agent that writes
+  to the tracker, plus the prompt templates, and it collides with CLAUDE.md's
+  claim that Decompose "loads none" — a claim the evaluation prompt templates
+  already contradict by loading two. Left as one deliberate next step rather
+  than folded in here.
+- **Capability resolution moved out of the tracker and into the authoring
+  session (2026-08-03).** Supersedes the original `confirm` mechanism, where
+  rows were drafted `confirm`, carried into the tracker unresolved, and settled
+  in the project's comment thread — blocking only the Intake Agent's slicing,
+  never project creation. Now: every row is resolved in the session that writes
+  the document, and an unresolved row blocks creation exactly as a placeholder
+  does. Intake's gate stays as a backstop and should never fire again.
+
+  Three reasons, and the third is the one that makes it structural rather than
+  preference. A thread resolves one voice at a time over days, when the same
+  conversation takes minutes with the right people in one room. An unresolved
+  row sitting in a tracker invites slicing around it rather than settling it.
+  And a comment thread on one project **cannot see another project's capability
+  map** — which is exactly what resolving a capability sometimes requires.
+
+  The cross-document case is the new information here. With several BRDs in
+  flight, a capability moved `out` in one may be something another assumed it
+  could build on, and one moved `in-scope` may duplicate work already scoped
+  elsewhere. Nothing looks across projects afterward: Intake slices one project
+  at a time, and no thread sees a sibling. Missed at resolution time, the
+  conflict surfaces as contradictory epics weeks later with stories already
+  under them. So the skill now reads sibling capability maps *before* working
+  its own, and names the affected document and row while a decision is being
+  made.
+
+  Also changed, from the architect watching it work: the map is walked **row by row
+  with candidate answers offered**, not presented whole for bulk agreement. For
+  each row — state what evidence supports it, propose a resolution *and* the
+  strongest case against, record the human's decision in their words. The
+  reasoning is the same one behind `conventions-writing`'s interview
+  discipline: a proposal with only one side gets agreed to rather than decided,
+  and an agreed capability is not a confirmed one. Reported as flowing well and
+  as letting several people collaborate in a single session, which is the
+  format capability scope actually wants — the PM, a designer, and whoever owns
+  the budget disagreeing out loud once beats a week of thread.
+- **PARKED: surfaces within an epic finish at different rates, and the next
+  epic cannot start clean (2026-08-08).** the architect: the backend developer is done
+  while the frontend still needs time, and wants to move to the next epic rather
+  than wait.
+
+  Checked first, and worth recording because the intuition was that a rule was
+  at fault: **nothing gates decomposition on a dependency epic.** The readiness
+  gate blocks on business problem, user types, scope boundary, definition of
+  done, a resolved API map, and the surface manifest. Epic 2 can decompose
+  whenever it is ready. There was nothing to remove.
+
+  Two real things produce the symptom instead. **Branch topology:** epic branches
+  cut from the BRD branch, and epic 1 cannot merge there until *all* its surfaces
+  are done — so epic 2's branch is missing even epic 1's finished backend work.
+  Not a gate stopping the developer, a hole under them. **Epic-level dependencies
+  are coarser than the work:** Intake renders dependencies epic-to-epic from the
+  slice map, but epic 2's backend rarely depends on epic 1's frontend. One fact
+  blocks far more than the truth requires, which is what makes a developer feel
+  they are waiting on work unrelated to theirs.
+
+  Three candidate fixes, none taken:
+
+  - **Stories block, epics do not.** Epic-level dependencies become ordering
+    guidance for the human slicing, and real blocking is expressed story-to-story
+    including across epics — which the specialist already handles, since it
+    checks story dependencies and knows nothing about epic ones. Cleanest
+    conceptually; does not by itself fix the branch hole.
+  - **Merge to the BRD branch per surface rather than per epic.** The one that
+    actually answers the throughput question. Costs the atomic epic merge and the
+    architect's single epic-level review gate, both deliberate.
+  - **Chain the epic branch** — epic 2 cuts from epic 1's branch when it must
+    start early. Preserves atomicity; epic 1's review then contains epic 2's
+    changes underneath it, and unwinding gets ugly.
+
+  A fourth possibility, uncomfortable and deliberately not pursued on one
+  instance: if surfaces routinely finish at very different times inside one epic,
+  the epic may be sliced wrong. Slicing by capability rather than by layer is a
+  deliberate framework decision and should not be reopened on a hypothetical.
+
+  Parked pending real throughput data — the first candidate looks right
+  regardless, since epic dependencies overstating the truth is a defect either
+  way, but the second is the one with a real cost and should be decided against
+  observed pain rather than a scenario.
 - **Branch topology is per-repo, and nothing reconciles across surfaces.**
   Settled 2026-08-03: the developer starts Claude Code from a workspace parent
   holding every surface repo plus the framework clone, so cross-surface reads
@@ -1260,6 +2614,9 @@ that will be made again.
   specialist per story, so a story has exactly one target repo — and the
   specialist verifies the chain only in that target. Not a problem yet; it
   becomes one the first time an epic's surfaces need to merge together.
+  Inherited, not fixed, by the closing epic added 2026-08-04: its seeded
+  description names sibling epic branches by this same naming convention, so a
+  wrong pairing here now also produces a wrong seed at BRD closure.
 - **The framework clone is a silent version dependency.** Specialist
   definitions and skills are read from the developer's local
   `intent-to-production` checkout by absolute path — not vendored, not
@@ -1269,11 +2626,14 @@ that will be made again.
   definition. The dispatch runbook says "pull first," which is a convention,
   not a control. If this bites, the fix is the plugin route (ship agents and
   skills alongside the Linear MCP the team already installs).
-- **BRD-branch tier: does it get its own E2E, and who reviews it?** E2E is
-  settled at the epic level. What happens when epic branches meet at the BRD
-  branch — cross-epic flows, a BRD-level suite, who opens the PR to `main` — is
-  named but not designed. Deliberately deferred: the first epic has not been
-  built, let alone a second one to conflict with it.
+- **RESOLVED 2026-08-04: BRD-branch tier gets its own E2E, via a fourth epic,
+  and review is a three-way sign-off.** (Kept here as the trail from open
+  question to fix; the resolution is the automated-dispatch session above.)
+  Cross-epic flows are covered by a closing epic — blocked-by every other epic
+  in the BRD, containing only E2E-type stories, created by Intake at slice time
+  rather than added after the fact. The PR to `main` is opened and merged by
+  the architect, directly in GitHub, once the closing epic's own three-way
+  sign-off (`brd:resolved`) has landed.
 - **The listener's single-instance constraint has one known escape, undecided.**
   `desired_count = 1` follows from the scheduler keeping its dedupe set and
   debounce timers in process memory, and that constraint is also what makes the
@@ -1283,3 +2643,739 @@ that will be made again.
   Not scheduled: one instance is honest for a single engagement, and the gap has
   not yet cost a real run. Revisit when it does, or when deploy frequency rises
   enough that the gap stops being theoretical.
+
+## First live specialist-dispatch attempts — three real bugs, one general lesson (2026-08-06)
+
+the architect ran the pipeline live against a real sandbox (the sandbox team, `github/
+example-org/example-app`), through decompose, and moved the first real story
+(PROJ-63) to `In Progress` to trigger a specialist dispatch. Two real failures,
+each caught from real logs the architect forwarded, not from a test suite — both were
+already unit-tested against hand-written fixtures that happened to match an
+assumed literal, and both broke the instant they met Decompose's actual live
+output.
+
+**Bug 1: the tracker's real status name doesn't match the framework's own
+vocabulary.** `lanes/specialist-dispatch.ts` gated on the literal
+`"In-Process"` — `CLAUDE.md`'s own hyphenated pipeline-stage name — but this
+team's real Linear state is named `"In Progress"` (Linear's stock name,
+confirmed straight from a live payload). The lane silently never fired
+(`no-fire — no lane triggers on status "In Progress"`); nothing was broken
+until a real story actually tried to move. Fixed: the literal in
+`specialist-dispatch.ts` now matches the tracker's real configured name, with
+an inline note explaining this is engagement-specific tracker configuration —
+the same category as the repo base or the specialist container name — and
+belongs in the Linear-specific lane file, not in `CLAUDE.md`'s tool-agnostic
+vocabulary.
+
+**Bug 2: `check-dependencies.ts` matched a doc example, not Decompose's real
+output.** Once the story actually dispatched, `checkDependencies` threw
+`Story description has no "**Blocking dependencies**" section` — PROJ-63's
+real description used `## Blocking dependencies` (a real markdown heading),
+matching the new `## References` footer convention from the same day's
+tracker-writing work, while `story-contract.md`'s own documented example
+still shows the bold-text form. Same root cause as Bug 1: a hardcoded literal
+built against an assumption, never checked against live Decompose output.
+
+**General lesson, given directly by the architect and applied immediately, not just
+to this file:** when parsing text an LLM agent renders into the tracker
+(headings, bullet markers), compare on a normalized form — strip
+formatting/punctuation, accept the markup variants that actually occur —
+rather than one exact literal. Applied: `check-dependencies.ts`'s heading
+match now strips all non-alphanumeric characters before comparing (so
+`**Blocking dependencies**`, `## Blocking-Dependencies`, and
+`###   blocking dependencies` all normalize identically), and its bullet
+regex now accepts both `-` and `*` markers — a second, worse-than-the-crash
+risk caught in the same pass: PROJ-63's own References section used `*` while
+its Blocking-dependencies section used `-`, and a bullet-marker mismatch
+would have silently returned zero blockers on a story that actually had some,
+rather than throwing. The identifier's own hyphen (`PROJ-42`) stays literal —
+real tracker syntax, not incidental formatting.
+
+**Explicitly not the same class of fix, stated to avoid over-generalizing:**
+Bug 1 (status name) is a genuine wording difference — "Process" and
+"Progress" are different words, not a formatting variant of the same word —
+so normalization would not have caught it. That one needed the real string,
+confirmed against live data; Bug 2 needed normalization. The distinguishing
+question for future cases: would a human reading both forms agree they mean
+the same words, just decorated differently? Normalize only when yes.
+
+**Bug 3, found by querying Temporal directly rather than waiting on another
+pasted log file: `resolveRepoBase` matched Specification's own kickoff
+question, not the architect's recorded answer.** With Bugs 1 and 2 fixed,
+the retry got one activity further and `createStoryBranch` failed on
+`Unsupported repo-base host "<host>"` — the literal placeholder text.
+`parseRepoBase`'s regex scan found `` `Repo base — frontend:
+<host>/<org>/<repo>/<ref>` (e.g. `Repo base — frontend:
+github/example-org/example-app/main`) `` — the exact format instructions
+Specification's kickoff question shows the architect, verbatim, so the
+architect knows what to reply with — before it ever reached the real
+recorded line, `` `Repo base — frontend: github/example-org/example-app/dev` ``,
+posted later in the same epic's thread. This is not a one-off: every future
+epic's Specification kickoff carries this same instructional text forever,
+since showing the target format is how the question teaches the architect
+what to write. Fixed with two independent, content-based signals — reject a
+matched line if any captured segment contains `<`/`>` (never valid in a real
+host/org/repo/ref), or if the line contains "e.g." (the fabricated example
+always sits beside it) — rather than trying to fix the comment-ordering
+assumption the old code leaned on (`parseRepoBase`'s own header claimed
+"most-recent-first"; live evidence contradicts a simple createdAt-ascending
+read of Linear's raw `comments` field, and the true default order still
+isn't confirmed — moot now, since content-based rejection makes ordering
+irrelevant to this failure mode specifically, but recorded here rather than
+quietly resolved, since this file's rule is to say what's still unconfirmed).
+
+**A second, independent bug caught by the same test: the `ref` capture
+included a trailing backtick.** Both the fabricated example and the real
+recorded line are written as a single backtick-wrapped code span; the
+regex's final segment was a bare `\S+`, so `` `.../dev` `` captured `ref` as
+`` dev` `` — a trailing-backtick tail that had been silently riding along in
+every prior successful-looking parse, never noticed because no downstream
+consumer had printed the raw value back until this session's own test
+assertion did. Fixed by excluding the backtick character from all four
+segments, not just "/" and whitespace.
+
+**Method note:** all three bugs this session were found from real
+artifacts, not assumption — the first two from pasted log files, the third
+by running `tctl` directly inside the local `temporal` container
+(`docker compose exec temporal tctl --address temporal:7233 --ns default
+workflow show --workflow_id <id>`) to read the actual `ActivityTaskCompleted`
+result payload rather than waiting for another log export. Faster, and it
+reads the same durable Event History a pasted log can only narrate secondhand.
+
+**Specialist-progress comment, added the same session (still unverified
+against a real specialist run at time of writing — the two bugs above were
+found and fixed before a real dispatch reached this activity).** The shaping
+tier's courtesy comment (`tracker-notifier.ts`: post "working on this" before
+the call opens, edit every couple of minutes, delete on a clean run) had no
+specialist-tier equivalent — a story could sit `In Progress` for up to four
+hours with nothing visible on the tracker until the specialist's own
+completion report landed, a startup crash posted a fallback comment, or
+nothing at all. Extended, in `dispatch-worker`: `postSpecialistStarted` posts
+once the container is dispatched, `awaitSpecialistTask`'s existing poll loop
+edits it every ~2 minutes (matching `activation-config.ts`'s own
+`progressUpdateIntervalMs`) with an elapsed-time line, and
+`deleteSpecialistProgressComment` removes it once the container exits —
+before `readSpecialistOutcome` runs, so the courtesy comment is gone by the
+time the specialist's own report is the only thing narrating what happened.
+One forced deviation from `tracker-notifier.ts`'s exact shape: that module
+picks one quip per activation and reuses it across every comment because one
+function call holds it in a shared closure; here, posting the started
+comment and polling are two separate Temporal activities with no shared
+closure, and the workflow itself cannot call `Math.random()` (workflow code
+must replay deterministically) to pick one value and thread it through. Each
+side picks its own quip once instead — a cosmetic mismatch between the
+started comment and the progress edits, accepted rather than plumbed around.
+
+## Development tier's own "never silent" guarantee (2026-08-06)
+
+Direct feedback from the architect after the bugs above: the shaping tier
+(Intake/Specification/Decompose) has always been good about this — a
+working-on-it comment, a detailed error comment if something goes wrong.
+The development tier didn't have the same guarantee, and it showed: the
+`createStoryBranch` GitHub-404 failure earlier this same session posted
+nothing to the story at all — the only way to find out was querying
+Temporal directly. Before this, individual activities each decided for
+themselves whether to post a failure comment: `resolveRepoBase` and
+`findPullRequest` did, for the one failure mode each anticipated;
+`createStoryBranch`, `dispatchSpecialist`, and everything else didn't.
+Ad hoc coverage, not a guarantee — exactly the same category of problem the
+shaping tier already solved and stated as a standing principle ("Every
+activation terminates in a visible tracker state — never silence," above),
+just never carried over to this tier when it was built.
+
+**Fix: centralize, don't keep enumerating.** `dispatchStoryWorkflow`'s
+entire body is now one try/catch. Any unhandled failure — anticipated or
+not — calls a new `postDispatchFailed` activity once, naming the real
+cause, then re-throws (Temporal still records the workflow itself as
+Failed; the comment is this tier's own equivalent of the shaping tier's
+fail-fast comment, so a human watching the tracker, not Temporal, also
+finds out). `resolveRepoBase`'s and `findPullRequest`'s own inline
+comment-posting was removed — once the catch-all existed, keeping both
+would have double-posted for those two specific cases — and their thrown
+messages were tightened to be actionable on their own, since the catch-all
+reuses them verbatim rather than duplicating the guidance in two places.
+
+**One real Temporal-specific wrinkle, confirmed rather than assumed:**
+the workflow's own caught error is not the activity's original one.
+Temporal wraps it one layer — the outer failure's message is a generic
+"Activity task failed"; the activity's real, specific message ("Could not
+read epic branch ... GitHub returned 404") lives one level down, on
+`.cause`. Confirmed directly from a real test run's own log output, not
+inferred from SDK docs. `describeFailure` (`workflows/describe-failure.ts`)
+prefers that inner message when present, falling back to the outer one
+otherwise. Pulled into its own module with zero Temporal imports —
+`dispatch-story-workflow.ts`'s own module-level `proxyActivities(...)`
+calls require a real workflow execution context to run at all, so a plain
+vitest import of that file for a unit test would throw; the extraction is
+what makes `describeFailure` testable outside `TestWorkflowEnvironment`.
+
+## Moving back to Todo, and a second parsing bug the first one hid (2026-08-07)
+
+the architect tried PROJ-64 while PROJ-63 was still dispatching. It got a comment
+saying it depended on PROJ-63 and couldn't continue, and separately noticed
+its Temporal workflow was still showing running — his read: he assumed it
+was sitting there waiting on PROJ-63 to merge. **General rule, stated
+directly:** the next step should always be left to the developer, not a
+Temporal workflow waiting on one. Posting a comment explaining what's
+going on *and* moving the issue back to To-Do is the right action.
+
+Checking the real story against Linear directly (not assumed) turned up two
+things, not one:
+
+**First, the mechanical gate that was supposed to catch this didn't.**
+`checkDependencies` reads a story's "Blocking dependencies" section
+specifically so a story that can't proceed never reaches the specialist at
+all — "a plain tracker read... before the Anthropic call rather than being
+left for the dispatched agent to discover mid-run." PROJ-64's own comment
+thread showed the specialist itself caught the block, mid-run, having
+already read the codebase and verified branch state (`specialist:waiting`,
+a well-reasoned comment naming PROJ-63 by name) — meaning `checkDependencies`
+had already let it through. Its story description recorded the blocker as
+a bare line with no bullet marker at all — `PROJ-63 — Story: Extend the
+Employee model...` rather than `- PROJ-63 — ...` — and `BULLET_IDENTIFIER`
+required a leading `-`/`*`. Same class of bug as the heading-format and
+repo-base issues from 2026-08-06 (agent-produced formatting varies; match
+what's actually produced, not one literal shape) — this is the third
+occurrence of exactly that lesson in this file, and the specialist's own
+run was the only thing standing between a formatting variance and a wasted
+dispatch. Fixed: the bullet marker is now optional in the regex.
+
+**Second, and the part actually requested:** regardless of which layer
+catches a block — the mechanical check, or the specialist's own outcome —
+nothing moved the story's tracker status. It stayed "In Progress" after the
+workflow had already finished, which is what looked like a workflow
+"waiting." `dispatchStoryWorkflow` now calls a new best-effort
+`moveStoryToTodo` activity at every path that ends without a specialist
+actively running or a PR left open to watch: dependencies not ready, a
+non-`"complete"` specialist outcome (waiting/blocked/unknown), and the
+catch-all failure. `moveStoryToTodo` resolves the story's team's "Todo"
+status by name via two new `tracker.ts` reads (`findStateIdByName`,
+`updateIssueState` — state ids are per-team, so name lookup is a real extra
+round trip) and never fails the outcome it's reflecting, same as every
+other courtesy activity here. "Todo" is confirmed live against the sandbox team's
+own team state list (2026-08-07) as the actual configured name — the same
+engagement-specific-literal category as `specialist-dispatch.ts`'s own
+"In Progress", not CLAUDE.md's hyphenated "To-Do" vocabulary.
+
+## A third bug, found by actually retrying: the label namespace collides with itself (2026-08-07)
+
+the architect rebuilt the containers with the two fixes above, left PROJ-63 alone,
+and retried PROJ-64. It failed immediately with a new error: "specialist:waiting
+is not a supported specialist type." Different bug, same session, found only
+because the retry was real rather than assumed to work.
+
+`story-context.ts`'s `parseSpecialistType` reads a story's `specialist:`-
+prefixed label to decide which specialist to dispatch — but that exact
+prefix is shared, by an earlier deliberate decision, with the outcome
+labels `read-specialist-outcome.ts` writes back onto the same story once a
+run finishes (`specialist:complete`/`:waiting`/`:blocked` — see this
+session's "Reviewer-of-record" era note: "resolving the `specialist:<type>`
+vs `spec:<type>` conflict... flagged as unresolved," resolved by reusing
+one prefix for both). Nothing ever clears an outcome label once written, so
+PROJ-64 — blocked on its first attempt, per the entry above — still carried
+`specialist:waiting` alongside its real `specialist:frontend` assignment
+label on the retry. The old code took `specialistLabels[0]`, the first
+`specialist:`-prefixed label in whatever order Linear returned them, with
+no distinction between the two label families. This time it was `:waiting`.
+
+Fixed at the source rather than patched around: `parseSpecialistType` now
+filters to labels whose suffix actually names a supported type
+(`SUPPORTED_SPECIALIST_TYPES`) before picking one, so it's immune to any
+outcome label sharing the prefix, in either order, and still reports
+clearly if a story genuinely carries zero or more than one type label —
+a real authoring error, not a stale-label artifact, and worth surfacing
+differently.
+
+**A second, related gap this surfaced:** `dispatch-trigger.ts`'s own two
+failure branches — "story isn't dispatchable" and "workflow could not
+start" — sit entirely before `dispatchStoryWorkflow` is ever started, so
+the `moveStoryToTodo` activity added above never gets a chance to run for
+either one; PROJ-64 was left "In Progress" with only an error comment,
+exactly the gap the day's whole "never leave a developer waiting on a
+workflow" rule exists to close. Added a second, small `moveStoryToTodo`
+(`webhook-listener/src/move-story-to-todo.ts` — no shared lib between the
+two packages, so a second minimal implementation, not an import) called
+from both of `dispatch-trigger.ts`'s failure branches, excluding the
+benign `WorkflowExecutionAlreadyStartedError` case where a workflow really
+is already running and a status move would be wrong.
+
+PROJ-64 itself was moved back to Todo by hand, with the stale
+`specialist:waiting` label removed, once both fixes were verified —
+the running system doesn't self-heal a story stuck by a bug that predates
+the fix.
+
+## Outcome labels removed — a PR's existence is the outcome (2026-08-07)
+
+Direct question from the architect after the label-collision bug above: what is
+`specialist:waiting` actually *for*, given `dispatchStoryWorkflow` now
+treats every non-`"complete"` outcome identically (comment, move to
+To-Do)? Answer given: it was the specialist's own defense-in-depth check —
+independently verifying a blocking dependency actually landed in the epic
+branch's real code, not just that Linear's tracker said the blocker issue
+was Done. A real distinction from `blocked` (a structural problem needing a
+human decision) in principle, but zero difference in what the app actually
+*does* with it since `moveStoryToTodo` shipped. His answer: **"I want
+simple. Remove the labels completely. The comment is all the
+tracking/debugging we need."**
+
+Taken all the way, not just for `specialist:waiting`: `specialist:complete`
+and `specialist:blocked` are gone too. The insight that made this a clean
+removal rather than a workaround — `findPullRequest` already asks GitHub
+directly whether the specialist's PR exists, using the exact branch names
+the workflow already knew before ever dispatching the specialist. A PR's
+existence already *is* the ground truth of "did this run produce anything,"
+independent of any label. There was never a need to read a label and then
+verify it against GitHub separately; the GitHub read alone is sufficient
+and was already being made.
+
+**What changed:**
+- `find-pull-request.ts`: returns `PullRequestReference | null` instead of
+  throwing when nothing is found — no PR is now the ordinary "didn't finish
+  this run" case (for any reason), not a specialist-compliance gap to fail
+  the workflow over.
+- `read-specialist-outcome.ts` deleted outright, along with its label-map
+  (`resolveOutcomeFromLabels`) and the `SpecialistOutcome` type. Nothing
+  replaces it — `dispatchStoryWorkflow` calls `findPullRequest` right after
+  `awaitSpecialistTask` and branches on `null` vs. a real reference.
+  `DispatchStoryWorkflowResult.outcome` is now `"not-ready" | "no-pr" |
+  "complete"` — collapsing what used to be four label-derived values
+  (`waiting`/`blocked`/`unknown`, on top of `complete`) into one, since the
+  app never distinguished between them anyway once `moveStoryToTodo`
+  existed. The specialist's own comment remains the only record of *which*
+  one it was — exactly the architect's stated goal.
+- All four specialist agent definitions (`agents/specialist-{backend,
+  frontend,tests,e2e}.md`) had every "apply `specialist:complete`/
+  `:waiting`/`:blocked`" instruction removed. The three outcomes
+  (Complete/Waiting/Blocked) stay as comment-content categories — a human
+  or a future run still benefits from knowing which one it was — just with
+  no label attached. Tests/E2E were included even though they're still
+  human-dispatched, not app-dispatched: there was no reason for two of four
+  specialists to keep writing a label nothing downstream reads.
+- `skills/story-contract/story-contract.md` and its `SKILL.md` duplicate
+  (kept in sync by hand, not a symlink), `docs/development-tier-dispatch.md`
+  (the human-dispatch kickoff template and its outcome table), and both
+  READMEs updated to match.
+
+**What this closes, structurally, not just this one incident:** the label
+family that just caused the PROJ-64 collision (outcome labels sharing the
+`specialist:` prefix with the assignment label) no longer exists, so that
+whole bug class can't recur from a future dispatch. `parseSpecialistType`'s
+own defensive filtering (previous entry) stays regardless — cheap, and
+still guards against any stray label under the prefix — but nothing in the
+current design can create the specific collision that motivated it anymore.
+
+## Propagating LOG_LEVEL down to the specialist (2026-08-07)
+
+the architect asked whether `dispatch-worker`'s own `LOG_LEVEL` (docker-compose
+locally, whatever the ECS task definition sets in prod) could be reused
+when spinning up the specialist container, rather than the specialist
+needing a separate setting maintained in sync by hand. Checked before
+building: `specialist-sandbox`'s production task definition
+(`infrastructure/stacks/specialist-sandbox.ts`) never bakes `LOG_LEVEL` in
+at all today — only `NODE_ENV: "production"` plus the three secrets — so
+there was nothing to "reuse" yet in any environment; `webhook-listener`'s
+own task definition already does this correctly via cdktf context
+(`listener.log-level` → `LOG_LEVEL`, `infrastructure/stacks/listener.ts`),
+`specialist-sandbox` just never got the same treatment.
+
+Chose a per-dispatch `ecs:RunTask` container override over a second static
+bake in the task definition — `dispatch-specialist.ts` already builds
+container overrides from scratch on every call (`buildContainerOverrides`),
+and `WorkerConfig` already resolves this worker's own `LOG_LEVEL` once at
+startup (added `logLevel`, defaulting to `"info"` like every other logger
+in this codebase) — so threading it through there means the specialist's
+verbosity always tracks whatever `dispatch-worker` was actually configured
+with for that run, not a value that can drift out of sync with a
+separately-maintained infra setting. `LOG_LEVEL` sits outside
+`specialist-runner/src/dispatch-context.ts`'s own required-var contract —
+its own `logger.ts` reads it independently, same as every package's logger
+in this repo — so adding it as an override needed no change to that
+contract or its validation.
+
+## A merge, missed by a race, unwound a genuinely complete story (2026-08-07)
+
+the architect: "Something happened to PROJ-67. The PR was opened and I merged it. But
+the issue was moved back to To Do. And there's no PR merged comment."
+
+Checked the real data (Linear's own diff sync — `get_diff` on the PR URL —
+plus the story's state history) rather than guessing: PR #7 opened at
+18:15:57, merged at 18:16:38 — 41 seconds later. Linear's own GitHub
+integration reacted correctly and fast (In Progress → In Review at
+18:16:00, → Done at 18:16:38.770, tracking the PR's own open/merge events).
+Six seconds after that, at 18:16:44.918, the story was back in Todo — that
+gap is `dispatchStoryWorkflow`'s own `findPullRequest` call, running
+moments after `awaitSpecialistTask` noticed the container had stopped.
+
+Root cause: `find-pull-request.ts` queried GitHub with `state=open` only.
+the architect merged the PR faster than this activity's own check ran — by the time
+it asked, the PR was no longer "open," so the query found nothing.
+`dispatchStoryWorkflow` treated zero-results the same as "the specialist
+didn't finish this run" (waiting/blocked/crashed) and called
+`moveStoryToTodo` — which, by design, posts no comment of its own on this
+path (see the "Moving back to Todo" entry above), on the theory that the
+specialist's own comment already explains why. Here it didn't, because the
+specialist's comment said "Complete" with a valid PR link — the app's own
+check simply disagreed with reality by the time it looked. A genuinely
+finished story silently lost its Done status with nothing on the tracker
+explaining the reversal.
+
+**Fix:** `findPullRequest` now checks `open` first (unchanged, cheap,
+correct for the ordinary in-review window), and if nothing's open, checks
+the single *most recent* `closed` PR for the same head/base pair and trusts
+it only if `merged_at` is set. A merge is permanent, unambiguous truth once
+it happens, so there's no staleness risk in trusting it whenever found —
+the risk runs the other way, guarded against explicitly: only the most
+recent closed PR is ever consulted, so an old, unrelated closed-without-
+merging attempt can never shadow a genuine merge, and a *newer*
+closed-without-merging attempt correctly still reads as "no-pr" rather than
+resurrecting an older merge that isn't what just happened. `pickPullRequest`
+(open) and the new `pickMergedPullRequest` (closed) are both pure and
+tested directly; `listPullRequests` is the one shared IO wrapper, now
+explicitly `sort=created&direction=desc` so "most recent" doesn't depend on
+GitHub's own undocumented default ordering.
+
+PROJ-67 itself was moved back to Done by hand, with a comment explaining the
+reversal was a pipeline bug now fixed — same pattern as PROJ-64's manual
+recovery: the running system doesn't self-heal a story a bug already
+corrupted before the fix landed.
+
+## `tests` joins app-dispatch — the registration CLAUDE.md already anticipated (2026-08-07)
+
+the architect tried PROJ-69 (`specialist:tests`) and got the expected rejection:
+"specialist:tests is not a supported specialist type. Supported: backend,
+frontend." Correct behavior, not a bug — CLAUDE.md already documented
+Tests/E2E as deliberately still the human-in-Claude-Code model. His own
+read: "I guess we found the next steps." Asked which scope he wanted rather
+than assuming: wire up `tests` only (registration-scale, no new infra),
+both `tests` and `e2e` (e2e needs a real environment-stand-up build), or
+just dispatch PROJ-69 manually for now. He chose `tests` only.
+
+Confirmed before writing anything that "registration, not rearchitecture"
+(the framework's own prediction, from the original app-dispatch build) held
+up: `SpecialistType` is a plain string union with zero branching logic
+anywhere in `webhook-listener`, `dispatch-worker`, or `specialist-runner` —
+every activity, the workflow, and `resolveRepoBase`'s per-surface
+`Repo base — <surface>: ...` recording are already generic over whatever
+value it holds. Added `"tests"` to the type (and its `SUPPORTED_..._TYPES`
+array) in all three packages' own copies (no shared lib between them, this
+repo's standing pattern) — no other code changes needed for the mechanism
+itself.
+
+**One real latent bug found while touching `specialist-runner`'s own
+copy:** `dispatch-context.ts`'s `requireSpecialistType` validated with a
+literal `value === "backend" || value === "frontend"` check — a second,
+independent list from `SUPPORTED_SPECIALIST_TYPES` that the error message
+already read from. Adding `"tests"` to the array alone would have left the
+actual validation still rejecting it, contradicting the error message's own
+"Supported: backend, frontend, tests." Fixed to check membership in the one
+array instead of maintaining two lists that can drift.
+
+**A real scope boundary, stated rather than glossed over:** this only
+covers integration testing *within* one target repo — `workspace.ts` clones
+exactly one surface repo per dispatch, which is this engagement's actual
+shape (`frontend/` and `backend/` as folders in one `example-app` monorepo).
+A hypothetical engagement with backend and frontend as genuinely separate
+GitHub repos, needing both checked out to test the integration between
+them, is out of scope — that would need the workspace step to support more
+than one target repo, which it doesn't today. `specialist-runner/README.md`
+used to claim tests/e2e both "need GitHub Actions cross-repo checkout" as
+the blanket reason neither was built; that conflated two different things —
+the actual blocker for `tests` was never cross-repo checkout (this
+engagement never needed it), only that nothing had registered the type yet.
+
+Updated: `CLAUDE.md`'s Agent Roster and app-dispatch paragraph,
+`webhook-listener/README.md`'s "Not yet built" (also dropped its stale
+reviewer-of-record bullet — that shipped 2026-08-06, the bullet just never
+got removed), `specialist-runner/README.md`, and test coverage in all three
+packages for the new supported value and the fixed validation bug.
+
+## Decompose asks for every surface's repo base up front, not just the API map's (2026-08-07)
+
+PROJ-69's dispatch failed on a real but avoidable gap: `resolveRepoBase`
+correctly demanded a `Repo base — tests: ...` line (see the entry above),
+but nobody had ever recorded one. Checking why: Specification resolves
+repo bases from the API map's own surfaces — for this epic, "frontend
+only," decided before Decompose ever ran. Decompose is the one that
+actually assigns `specialist:tests`/`specialist:e2e` to individual stories,
+but that happens during `shaped`, after checkpoint approval, with no step
+anywhere that goes back and confirms those specialist types' own surfaces
+have a recorded repo base. The gap wasn't a wording problem in one kickoff
+question — it was structural: the agent that resolves repo bases runs
+*before* the agent that knows which specialist-type surfaces will exist.
+
+the architect's own framing, precisely: don't just say "tests" — there are many
+kinds, and the question (and every description of this specialist
+throughout the framework) should name the actual kind. `specialist-tests.md`
+already did this correctly (title: "Tests Specialist (Integration)"); several
+other places didn't — `CLAUDE.md`, `webhook-listener/README.md`,
+`specialist-runner/README.md`, and `docs/development-tier-dispatch.md` all
+had bare "tests" standing in for "integration tests" in prose (not in code
+identifiers or the `specialist:tests` label itself, which stay literal).
+Swept and corrected throughout — this is a "say `SpecialistOutcome`, not
+`Outcome`" class problem: a generic word overloads shorter than the concept
+it names, and every mention that doesn't specialize it is a small ongoing
+ambiguity tax on whoever reads it next.
+
+**Fix, in `decompose-agent.md`'s own readiness check (step 3):** added a new
+bullet alongside the existing "resolved API map present" check — before
+checkpointing, confirm a recorded repo base exists for every surface the
+draft decomposition will actually assign a specialist to, not just the
+surfaces the API map touched. Decompose already estimates story count (and
+therefore specialist assignments) before checkpointing per its existing
+size-band logic, so it has what it needs to run this check at the same
+point. A missing surface is treated exactly like any other readiness gap —
+`ask`, not `checkpoint` — naming every missing surface together in one
+question, in the exact `Repo base — <surface>: <host>/<org>/<repo>/<ref>`
+format so branch is never left implicit, and explicit that a shared
+repo/branch with another surface must be *stated*, never assumed from a
+monorepo being the common case.
+
+**A second, unrelated straggler found while reading this file closely:**
+`decompose-agent.md`'s own `shaped` write-sequence still said the
+`specialist:<type>` label prefix matched "the outcome labels' own
+`specialist:*` vocabulary" — a leftover from the outcome-label removal
+earlier this session (2026-08-07, "Outcome labels removed") that the
+grep sweep at the time missed, since it didn't contain any of the literal
+label strings being searched for. Removed.
+
+PROJ-58 was not corrected in this pass — the actual `Repo base — tests: ...`
+line still needs to be recorded there before PROJ-69 can retry; that's a
+separate, explicit decision pending confirmation, not something this
+process fix does automatically for an epic that already exists.
+
+### Integration tests are not symmetric with unit tests — the taxonomy needed a real fix, not just precision (2026-08-07)
+
+the architect caught a gap the terminology sweep above didn't touch, working from PROJ-58/69: integration
+tests are a **backend-only** concern, not something every epic gets a story
+for. Frontend work carries unit tests only — there is nothing on the frontend
+side that "integration testing" verifies the way it does on the backend
+(routes, handlers, the data layer, cross-story data flow). A frontend-only
+epic (no backend touchpoint in its resolved API map) should never be assigned
+a `specialist:tests` story; it goes straight from unit-tested implementation
+stories to E2E, if the epic warrants E2E at all.
+
+There is also a real ordering rule, not just a taxonomy label: unit tests run
+continuously, at leisure, with no dependency on anything else in the epic.
+Integration tests are a phase that starts only once **all** of the epic's
+backend stories have merged — not once the one or two stories nearest a given
+seam have merged. E2E is the final phase, gated on **everything** in the epic
+being merged: every backend and frontend story, and every integration-test
+story too.
+
+**Fix, in `decompose-agent.md`'s "Test taxonomy" section (under the partition
+rules):** rewrote it to state the backend-only condition explicitly, and to
+require that an integration-test story's "Blocking dependencies" section name
+every backend story in the epic (not just the seam it targets), and that the
+E2E story's section name every implementation and integration-test story in
+the epic. The existing readiness-check bullet from the entry above (repo base
+recorded per assigned surface) already conditions correctly on "if any story
+will carry `specialist:tests`" — no change needed there, since this fix is
+what governs whether Decompose ever reaches that condition for a given epic.
+
+No code changed — this is agent-definition judgment, the same invariant-layer
+material `decompose-agent.md` already carries directly rather than through a
+forked skill.
+
+**The live epic that surfaced it, PROJ-58, had already made exactly this
+mistake.** the architect's report — "There is only frontend change. I don't have
+integration test location to share" — was the tell: checked PROJ-58 directly
+and confirmed all six of its implementation stories (PROJ-63–68) are
+`specialist:frontend`, with no backend touchpoint anywhere in the epic (its
+own scope boundary explicitly excludes backend auth work). Decompose had
+still created PROJ-69, a `specialist:tests` story, before this fix existed —
+exactly the assignment the corrected taxonomy now rules out. There was
+never going to be a "Repo base — tests: ..." to record on PROJ-58, because
+this epic was never a candidate for one.
+
+**Resolution:** PROJ-69's specific scenarios (least-privilege/empty-visible-set
+across nav + guard + permission model at once, and the Receiving Associate
+storewide case) were real, worth-keeping coverage — just miscategorized. They
+were folded into PROJ-70, the epic's existing `specialist:e2e` story, as
+additional requirements/acceptance-criteria/scenarios (PROJ-70 already
+exercises the same three surfaces via full sign-in flows per tier, so the
+consistency check now runs there instead of needing a repo of its own).
+PROJ-69 was then canceled (not deleted) with a comment explaining why and
+pointing to PROJ-70. This is a live-dispatch data fix on top of the process
+fix above — the corrected `decompose-agent.md` prevents a *future* epic from
+repeating this, it does not retroactively repair one already decomposed
+before the fix landed.
+
+### E2E execution moves from the story's own PR to the epic→BRD PR; the specialist stops self-verifying (2026-08-07)
+
+the architect set up PROJ-58's actual `e2e/` project (a real Playwright project with a
+`CONVENTIONS.md`, scaffolded directly onto the epic branch — see the entry
+above) and then asked the operational question this revealed: why can't he
+just move PROJ-70 to In Progress and get tests written? Two answers, one old
+and one that needed revisiting.
+
+**Old answer, still true:** E2E isn't app-dispatched. `webhook-listener`'s
+`specialist-dispatch` lane only recognizes `backend`/`frontend`/`tests`;
+moving PROJ-70 to In Progress today fails fast and bounces back to To-Do via
+`moveStoryToTodo`, exactly as designed. E2E stays on the human-in-Claude-Code
+model until the epic-branch environment stand-up gets built.
+
+**The part that needed revisiting: what "environment stand-up" actually means
+was already decided, back in the automated-dispatch design session, and
+`specialist-e2e.md` contradicted it.** That session recorded: *"Integration
+and E2E run in GitHub Actions, not a new AWS service — Fargate cannot run the
+team's docker-compose stack... The dedicated integration-test story's PR and
+the E2E story's PR are what trigger this stage."* `specialist-e2e.md`'s own
+hand-back criteria never caught up to that — it still told the specialist to
+"run the E2E tests against an environment stood up from the epic branch and
+confirm they pass" before handing back, i.e. it assumed the specialist itself
+stands up the full stack. That's precisely what Fargate (and by extension any
+constrained sandbox) was already established not to be trusted for; keeping
+the requirement made the agent definition ask for something the design had
+already ruled out elsewhere.
+
+**Two decisions, made explicit and applied to `specialist-e2e.md`:**
+
+1. **Trigger point changed:** not the E2E story's own PR into the epic
+   branch (the original wording), but **the epic's PR into the BRD branch**,
+   once every story under the epic — implementation, integration, and E2E —
+   has already merged into the epic branch on code review alone. Rationale:
+   the expensive docker-compose run only needs to happen once per epic, at
+   the point that actually gates promotion, rather than potentially
+   repeatedly against an E2E story's PR while it's still being iterated on.
+2. **The specialist no longer self-verifies.** It writes tests, does a
+   careful self-review (does each assertion actually check the criterion it
+   claims to, not something adjacent), and hands back without needing to
+   stand up or run anything. Standing up the app locally while writing is
+   still fine and worth reporting if done, but it's a sanity check now, never
+   a blocker and never a reason to report `blocked`. CI is the actual
+   pass/fail gate; a failure discovered there routes to whoever is reviewing
+   the epic's PR into the BRD branch, not back through this specialist.
+
+**Still not built anywhere:** the GitHub Actions workflow and docker-compose
+file this whole design depends on. Checked `example-app` directly — it has
+only `backend.yml`/`frontend.yml` (basic per-surface lint/type-check/test),
+no docker-compose file, no integration/e2e workflow. This was explicitly
+deferred when `specialist-runner`/`dispatch-worker` were built ("tests/e2e
+need the GitHub Actions cross-repo checkout this session already deferred")
+and remains deferred — today's fix corrects the agent definition to match the
+decided design, it does not build the missing CI infrastructure.
+
+`CLAUDE.md`'s Agent Roster and the app-dispatch paragraph below it were
+updated to match; `agents/specialist-e2e.md` had its "Where you run",
+"Verify", hand-back, and hard-rules sections all reworked so no path through
+the document still tells the specialist to run its own suite.
+
+### `e2e` joins app-dispatch — the last barrier was self-verification, not mechanics (2026-08-07)
+
+the architect's next question, after the fix above: "I don't want you to run anything
+here. That defeats the purpose of this testing... Do we need to work through
+creating specialist:e2e?" Right instinct — a human standing in for the
+specialist mid-session (or worse, the same session that just fixed the agent
+definition also grading its own homework by running it) tells you nothing
+about whether the *pipeline* works. The only way this test means anything is
+if moving PROJ-70 to In Progress dispatches a real Agent SDK session against a
+real sandbox, same as backend/frontend/tests already do.
+
+Checked every dispatch touchpoint before assuming this was "just like
+`tests`," rather than repeating the earlier registration by pattern-match
+alone:
+
+- `check-dependencies.ts` — reads whatever's in "Blocking dependencies,"
+  zero type awareness.
+- `create-story-branch.ts` — cuts the story branch from the epic branch's
+  current SHA via the GitHub API, zero type awareness.
+- `resolve-repo-base.ts` — parses `Repo base — <surface>: ...` for whatever
+  surface string it's given; already proven working for `e2e` (used to
+  record PROJ-58's line, two entries up).
+- `workspace.ts` — clones exactly one target repo, zero type awareness.
+- `specialistFile` is built as `` `specialist-${specialistType}.md` `` —
+  `specialist-e2e.md` resolves with no separate mapping.
+
+All of it was already generic. The only reason `e2e` couldn't register
+alongside `tests` earlier the same day was `specialist-e2e.md` itself
+requiring a live environment and self-verification — once that was gone (the
+entry above), there was no remaining mechanical difference between `e2e` and
+`tests` at all. Registered exactly the same way:
+
+- `SpecialistType`/`SUPPORTED_SPECIALIST_TYPES` widened to include `"e2e"`
+  in the three touchpoint files (`webhook-listener/src/story-context.ts`,
+  `dispatch-worker/src/activities/types.ts`,
+  `specialist-runner/src/dispatch-context.ts`).
+- `SPECIALIST_NAMES` in `specialist-runner/src/prompt.ts` gained
+  `e2e: "E2E"` — the exact class of bug caught last time (`tests` missing
+  from this same record was a real compile error), avoided this time by
+  checking the file directly rather than assuming the pattern held.
+- Two stale "e2e specialists are a tracked follow-up, not dispatched here"
+  messages, sitting right next to the arrays they were about to contradict,
+  removed.
+- `buildUserMessage`'s generic "implement, run the tests, open the PR..."
+  line no longer holds for e2e (which self-reviews rather than runs) —
+  softened to "do the story's work, open the PR..." rather than adding a
+  type-specific branch for one word.
+- Test coverage added in all three packages mirroring `tests`'s own
+  additions: a positive extraction/resolution test for `e2e`, and the
+  existing "rejects an unsupported type" tests repointed at a genuinely
+  unsupported value (`design`) since `e2e` no longer is one.
+
+**What this does and doesn't unlock.** Moving PROJ-70 to In Progress now
+dispatches a real `specialist-e2e.md` run through the same Temporal
+workflow, ECS task, and Agent SDK session as any other story — no manual
+branch-cutting, no human (or this session) standing in as the specialist.
+What it still doesn't do is *execute* the resulting suite — that's the
+GitHub Actions piece two entries up, confirmed still unbuilt in
+`example-app`. Verified: typecheck and test:unit clean across all three
+packages (92 webhook-listener, 77 dispatch-worker, 24 specialist-runner
+tests) before this entry was written, not assumed after.
+
+### First real E2E dispatch: the self-verify fix held up, and a real image gap (2026-08-07)
+
+PROJ-70 actually ran through app-dispatch — the real validation this whole
+sandbox exercise exists to produce, not another simulated pass. Two things
+came back from it worth recording.
+
+**The self-verify fix worked exactly as designed.** The specialist tried to
+sanity-check its own spec locally — `specialist-e2e.md` explicitly allows
+this ("if you can stand up and exercise the app locally as you write, do")
+— and hit a real wall: `chromium`/`chromium-headless-shell` both failed to
+launch with "error while loading shared libraries" (`libglib-2.0.so.0`,
+plus `nss`/`atk`/`X11`), and the sandbox has no root access to fix it
+(`apt-get install` returns permission denied even in elevated tool mode).
+Rather than getting stuck or reporting `blocked`, it fell back to Angular's
+`TestBed`/`RouterTestingHarness` — exercising the real router, guards, and
+services, no mocks of the code under test — and proceeded to hand back.
+This is precisely the behavior the fix earlier this session was written to
+produce: a missing live environment is informational, never a blocker. The
+specialist also correctly reasoned that a real GitHub Actions runner would
+likely fare better here (matching the decided design two entries up), while
+being explicit that this doesn't change the underlying defect in this
+sandbox.
+
+**The underlying defect was real and worth fixing anyway.** Even though CI
+is the actual verification gate, letting the specialist's own sandbox run
+Playwright too is a genuine, designed-for sanity check — and it was
+silently impossible. Root-caused: `specialist-runner/Dockerfile` never
+installed Chromium's OS-level shared libraries, and the runtime user
+(`USER node`) has no install permission by design (same reasoning as every
+other `node`-not-`root` runtime choice in this project). Fixed by adding
+`npx playwright@latest install-deps chromium` to the build stage, while
+still root, before the `USER node` switch — deliberately not baking in the
+browser *binary* itself, which stays downloaded fresh per run so its
+version always matches whatever `@playwright/test` version the actual
+target repo's `e2e/` project pins, rather than whatever was current when
+this image was built. Verified for real: built the image, then — as the
+non-root `node` user, matching actual runtime conditions — installed and
+launched `chromium-headless-shell` against a `data:` URL. It launched
+cleanly; before the fix, the identical sequence crashed immediately with
+the shared-library error. Not claimed without running it.
+
+**A real ambiguity, resolved and flagged:** the specialist's report says
+"per `e2e/CONVENTIONS.md`, `.github/workflows/e2e.yml` already installs
+Chromium there" — repeating what the conventions doc's own "CI" section
+states as fact. Checked directly: `.github/workflows/e2e.yml` does not
+exist on the epic branch. Only `backend.yml`/`frontend.yml` do (confirmed
+identically several entries up, still true). `e2e/CONVENTIONS.md` describes
+this workflow in present tense ("`.github/workflows/e2e.yml` runs on every
+push to `main`...") as if it's already built and running, when it isn't —
+the same still-deferred GitHub Actions piece named throughout this session.
+The specialist took the doc at its word rather than verifying the file
+exists, which is defensible (`specialist-e2e.md` tells it to trust an
+architect-owned conventions doc as authoritative) but means this specific
+claim in its hand-back is inaccurate. Not fixed in this pass — flagged for
+the architect to either correct the conventions doc's tense (describe the workflow
+as planned, not running) or actually build it, since both the doc and the
+underlying CI piece point at the same gap.
