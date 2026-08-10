@@ -211,11 +211,17 @@ decomposition time:
   (There is no outcome label — removed 2026-08-07; the specialist's own comment
   is the only record of what happened on a run.)
 - `size` — small, medium, or large: relative effort within this epic. A story
-  dramatically larger than its siblings fails the decomposition size band
-  even when the count passes.
+  dramatically larger than its siblings fails the decomposition size band even
+  when the count passes. Also feeds the specialist's turn budget mechanically
+  now — see `tier`, below.
 - `tier` — small, mid, or large: which execution tier (model class) runs the
   specialist for this story. This is cost control applied per story — routine
   stories run on cheaper tiers; stories with architectural surface run on
-  stronger ones. Specialists are dispatched by a developer, not routed by the
-  app, so today this label informs a human's model choice rather than driving
-  automated routing.
+  stronger ones. Model-class selection itself is not yet automated from it, so
+  the tier still only informs that choice today — but dispatch is app-driven
+  (`webhook-listener`'s specialist-dispatch lane), and `tier` and `size`
+  together already size the specialist's turn budget mechanically
+  (`dispatch-trigger.ts`'s `resolveMaxTurns`): each independently multiplies a
+  base turn count, since the two are genuinely different axes — tier is
+  architectural weight, size is volume of work, and a story can be light on
+  one and heavy on the other.

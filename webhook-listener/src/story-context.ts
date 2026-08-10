@@ -36,12 +36,64 @@ export type Surface = string;
 
 const SURFACE_LABEL_PREFIX = "surface:";
 
+// story-contract.md: "tier — small, mid, or large: which execution tier
+// (model class) runs the specialist for this story." A fixed enum, unlike
+// Surface — the three values are framework vocabulary, not engagement-
+// specific.
+export type Tier = "small" | "mid" | "large";
+
+const TIER_LABEL_PREFIX = "tier:";
+const KNOWN_TIERS: readonly Tier[] = ["small", "mid", "large"];
+
+// story-contract.md: "size — small, medium, or large: relative effort within
+// this epic." A different axis from Tier: tier is architectural weight (which
+// model class runs it), size is volume of work. Confirmed live (2026-08-10,
+// PROJ-84) that a story can be `tier:small` and still `size:medium` — the two
+// don't move together, which is exactly why dispatch-trigger.ts's turn budget
+// takes the larger of what each one implies rather than trusting tier alone.
+export type Size = "small" | "medium" | "large";
+
+const SIZE_LABEL_PREFIX = "size:";
+const KNOWN_SIZES: readonly Size[] = ["small", "medium", "large"];
+
 export interface StoryDispatchContext {
   readonly storyId: string;
   readonly storyBranch: string;
   readonly surfaces: Surface[];
+  /** Null when the story carries no recognized `tier:<value>` label — dispatch-trigger.ts falls back to a default turn budget rather than blocking on it. */
+  readonly tier: Tier | null;
+  /** Null when the story carries no recognized `size:<value>` label — same fallback posture as tier. */
+  readonly size: Size | null;
   readonly epicId: string;
   readonly epicBranch: string;
+}
+
+/**
+ * Extracts the story's `tier:<value>` label, if it carries a recognized one.
+ * Unlike `parseSurfaces`, a missing or unrecognized tier is not a dispatch
+ * blocker — tier only sizes the specialist's turn budget (see
+ * dispatch-trigger.ts's TIER_MAX_TURNS), and a story that's merely missing
+ * this label is still real, dispatchable work. Returns the first recognized
+ * `tier:*` label found, ignoring any that aren't one of the three known
+ * values rather than treating a typo as fatal.
+ */
+export function parseTier(labels: string[]): Tier | null {
+  for (const name of labels) {
+    if (!name.startsWith(TIER_LABEL_PREFIX)) continue;
+    const value = name.slice(TIER_LABEL_PREFIX.length);
+    if (KNOWN_TIERS.includes(value as Tier)) return value as Tier;
+  }
+  return null;
+}
+
+/** Same shape and same non-blocking posture as `parseTier`, for the `size:<value>` label. */
+export function parseSize(labels: string[]): Size | null {
+  for (const name of labels) {
+    if (!name.startsWith(SIZE_LABEL_PREFIX)) continue;
+    const value = name.slice(SIZE_LABEL_PREFIX.length);
+    if (KNOWN_SIZES.includes(value as Size)) return value as Size;
+  }
+  return null;
 }
 
 export type StoryContextResult =
@@ -141,10 +193,12 @@ export async function fetchStoryDispatchContext(
   if ("reason" in surfacesResult) {
     return { ok: false, reason: surfacesResult.reason };
   }
+  const tier = parseTier(labelNames);
+  const size = parseSize(labelNames);
 
   reqLog.trace(
-    `story ${storyId}: surfaces=${surfacesResult.surfaces.join(",")} epicId=${issue.parent.id} ` +
-      `storyBranch=${issue.branchName} epicBranch=${issue.parent.branchName}`,
+    `story ${storyId}: surfaces=${surfacesResult.surfaces.join(",")} tier=${tier ?? "(none)"} size=${size ?? "(none)"} ` +
+      `epicId=${issue.parent.id} storyBranch=${issue.branchName} epicBranch=${issue.parent.branchName}`,
   );
 
   return {
@@ -153,6 +207,8 @@ export async function fetchStoryDispatchContext(
       storyId: issue.id,
       storyBranch: issue.branchName,
       surfaces: surfacesResult.surfaces,
+      tier: tier,
+      size: size,
       epicId: issue.parent.id,
       epicBranch: issue.parent.branchName,
     },

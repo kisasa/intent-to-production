@@ -20,7 +20,7 @@ vi.mock("@temporalio/client", () => ({
   WorkflowExecutionAlreadyStartedError: FakeAlreadyStartedError,
 }));
 
-const { createDispatchTrigger } = await import("./dispatch-trigger.js");
+const { createDispatchTrigger, resolveMaxTurns } = await import("./dispatch-trigger.js");
 
 const MOVER = { id: "00000000-0000-4000-8000-000000000001", name: "Example User", email: "user@example.com" };
 
@@ -30,6 +30,8 @@ const WELL_FORMED_CONTEXT = {
     storyId: "story-1",
     storyBranch: "story/story-1",
     surfaces: ["backend"],
+    tier: null,
+    size: null,
     epicId: "epic-1",
     epicBranch: "epic/epic-1",
   },
@@ -81,6 +83,70 @@ describe("createDispatchTrigger", () => {
     });
     expect(postErrorComment).not.toHaveBeenCalled();
     expect(moveStoryToTodo).not.toHaveBeenCalled();
+  });
+
+  it("sizes maxTurns from the story's tier label alone", async () => {
+    fetchStoryDispatchContext.mockResolvedValue({
+      ok: true,
+      context: { ...WELL_FORMED_CONTEXT.context, tier: "mid" },
+    });
+    const { config, start } = makeConfig(() => ({ workflowId: "dispatch-story-1" }));
+    const trigger = createDispatchTrigger(config);
+
+    await trigger("story-1", "first", "Add refund data model", "trace-1", MOVER);
+
+    expect(start).toHaveBeenCalledWith(
+      "dispatchStoryWorkflow",
+      expect.objectContaining({ args: [expect.objectContaining({ maxTurns: 160 })] }),
+    );
+  });
+
+  it("gives a large-tier story the biggest single-axis turn budget", async () => {
+    fetchStoryDispatchContext.mockResolvedValue({
+      ok: true,
+      context: { ...WELL_FORMED_CONTEXT.context, tier: "large" },
+    });
+    const { config, start } = makeConfig(() => ({ workflowId: "dispatch-story-1" }));
+    const trigger = createDispatchTrigger(config);
+
+    await trigger("story-1", "first", "Add refund data model", "trace-1", MOVER);
+
+    expect(start).toHaveBeenCalledWith(
+      "dispatchStoryWorkflow",
+      expect.objectContaining({ args: [expect.objectContaining({ maxTurns: 320 })] }),
+    );
+  });
+
+  it("compounds tier and size multipliers together (the real PROJ-84 shape)", async () => {
+    fetchStoryDispatchContext.mockResolvedValue({
+      ok: true,
+      context: { ...WELL_FORMED_CONTEXT.context, tier: "small", size: "medium" },
+    });
+    const { config, start } = makeConfig(() => ({ workflowId: "dispatch-story-1" }));
+    const trigger = createDispatchTrigger(config);
+
+    await trigger("story-1", "first", "Add refund data model", "trace-1", MOVER);
+
+    expect(start).toHaveBeenCalledWith(
+      "dispatchStoryWorkflow",
+      expect.objectContaining({ args: [expect.objectContaining({ maxTurns: 160 })] }),
+    );
+  });
+
+  it("an explicit config.maxTurns override wins over the tier/size lookup", async () => {
+    fetchStoryDispatchContext.mockResolvedValue({
+      ok: true,
+      context: { ...WELL_FORMED_CONTEXT.context, tier: "large" },
+    });
+    const { config, start } = makeConfig(() => ({ workflowId: "dispatch-story-1" }));
+    const trigger = createDispatchTrigger({ ...config, maxTurns: 5 });
+
+    await trigger("story-1", "first", "Add refund data model", "trace-1", MOVER);
+
+    expect(start).toHaveBeenCalledWith(
+      "dispatchStoryWorkflow",
+      expect.objectContaining({ args: [expect.objectContaining({ maxTurns: 5 })] }),
+    );
   });
 
   it("uses a fallback title when entityTitle is null", async () => {
@@ -137,5 +203,29 @@ describe("createDispatchTrigger", () => {
 
     expect(postErrorComment).toHaveBeenCalledWith("story-1", "issue", "trace-1", "Dispatch could not start: connection refused");
     expect(moveStoryToTodo).toHaveBeenCalledWith("story-1", "test-api-key", "https://api.linear.app/graphql", "trace-1");
+  });
+});
+
+describe("resolveMaxTurns", () => {
+  it("lands on the base 80 when neither label is recognized", () => {
+    expect(resolveMaxTurns(null, null)).toBe(80);
+  });
+
+  it("applies the tier multiplier alone when size is unrecognized", () => {
+    expect(resolveMaxTurns("mid", null)).toBe(160);
+    expect(resolveMaxTurns("large", null)).toBe(320);
+  });
+
+  it("applies the size multiplier alone when tier is unrecognized", () => {
+    expect(resolveMaxTurns(null, "medium")).toBe(160);
+    expect(resolveMaxTurns(null, "large")).toBe(320);
+  });
+
+  it("compounds both multipliers — the real PROJ-84 shape: tier:small × size:medium", () => {
+    expect(resolveMaxTurns("small", "medium")).toBe(160);
+  });
+
+  it("compounds to the largest budget when both axes are elevated", () => {
+    expect(resolveMaxTurns("large", "large")).toBe(1280);
   });
 });

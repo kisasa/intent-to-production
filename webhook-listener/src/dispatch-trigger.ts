@@ -28,7 +28,7 @@ import type { Client } from "@temporalio/client";
 import { createLogger } from "./logger.js";
 import type { AgentFn, TrackerActor } from "./tracker-event.js";
 import { moveStoryToTodo } from "./move-story-to-todo.js";
-import { fetchStoryDispatchContext, type Surface } from "./story-context.js";
+import { fetchStoryDispatchContext, type Surface, type Tier, type Size } from "./story-context.js";
 import trackerNotifier from "./tracker-notifier.js";
 
 const log = createLogger("dispatch-trigger");
@@ -40,11 +40,58 @@ const log = createLogger("dispatch-trigger");
 // imported, from dispatch-worker/src/workflows/dispatch-story-workflow.ts.
 const WORKFLOW_TYPE = "dispatchStoryWorkflow";
 
-// No existing mapping from the `tier` label to a turn count — story-contract.md
-// is explicit that `tier` today only "informs a human's model choice," nothing
-// mechanical. A fixed default, tunable here alongside activation-config.ts's
-// own constants, until a real mapping is designed.
-const DEFAULT_MAX_TURNS = 80;
+/**
+ * Sizes the specialist's turn budget from two labels, not one flat number.
+ * Replaces the old flat `DEFAULT_MAX_TURNS = 80` applied to every dispatch
+ * regardless of scope — confirmed live (2026-08-10, PROJ-84) that a single
+ * flat number doesn't fit every story: an e2e story enumerating several flow
+ * scenarios plus a cross-surface consistency check hit the 80-turn ceiling
+ * and got bounced back to To-Do.
+ *
+ * A tier-only lookup was the first cut, then PROJ-84 itself disproved it: the
+ * story was `tier:small` (per story-contract.md, tier is "which execution
+ * tier — model class — runs the specialist," i.e. architectural weight) but
+ * `size:medium` ("relative effort within this epic," i.e. volume of work) —
+ * the two axes measure different things and don't move together.
+ *
+ * BASE_MAX_TURNS is the floor a story with neither label (or an unrecognized
+ * value on both) gets — same number the old flat default used, not a new
+ * number pulled from nowhere. Each label independently multiplies that floor;
+ * a story elevated on both axes compounds rather than being capped at
+ * whichever axis is worse, since tier and size are read as genuinely
+ * independent cost signals, not two votes on one "difficulty" score. PROJ-84
+ * (`tier:small` × `size:medium` → 1 × 2) would have gotten 160 turns instead
+ * of 80. Not a claim these specific multipliers are correct forever — a
+ * story that still runs out at its combined budget is real information (the
+ * work needs more room, or Decompose under-labeled it on one or both axes),
+ * not a bug in this table.
+ */
+const BASE_MAX_TURNS = 80;
+
+const TIER_MULTIPLIER: Record<Tier, number> = {
+  small: 1,
+  mid: 2,
+  large: 4,
+};
+
+const SIZE_MULTIPLIER: Record<Size, number> = {
+  small: 1,
+  medium: 2,
+  large: 4,
+};
+
+/**
+ * Exported for direct testing, same reason parseSurfaces/parseTier/parseSize
+ * are pure functions in story-context.ts rather than inlined: it's the actual
+ * decision, not IO. A missing or unrecognized label contributes a neutral 1×
+ * rather than blocking the calculation, so a story with neither label lands
+ * exactly on BASE_MAX_TURNS.
+ */
+export function resolveMaxTurns(tier: Tier | null, size: Size | null): number {
+  const tierMultiplier = tier ? TIER_MULTIPLIER[tier] : 1;
+  const sizeMultiplier = size ? SIZE_MULTIPLIER[size] : 1;
+  return BASE_MAX_TURNS * tierMultiplier * sizeMultiplier;
+}
 
 interface DispatchStoryWorkflowInput {
   readonly storyId: string;
@@ -94,6 +141,10 @@ export function createDispatchTrigger(config: DispatchTriggerConfig): AgentFn {
       return;
     }
 
+    const { tier, size } = contextResult.context;
+    const maxTurns = config.maxTurns ?? resolveMaxTurns(tier, size);
+    reqLog.trace(`specialist-dispatch: story ${entityId} tier=${tier ?? "(none)"} size=${size ?? "(none)"} maxTurns=${maxTurns}`);
+
     const input: DispatchStoryWorkflowInput = {
       storyId: contextResult.context.storyId,
       storyTitle: entityTitle ?? "(untitled)",
@@ -101,7 +152,7 @@ export function createDispatchTrigger(config: DispatchTriggerConfig): AgentFn {
       surfaces: contextResult.context.surfaces,
       storyBranch: contextResult.context.storyBranch,
       epicBranch: contextResult.context.epicBranch,
-      maxTurns: config.maxTurns ?? DEFAULT_MAX_TURNS,
+      maxTurns: maxTurns,
       mover: actor,
     };
 

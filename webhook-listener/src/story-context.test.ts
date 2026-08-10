@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { fetchStoryDispatchContext, parseSurfaces } from "./story-context.js";
+import { fetchStoryDispatchContext, parseSurfaces, parseTier, parseSize } from "./story-context.js";
 
 const API_KEY = "test-api-key";
 const BASE_URL = "https://api.linear.app/graphql";
@@ -43,12 +43,52 @@ describe("parseSurfaces", () => {
   });
 });
 
+describe("parseTier", () => {
+  it("extracts a recognized tier", () => {
+    expect(parseTier(["surface:backend", "tier:mid"])).toBe("mid");
+  });
+
+  it("recognizes each of the three known tiers", () => {
+    expect(parseTier(["tier:small"])).toBe("small");
+    expect(parseTier(["tier:mid"])).toBe("mid");
+    expect(parseTier(["tier:large"])).toBe("large");
+  });
+
+  it("returns null when no tier:* label is present", () => {
+    expect(parseTier(["surface:backend", "size:medium"])).toBeNull();
+  });
+
+  it("returns null for an unrecognized tier value rather than treating it as fatal", () => {
+    expect(parseTier(["tier:huge"])).toBeNull();
+  });
+});
+
+describe("parseSize", () => {
+  it("extracts a recognized size", () => {
+    expect(parseSize(["surface:backend", "size:medium"])).toBe("medium");
+  });
+
+  it("recognizes each of the three known sizes", () => {
+    expect(parseSize(["size:small"])).toBe("small");
+    expect(parseSize(["size:medium"])).toBe("medium");
+    expect(parseSize(["size:large"])).toBe("large");
+  });
+
+  it("returns null when no size:* label is present", () => {
+    expect(parseSize(["surface:backend", "tier:small"])).toBeNull();
+  });
+
+  it("returns null for an unrecognized size value rather than treating it as fatal", () => {
+    expect(parseSize(["size:huge"])).toBeNull();
+  });
+});
+
 describe("fetchStoryDispatchContext", () => {
   it("builds a full dispatch context from a well-formed story", async () => {
     stubIssueQuery({
       id: "story-1",
       branchName: "story/story-1-add-refund-model",
-      labels: { nodes: [{ name: "surface:backend" }, { name: "size:medium" }] },
+      labels: { nodes: [{ name: "surface:backend" }, { name: "size:medium" }, { name: "tier:mid" }] },
       parent: { id: "epic-1", branchName: "epic/epic-1-refunds" },
     });
 
@@ -60,6 +100,32 @@ describe("fetchStoryDispatchContext", () => {
         storyId: "story-1",
         storyBranch: "story/story-1-add-refund-model",
         surfaces: ["backend"],
+        tier: "mid",
+        size: "medium",
+        epicId: "epic-1",
+        epicBranch: "epic/epic-1-refunds",
+      },
+    });
+  });
+
+  it("carries a null tier and size through when the story has neither recognized label", async () => {
+    stubIssueQuery({
+      id: "story-1",
+      branchName: "story/story-1-add-refund-model",
+      labels: { nodes: [{ name: "surface:backend" }] },
+      parent: { id: "epic-1", branchName: "epic/epic-1-refunds" },
+    });
+
+    const result = await fetchStoryDispatchContext("story-1", API_KEY, BASE_URL, TRACE_ID);
+
+    expect(result).toEqual({
+      ok: true,
+      context: {
+        storyId: "story-1",
+        storyBranch: "story/story-1-add-refund-model",
+        surfaces: ["backend"],
+        tier: null,
+        size: null,
         epicId: "epic-1",
         epicBranch: "epic/epic-1-refunds",
       },
@@ -82,6 +148,8 @@ describe("fetchStoryDispatchContext", () => {
         storyId: "story-1",
         storyBranch: "story/story-1-refund-flow",
         surfaces: ["web", "e2e"],
+        tier: null,
+        size: null,
         epicId: "epic-1",
         epicBranch: "epic/epic-1-refunds",
       },
