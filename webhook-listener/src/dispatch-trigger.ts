@@ -28,7 +28,7 @@ import type { Client } from "@temporalio/client";
 import { createLogger } from "./logger.js";
 import type { AgentFn, TrackerActor } from "./tracker-event.js";
 import { moveStoryToTodo } from "./move-story-to-todo.js";
-import { fetchStoryDispatchContext, type SpecialistType } from "./story-context.js";
+import { fetchStoryDispatchContext, type Surface } from "./story-context.js";
 import trackerNotifier from "./tracker-notifier.js";
 
 const log = createLogger("dispatch-trigger");
@@ -50,7 +50,7 @@ interface DispatchStoryWorkflowInput {
   readonly storyId: string;
   readonly storyTitle: string;
   readonly epicId: string;
-  readonly specialistType: SpecialistType;
+  readonly surfaces: Surface[];
   readonly storyBranch: string;
   readonly epicBranch: string;
   readonly maxTurns: number;
@@ -98,7 +98,7 @@ export function createDispatchTrigger(config: DispatchTriggerConfig): AgentFn {
       storyId: contextResult.context.storyId,
       storyTitle: entityTitle ?? "(untitled)",
       epicId: contextResult.context.epicId,
-      specialistType: contextResult.context.specialistType,
+      surfaces: contextResult.context.surfaces,
       storyBranch: contextResult.context.storyBranch,
       epicBranch: contextResult.context.epicBranch,
       maxTurns: config.maxTurns ?? DEFAULT_MAX_TURNS,

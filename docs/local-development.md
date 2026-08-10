@@ -83,7 +83,7 @@ VPC/subnet/security-group, not `infrastructure/`'s real `network` stack.
 
 ## Triggering and watching a dispatch
 
-Move a story with a `specialist:backend`/`specialist:frontend` label to
+Move a story with a `surface:backend`/`surface:frontend` label to
 `In-Process` in your Linear sandbox. Watch it happen:
 
 - **Temporal UI** — `http://localhost:8080` — the workflow execution,

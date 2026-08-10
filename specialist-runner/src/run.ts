@@ -29,7 +29,7 @@ async function main(): Promise<void> {
   const claudeConfig = loadClaudeConfig();
   const runId = randomUUID();
   const runLog = log.child(`${context.storyId}:${runId.slice(0, 8)}`);
-  runLog.info(`starting ${context.specialistType} specialist run for ${context.storyId} — "${context.storyTitle}"`);
+  runLog.info(`starting specialist run (surface(s): ${context.surfaces.join(", ")}) for ${context.storyId} — "${context.storyTitle}"`);
 
   const { frameworkPath, surfaceRepoPath } = await prepareWorkspace(
     join(WORKSPACE_ROOT, runId),

@@ -21,7 +21,7 @@ const baseInput = {
   storyId: "PROJ-101",
   storyTitle: "Add refund endpoint",
   epicId: "PROJ-10",
-  specialistType: "backend" as const,
+  surfaces: ["backend"],
   storyBranch: "proj-101-refund-endpoint",
   epicBranch: "proj-10-refunds",
   maxTurns: 40,

@@ -16,7 +16,7 @@ describe("parseBlockingDependencyIds — bold-heading form (story-contract.md's 
       "- PROJ-43 — Add refund validation",
       "",
       "**Assignment metadata**",
-      "specialist: backend",
+      "surface: backend",
     ].join("\n");
     expect(parseBlockingDependencyIds(description)).toEqual(["PROJ-42", "PROJ-43"]);
   });

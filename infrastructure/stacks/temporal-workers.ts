@@ -22,16 +22,22 @@ import { BaseStack } from "./base-stack";
 const TASK_QUEUE_NAME = "dispatch-task-queue";
 
 /**
- * Provisional — no worker application code exists yet, so this is the minimum
- * set the automated-dispatch design names (Anthropic, the tracker MCP, source
- * control), same caveat as the specialist sandbox's own list. Revisit once the
- * worker's own entrypoint exists.
+ * Mirrors `dispatch-worker/.env.example`'s own secrets section exactly, same
+ * as the listener's and specialist sandbox's own lists. Deliberately no
+ * ANTHROPIC_API_KEY here — this worker never calls Anthropic itself; only the
+ * specialist it dispatches does, so that key lives in specialist-sandbox's
+ * own list instead. REVIEWER_EMAIL_TO_GITHUB_LOGIN is a real var this app
+ * reads too (see worker-config.ts's parseReviewerMapping) but isn't wired
+ * into this stack's container environment at all yet — open item, not an
+ * oversight to fix silently: it's architect-updated data that changes as
+ * people join/leave, so whether it belongs here as an SSM parameter (update
+ * without a redeploy) or a plain context value is a real design call.
  */
-const SECRET_PARAMETER_NAMES: string[] = ["ANTHROPIC_API_KEY", "LINEAR_AGENT_API_KEY", "GITHUB_TOKEN"];
+const SECRET_PARAMETER_NAMES: string[] = ["LINEAR_AGENT_API_KEY", "GITHUB_TOKEN"];
 
 /**
  * Registers the Temporal Cloud namespace (reachable only via PrivateLink) and
- * an always-on ECS Fargate service for the worker that will sequence
+ * an always-on ECS Fargate service for the worker that sequences
  * dispatch → wait-for-specialist → CI → human-review-gate. Reads `network`'s
  * existing public subnets — PrivateLink doesn't need a NAT gateway, so this
  * doesn't reopen the no-NAT decision made in that stack.
@@ -67,8 +73,11 @@ export class TemporalWorkersStack extends BaseStack {
     });
 
     // Read, not managed — same posture as the listener's and specialist
-    // sandbox's own ECR repositories. Doesn't exist yet; no Dockerfile or CI
-    // push target for the worker image either.
+    // sandbox's own ECR repositories. `dispatch-worker/Dockerfile` and
+    // `.github/workflows/build-and-push-dispatch-worker-ecr.yml` both exist
+    // and push on merge to main; what hasn't happened yet is a real deploy —
+    // `config.imageTag` is still the `REPLACE_ME` placeholder in cdktf.json
+    // until a push actually lands.
     const repository = new DataAwsEcrRepository(this, "ecr-repository", {
       name: config.ecrRepositoryName,
     });

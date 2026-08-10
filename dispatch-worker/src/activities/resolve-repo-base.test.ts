@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseRepoBase } from "./resolve-repo-base.js";
+import { parseRepoBase, resolveCommonRepoBase } from "./resolve-repo-base.js";
 
 describe("parseRepoBase", () => {
   it("parses a well-formed line", () => {
@@ -64,5 +64,45 @@ describe("parseRepoBase", () => {
   it("rejects an angle-bracket placeholder even without an 'e.g.' marker", () => {
     const comments = ["Repo base — frontend: <host>/<org>/<repo>/<ref>"];
     expect(parseRepoBase(comments, "frontend")).toBeNull();
+  });
+});
+
+describe("resolveCommonRepoBase", () => {
+  it("resolves a single surface", () => {
+    const comments = ["Repo base — backend: github/example-org/example-api/main"];
+    expect(resolveCommonRepoBase(comments, ["backend"])).toEqual({
+      ok: true,
+      repoBase: { host: "github", org: "example-org", repo: "example-api", ref: "main" },
+    });
+  });
+
+  it("resolves more than one surface to their shared repo base", () => {
+    const comments = [
+      "Repo base — web: github/example-org/example-app/main",
+      "Repo base — e2e: github/example-org/example-app/main",
+    ];
+    expect(resolveCommonRepoBase(comments, ["web", "e2e"])).toEqual({
+      ok: true,
+      repoBase: { host: "github", org: "example-org", repo: "example-app", ref: "main" },
+    });
+  });
+
+  it("reports every missing surface, not just the first", () => {
+    const comments = ["Repo base — backend: github/example-org/example-api/main"];
+    const result = resolveCommonRepoBase(comments, ["backend", "web", "e2e"]);
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.reason).toMatch(/No recorded repo base found for surface\(s\): web, e2e/);
+  });
+
+  it("rejects surfaces that resolve to different repo bases, naming each one's resolution", () => {
+    const comments = [
+      "Repo base — web: github/example-org/example-web/main",
+      "Repo base — e2e: github/example-org/example-e2e/main",
+    ];
+    const result = resolveCommonRepoBase(comments, ["web", "e2e"]);
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.reason).toMatch(
+      /web: github\/kisasa\/example-web\/main; e2e: github\/kisasa\/example-e2e\/main/,
+    );
   });
 });

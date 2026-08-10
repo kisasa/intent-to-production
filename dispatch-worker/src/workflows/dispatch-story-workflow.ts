@@ -27,7 +27,7 @@
 
 import { proxyActivities } from "@temporalio/workflow";
 import type { DispatchActivities } from "../activities/interface.js";
-import type { SpecialistType, StoryMover } from "../activities/types.js";
+import type { Surface, StoryMover } from "../activities/types.js";
 import { describeFailure } from "./describe-failure.js";
 
 // Domain-specific reason for a non-default retry policy (the SDK default is
@@ -75,7 +75,7 @@ export interface DispatchStoryWorkflowInput {
   readonly storyId: string;
   readonly storyTitle: string;
   readonly epicId: string;
-  readonly specialistType: SpecialistType;
+  readonly surfaces: Surface[];
   readonly storyBranch: string;
   readonly epicBranch: string;
   readonly maxTurns: number;
@@ -99,7 +99,7 @@ export async function dispatchStoryWorkflow(input: DispatchStoryWorkflowInput): 
       return { outcome: "not-ready", blockedBy: dependencyCheck.blockedBy };
     }
 
-    const repoBase = await resolveRepoBase(input.epicId, input.specialistType);
+    const repoBase = await resolveRepoBase(input.epicId, input.surfaces);
 
     await createStoryBranch({
       repoBase: repoBase,
@@ -111,7 +111,7 @@ export async function dispatchStoryWorkflow(input: DispatchStoryWorkflowInput): 
       storyId: input.storyId,
       storyTitle: input.storyTitle,
       epicId: input.epicId,
-      specialistType: input.specialistType,
+      surfaces: input.surfaces,
       repoBase: repoBase,
       storyBranch: input.storyBranch,
       epicBranch: input.epicBranch,

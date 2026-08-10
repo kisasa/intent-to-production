@@ -9,18 +9,19 @@
 
 import { envOr } from "./env.js";
 
-export type SpecialistType = "backend" | "frontend" | "tests" | "e2e";
-
-const SUPPORTED_SPECIALIST_TYPES: SpecialistType[] = ["backend", "frontend", "tests", "e2e"];
+// A surface is a place work happens — a repo, or a project inside one. The
+// vocabulary is open (whatever this engagement actually has), not a fixed
+// union, so this is a plain string alias, matching `dispatch-worker/src/
+// activities/types.ts`'s own `Surface`.
+export type Surface = string;
 
 export interface DispatchContext {
   readonly storyId: string;
   readonly storyTitle: string;
   readonly epicId: string;
-  readonly specialistType: SpecialistType;
 
-  /** `specialist-backend.md` / `specialist-frontend.md` — resolved from specialistType. */
-  readonly specialistFile: string;
+  /** Every `surface:<name>` label the story carries — one or more. */
+  readonly surfaces: Surface[];
 
   /** `org/name` on GitHub — the one repo this run writes to. */
   readonly surfaceRepo: string;
@@ -49,12 +50,25 @@ function requireEnv(name: string): string {
   return value;
 }
 
-function requireSpecialistType(name: string): SpecialistType {
-  const value = requireEnv(name);
-  if (SUPPORTED_SPECIALIST_TYPES.includes(value as SpecialistType)) return value as SpecialistType;
-  throw new Error(
-    `${name}="${value}" is not a supported specialist type. Supported: ${SUPPORTED_SPECIALIST_TYPES.join(", ")}.`,
-  );
+/**
+ * `SURFACES` is comma-separated because a story may carry more than one
+ * `surface:` label (docs/design-ledger.md, 2026-08-08) — all resolving to
+ * this same repo, so this runner still clones exactly one. No supported-list
+ * check here: the surface vocabulary is open, and whether the epic actually
+ * recognizes a given surface was already validated upstream, by
+ * `dispatch-worker`'s `resolveRepoBase`, before this container was ever
+ * launched.
+ */
+function requireSurfaces(name: string): Surface[] {
+  const raw = requireEnv(name);
+  const surfaces = raw
+    .split(",")
+    .map((surface) => surface.trim())
+    .filter((surface) => surface.length > 0);
+  if (surfaces.length === 0) {
+    throw new Error(`${name}="${raw}" must name at least one surface`);
+  }
+  return surfaces;
 }
 
 function requireMaxTurns(name: string): number {
@@ -67,14 +81,11 @@ function requireMaxTurns(name: string): number {
 }
 
 export function loadDispatchContext(): DispatchContext {
-  const specialistType = requireSpecialistType("SPECIALIST_TYPE");
-
   return {
     storyId: requireEnv("STORY_ID"),
     storyTitle: requireEnv("STORY_TITLE"),
     epicId: requireEnv("EPIC_ID"),
-    specialistType: specialistType,
-    specialistFile: `specialist-${specialistType}.md`,
+    surfaces: requireSurfaces("SURFACES"),
     surfaceRepo: requireEnv("SURFACE_REPO"),
     storyBranch: requireEnv("STORY_BRANCH"),
     epicBranch: requireEnv("EPIC_BRANCH"),

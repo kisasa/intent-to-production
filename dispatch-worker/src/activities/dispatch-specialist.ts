@@ -4,23 +4,27 @@
  * story-derived container overrides mirror `specialist-runner/src/dispatch-
  * context.ts`'s documented contract exactly: whatever this activity doesn't
  * set, that runner will fail fast on at startup, naming the missing var.
- * `LOG_LEVEL` is the one override outside that contract — dispatch-context.ts
- * never requires it, but propagating this worker's own configured level
- * down means the specialist's verbosity follows wherever this worker's
- * `LOG_LEVEL` is set (docker-compose, the ECS task definition, ...) without
- * a second setting to keep in sync.
+ * `SURFACES` carries every surface label the story carries, comma-joined —
+ * the specialist itself is one generic definition now (`agents/
+ * specialist.md`), so what it needs to know is which surface(s) it may
+ * write in, not a type name selecting which file to load. `LOG_LEVEL` is the
+ * one override outside that contract — dispatch-context.ts never requires
+ * it, but propagating this worker's own configured level down means the
+ * specialist's verbosity follows wherever this worker's `LOG_LEVEL` is set
+ * (docker-compose, the ECS task definition, ...) without a second setting to
+ * keep in sync.
  */
 
 import { ECSClient, RunTaskCommand } from "@aws-sdk/client-ecs";
 import type { WorkerConfig } from "../worker-config.js";
 import type { RepoBase } from "./resolve-repo-base.js";
-import type { SpecialistType } from "./types.js";
+import type { Surface } from "./types.js";
 
 export interface DispatchSpecialistInput {
   readonly storyId: string;
   readonly storyTitle: string;
   readonly epicId: string;
-  readonly specialistType: SpecialistType;
+  readonly surfaces: Surface[];
   readonly repoBase: RepoBase;
   readonly storyBranch: string;
   readonly epicBranch: string;
@@ -41,7 +45,7 @@ export function buildContainerOverrides(input: DispatchSpecialistInput, logLevel
     { name: "STORY_ID", value: input.storyId },
     { name: "STORY_TITLE", value: input.storyTitle },
     { name: "EPIC_ID", value: input.epicId },
-    { name: "SPECIALIST_TYPE", value: input.specialistType },
+    { name: "SURFACES", value: input.surfaces.join(",") },
     { name: "SURFACE_REPO", value: `${input.repoBase.org}/${input.repoBase.repo}` },
     { name: "STORY_BRANCH", value: input.storyBranch },
     { name: "EPIC_BRANCH", value: input.epicBranch },

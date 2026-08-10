@@ -1,13 +1,16 @@
 /**
- * Shared across activities and the workflow. Same values as
- * `specialist-runner/src/dispatch-context.ts`'s `SpecialistType`. `e2e`
- * joined 2026-08-07 — the dispatch mechanics (dependency check, branch
- * creation, repo-base resolution) were already fully generic over
- * specialist type; the only thing blocking it was `specialist-e2e.md`
- * requiring the specialist to stand up and self-verify against a live
- * environment, which is gone now (see `docs/design-ledger.md`).
+ * A surface is a place work happens — a repo, or a project inside one.
+ * Same alias as `specialist-runner/src/dispatch-context.ts`'s `Surface`.
+ * Was `SpecialistType`, a fixed union of the four specialist types, until
+ * the specialist-types-collapse-into-surfaces redesign
+ * (`docs/design-ledger.md`, 2026-08-08) opened the vocabulary: a surface is
+ * whatever this engagement actually has, so it's a plain string rather than
+ * an enumerated set. Dispatch mechanics (dependency check, branch creation,
+ * repo-base resolution) were already fully generic over it before that —
+ * only the type-name coupling and the `specialist-${type}.md` file lookup
+ * (gone now — one `agents/specialist.md`) ever pinned it to four values.
  */
-export type SpecialistType = "backend" | "frontend" | "tests" | "e2e";
+export type Surface = string;
 
 /**
  * Whoever moved the story to In-Process — webhook-listener's own TrackerActor,

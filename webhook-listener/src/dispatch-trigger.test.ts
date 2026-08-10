@@ -29,7 +29,7 @@ const WELL_FORMED_CONTEXT = {
   context: {
     storyId: "story-1",
     storyBranch: "story/story-1",
-    specialistType: "backend",
+    surfaces: ["backend"],
     epicId: "epic-1",
     epicBranch: "epic/epic-1",
   },
@@ -71,7 +71,7 @@ describe("createDispatchTrigger", () => {
           storyId: "story-1",
           storyTitle: "Add refund data model",
           epicId: "epic-1",
-          specialistType: "backend",
+          surfaces: ["backend"],
           storyBranch: "story/story-1",
           epicBranch: "epic/epic-1",
           maxTurns: 80,
@@ -97,7 +97,7 @@ describe("createDispatchTrigger", () => {
   });
 
   it("posts an error comment and does not start a workflow when the story isn't dispatchable", async () => {
-    fetchStoryDispatchContext.mockResolvedValue({ ok: false, reason: "no specialist:<type> label found" });
+    fetchStoryDispatchContext.mockResolvedValue({ ok: false, reason: "no surface:<name> label found" });
     const { config, start } = makeConfig(() => ({}));
     const trigger = createDispatchTrigger(config);
 
@@ -108,7 +108,7 @@ describe("createDispatchTrigger", () => {
       "story-1",
       "issue",
       "trace-1",
-      "This story could not be dispatched: no specialist:<type> label found.",
+      "This story could not be dispatched: no surface:<name> label found.",
     );
     expect(moveStoryToTodo).toHaveBeenCalledWith("story-1", "test-api-key", "https://api.linear.app/graphql", "trace-1");
   });

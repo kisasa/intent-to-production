@@ -9,8 +9,7 @@ const context: DispatchContext = {
   storyId: "PROJ-101",
   storyTitle: "Add refund endpoint",
   epicId: "PROJ-10",
-  specialistType: "backend",
-  specialistFile: "specialist-backend.md",
+  surfaces: ["backend"],
   surfaceRepo: "kisasa/example-api",
   storyBranch: "proj-101-refund-endpoint",
   epicBranch: "proj-10-refunds",
@@ -22,26 +21,21 @@ const context: DispatchContext = {
 describe("buildUserMessage", () => {
   it("names the specialist, the story, the epic, and both branches", () => {
     const message = buildUserMessage(context);
-    expect(message).toContain("Backend Specialist");
+    expect(message).toContain("You are the Specialist described in the system prompt");
     expect(message).toContain('PROJ-101 — "Add refund endpoint"');
     expect(message).toContain("PROJ-10");
     expect(message).toContain("proj-101-refund-endpoint");
     expect(message).toContain("proj-10-refunds");
   });
 
-  it("names Frontend for a frontend dispatch", () => {
-    const message = buildUserMessage({ ...context, specialistType: "frontend", specialistFile: "specialist-frontend.md" });
-    expect(message).toContain("Frontend Specialist");
+  it("names the story's single surface label", () => {
+    const message = buildUserMessage(context);
+    expect(message).toContain("surface:backend");
   });
 
-  it("names Tests for a tests dispatch", () => {
-    const message = buildUserMessage({ ...context, specialistType: "tests", specialistFile: "specialist-tests.md" });
-    expect(message).toContain("Tests Specialist");
-  });
-
-  it("names E2E for an e2e dispatch", () => {
-    const message = buildUserMessage({ ...context, specialistType: "e2e", specialistFile: "specialist-e2e.md" });
-    expect(message).toContain("E2E Specialist");
+  it("names every surface label when a story carries more than one", () => {
+    const message = buildUserMessage({ ...context, surfaces: ["web", "e2e"] });
+    expect(message).toContain("surface:web surface:e2e");
   });
 
   it("does not tell the specialist to run tests — not true for e2e, which only self-reviews", () => {
@@ -67,7 +61,7 @@ describe("buildSystemPrompt", () => {
     await mkdir(join(frameworkPath, "agents"), { recursive: true });
     await mkdir(join(frameworkPath, "skills", "story-contract"), { recursive: true });
     await mkdir(join(frameworkPath, "skills", "epic-writing"), { recursive: true });
-    await writeFile(join(frameworkPath, "agents", "specialist-backend.md"), "AGENT DEFINITION");
+    await writeFile(join(frameworkPath, "agents", "specialist.md"), "AGENT DEFINITION");
     await writeFile(join(frameworkPath, "skills", "story-contract", "story-contract.md"), "STORY CONTRACT SKILL");
     await writeFile(join(frameworkPath, "skills", "epic-writing", "epic-writing.md"), "EPIC WRITING SKILL");
 

@@ -15,11 +15,11 @@ import type { CreateStoryBranchInput } from "./create-story-branch.js";
 import type { DispatchSpecialistInput } from "./dispatch-specialist.js";
 import type { PullRequestReference } from "./find-pull-request.js";
 import type { RepoBase } from "./resolve-repo-base.js";
-import type { SpecialistType, StoryMover } from "./types.js";
+import type { Surface, StoryMover } from "./types.js";
 
 export interface DispatchActivities {
   checkDependencies(storyId: string): Promise<DependencyCheckResult>;
-  resolveRepoBase(epicId: string, surface: SpecialistType): Promise<RepoBase>;
+  resolveRepoBase(epicId: string, surfaces: Surface[]): Promise<RepoBase>;
   createStoryBranch(input: CreateStoryBranchInput): Promise<void>;
   dispatchSpecialist(input: DispatchSpecialistInput): Promise<string>;
   postSpecialistStarted(storyId: string): Promise<string | null>;

@@ -52,14 +52,14 @@ first-pass trigger and the label(s) that mark its thread "awaiting a reply":
 | Intake | Project | `ready for intake` applied while status = Backlog | a Project Update ("status update") post while `ready for intake` is present |
 | Specification | Issue (epic) | status enters Evaluation **and no** `spec:*` label exists yet | human comment while `spec:awaiting-architect` or `spec:awaiting-designer` is present |
 | Decompose | Issue (epic) | `spec:resolved` applied | human comment while `eval:awaiting-answers` or `eval:awaiting-approval` is present |
-| specialist-dispatch | Issue (story) | status enters In-Process **and** a `specialist:*` label is present | — (no follow-up state; a dispatch either starts or it doesn't) |
+| specialist-dispatch | Issue (story) | status enters In-Process **and** a `surface:*` label is present | — (no follow-up state; a dispatch either starts or it doesn't) |
 
 Specification's first-pass trigger is the one case gated on label *absence*
 rather than presence; specialist-dispatch's is the symmetric case gated on
 label *presence* via the same mechanism
 (`requireLabelsPresentPrefix`/`requireLabelsAbsentPrefix` in
 `swim-lane-routing.ts`) — both epics and stories are Issues sharing one status
-workflow, so presence of a `specialist:*` label is what tells the router
+workflow, so presence of a `surface:*` label is what tells the router
 this is a story, not an epic, entering that status. The self-comment guard
 (routing ignores the agent's own comments) applies only to comments — an
 agent's own label change is exactly how one lane hands off to the next, and
@@ -162,7 +162,7 @@ one request's entire path through the system.
 | `src/lanes/{intake,specification,decompose}.ts` | Per-lane identity: agent file, skills, codebase access, templates, placeholders |
 | `src/lanes/specialist-dispatch.ts` | The one lane exporting a plain `LaneConfig` directly (not `AgentLaneConfig`) — its `agent` starts a Temporal workflow, not an activation |
 | `src/dispatch-trigger.ts` | Gathers a story's dispatch context, starts `dispatchStoryWorkflow` on `dispatch-worker`'s task queue, posts an error comment and moves the story back to Todo on a malformed story or a start failure — the workflow never gets a chance to run its own equivalent for either case |
-| `src/story-context.ts` | Reads a story's `branchName`, `specialist:<type>` label, and parent epic (`id`/`branchName`) from Linear directly — this lane's own small GraphQL client, same pattern as `tracker-notifier.ts`. `parseSpecialistType` filters to a label naming a *supported* type rather than taking the first `specialist:`-prefixed label, so it can't be fooled by any stray label sharing the same prefix (the outcome labels this used to collide with are gone — see `docs/design-ledger.md`) |
+| `src/story-context.ts` | Reads a story's `branchName`, `surface:<name>` label(s), and parent epic (`id`/`branchName`) from Linear directly — this lane's own small GraphQL client, same pattern as `tracker-notifier.ts`. `parseSurfaces` extracts every `surface:`-prefixed label (a story may carry more than one); the surface vocabulary itself is open, so whether the epic actually recognizes a given surface is `dispatch-worker`'s `resolveRepoBase` to catch, not this parse |
 | `src/move-story-to-todo.ts` | Best-effort: moves a story back to To-Do when `dispatch-trigger.ts` can't proceed, before any workflow starts — mirrors `dispatch-worker/src/activities/move-story-to-todo.ts`, no shared lib between the two packages |
 | `src/temporal-client.ts` | This process's `@temporalio/client` connection for *starting* workflows — distinct from `dispatch-worker`'s own `NativeConnection`, which executes them |
 | `src/prompt-assembly.ts` + `src/prompt-templates/*.md` | Template lookup, placeholder substitution, system-block assembly |

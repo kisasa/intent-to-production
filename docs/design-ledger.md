@@ -2560,6 +2560,49 @@ over-generalized from a full-stack scenario that does not exist yet.
   as letting several people collaborate in a single session, which is the
   format capability scope actually wants — the PM, a designer, and whoever owns
   the budget disagreeing out loud once beats a week of thread.
+- **PARKED: surfaces within an epic finish at different rates, and the next
+  epic cannot start clean (2026-08-08).** the architect: the backend developer is done
+  while the frontend still needs time, and wants to move to the next epic rather
+  than wait.
+
+  Checked first, and worth recording because the intuition was that a rule was
+  at fault: **nothing gates decomposition on a dependency epic.** The readiness
+  gate blocks on business problem, user types, scope boundary, definition of
+  done, a resolved API map, and the surface manifest. Epic 2 can decompose
+  whenever it is ready. There was nothing to remove.
+
+  Two real things produce the symptom instead. **Branch topology:** epic branches
+  cut from the BRD branch, and epic 1 cannot merge there until *all* its surfaces
+  are done — so epic 2's branch is missing even epic 1's finished backend work.
+  Not a gate stopping the developer, a hole under them. **Epic-level dependencies
+  are coarser than the work:** Intake renders dependencies epic-to-epic from the
+  slice map, but epic 2's backend rarely depends on epic 1's frontend. One fact
+  blocks far more than the truth requires, which is what makes a developer feel
+  they are waiting on work unrelated to theirs.
+
+  Three candidate fixes, none taken:
+
+  - **Stories block, epics do not.** Epic-level dependencies become ordering
+    guidance for the human slicing, and real blocking is expressed story-to-story
+    including across epics — which the specialist already handles, since it
+    checks story dependencies and knows nothing about epic ones. Cleanest
+    conceptually; does not by itself fix the branch hole.
+  - **Merge to the BRD branch per surface rather than per epic.** The one that
+    actually answers the throughput question. Costs the atomic epic merge and the
+    architect's single epic-level review gate, both deliberate.
+  - **Chain the epic branch** — epic 2 cuts from epic 1's branch when it must
+    start early. Preserves atomicity; epic 1's review then contains epic 2's
+    changes underneath it, and unwinding gets ugly.
+
+  A fourth possibility, uncomfortable and deliberately not pursued on one
+  instance: if surfaces routinely finish at very different times inside one epic,
+  the epic may be sliced wrong. Slicing by capability rather than by layer is a
+  deliberate framework decision and should not be reopened on a hypothetical.
+
+  Parked pending real throughput data — the first candidate looks right
+  regardless, since epic dependencies overstating the truth is a defect either
+  way, but the second is the one with a real cost and should be decided against
+  observed pain rather than a scenario.
 - **Branch topology is per-repo, and nothing reconciles across surfaces.**
   Settled 2026-08-03: the developer starts Claude Code from a workspace parent
   holding every surface repo plus the framework clone, so cross-surface reads

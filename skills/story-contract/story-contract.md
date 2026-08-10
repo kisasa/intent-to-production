@@ -46,7 +46,7 @@ from the ones next to it.
 - Bad: "Story: Add employee roster data model and seed it with multiple records
   spanning all four tiers" — the body's job.
 - Bad: "Story: API: expose payment status" — one prefix only. The
-  `specialist:*` label already says which surface this is, and the tracker
+  `surface:*` label already says which surface this is, and the tracker
   shows labels wherever it shows titles.
 
 Do not repeat the epic's title in the story's. A reader arriving at the story

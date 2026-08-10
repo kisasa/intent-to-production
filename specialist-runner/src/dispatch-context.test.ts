@@ -5,7 +5,7 @@ const REQUIRED_VARS = {
   STORY_ID: "PROJ-101",
   STORY_TITLE: "Add refund endpoint",
   EPIC_ID: "PROJ-10",
-  SPECIALIST_TYPE: "backend",
+  SURFACES: "backend",
   SURFACE_REPO: "kisasa/example-api",
   STORY_BRANCH: "proj-101-refund-endpoint",
   EPIC_BRANCH: "proj-10-refunds",
@@ -38,8 +38,7 @@ describe("loadDispatchContext", () => {
       storyId: "PROJ-101",
       storyTitle: "Add refund endpoint",
       epicId: "PROJ-10",
-      specialistType: "backend",
-      specialistFile: "specialist-backend.md",
+      surfaces: ["backend"],
       surfaceRepo: "kisasa/example-api",
       storyBranch: "proj-101-refund-endpoint",
       epicBranch: "proj-10-refunds",
@@ -49,19 +48,19 @@ describe("loadDispatchContext", () => {
     });
   });
 
-  it("resolves specialistFile for frontend too", () => {
-    stubAll({ SPECIALIST_TYPE: "frontend" });
-    expect(loadDispatchContext().specialistFile).toBe("specialist-frontend.md");
+  it("parses more than one comma-separated surface", () => {
+    stubAll({ SURFACES: "web,e2e" });
+    expect(loadDispatchContext().surfaces).toEqual(["web", "e2e"]);
   });
 
-  it("resolves specialistFile for tests too", () => {
-    stubAll({ SPECIALIST_TYPE: "tests" });
-    expect(loadDispatchContext().specialistFile).toBe("specialist-tests.md");
+  it("trims whitespace around comma-separated surfaces", () => {
+    stubAll({ SURFACES: " web , e2e " });
+    expect(loadDispatchContext().surfaces).toEqual(["web", "e2e"]);
   });
 
-  it("resolves specialistFile for e2e too", () => {
-    stubAll({ SPECIALIST_TYPE: "e2e" });
-    expect(loadDispatchContext().specialistFile).toBe("specialist-e2e.md");
+  it("accepts any surface name — the vocabulary is open, not a fixed list", () => {
+    stubAll({ SURFACES: "mobile" });
+    expect(loadDispatchContext().surfaces).toEqual(["mobile"]);
   });
 
   it("defaults frameworkRef to main when unset", () => {
@@ -79,9 +78,14 @@ describe("loadDispatchContext", () => {
     expect(() => loadDispatchContext()).toThrow(/STORY_ID/);
   });
 
-  it("rejects an unsupported specialist type", () => {
-    stubAll({ SPECIALIST_TYPE: "design" });
-    expect(() => loadDispatchContext()).toThrow(/not a supported specialist type/);
+  it("rejects an empty SURFACES value", () => {
+    stubAll({ SURFACES: "" });
+    expect(() => loadDispatchContext()).toThrow(/SURFACES/);
+  });
+
+  it("rejects a SURFACES value that is only commas and whitespace", () => {
+    stubAll({ SURFACES: " , , " });
+    expect(() => loadDispatchContext()).toThrow(/must name at least one surface/);
   });
 
   it("rejects a non-numeric MAX_TURNS", () => {

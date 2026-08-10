@@ -10,7 +10,7 @@
  * local-terminal dispatch act (docs/design-ledger.md, "automated dispatch
  * and BRD closure"). Scoped to stories, not epics, via
  * `requireLabelsPresentPrefix` — both share Linear's one status workflow,
- * but only a decomposed story carries a `specialist:<type>` label.
+ * but only a decomposed story carries a `surface:<name>` label.
  *
  * The literal status string below is the real Linear state name, not
  * CLAUDE.md's own hyphenated "In-Process" framework vocabulary — confirmed
@@ -41,6 +41,6 @@ export const config: LaneConfig = {
   }),
   // No follow-up state — a dispatch either starts or it doesn't; there's no
   // reply thread this lane waits on afterward.
-  firstPass: { on: "status_entered", status: "In Progress", requireLabelsPresentPrefix: "specialist:" },
+  firstPass: { on: "status_entered", status: "In Progress", requireLabelsPresentPrefix: "surface:" },
   awaitingLabels: [],
 };

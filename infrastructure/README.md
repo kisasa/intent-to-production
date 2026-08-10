@@ -20,12 +20,12 @@ every time an image tag moves. All three read the network's outputs through S3 r
 `specialist-sandbox` registers a Fargate task definition meant for on-demand `ecs:RunTask`, one task per
 story dispatch, as many concurrent as there are stories being worked. It is not an `EcsService`: nothing
 in this stack launches a task, sets a desired count, or registers with a load balancer. That's the job of
-a future Temporal-based orchestrator, which will read this stack's outputs (cluster arn, task definition
-arn/family, role arns) via remote state — the same way `listener.ts` reads `network`'s today — to call
-`RunTask` itself.
+the Temporal-based orchestrator (`temporal-workers`), which reads this stack's outputs (cluster arn, task
+definition arn/family, role arns) via remote state — the same way `listener.ts` reads `network`'s — and
+calls `RunTask` itself, from `dispatch-worker/src/activities/dispatch-specialist.ts`.
 
 It gets its own ECS cluster, separate from the listener's, so that `RunTask`/`PassRole` IAM scoping for
-that future orchestrator never has to reach into anything touching the always-on listener service. The
+that orchestrator never has to reach into anything touching the always-on listener service. The
 security group carries no ingress rules at all: nothing connects to this task over the network (`RunTask`
 is an AWS API call, not a network request), so there's nothing to accept a connection from.
 
@@ -61,8 +61,12 @@ handing it to the worker service the normal ARN-based way. Both are recorded in 
 [`dispatch-worker/`](../dispatch-worker) is the Temporal workflow/activities/worker; this stack passes it
 the `SPECIALIST_*` env vars it needs and grants its task role the `ecs:RunTask`/`ecs:DescribeTasks`/
 `iam:PassRole` permission to actually dispatch (see `constructs/temporal-worker-service.ts`'s
-`dispatchTarget` config). What's still missing: nothing calls `WorkflowClient.start(...)` yet, so no story
-actually gets dispatched — see Known gaps.
+`dispatchTarget` config). The trigger exists too, on the app side rather than in this stack:
+`webhook-listener`'s `specialist-dispatch` lane (`src/lanes/specialist-dispatch.ts`, `src/dispatch-
+trigger.ts`) calls `WorkflowClient.start(dispatchStoryWorkflow, ...)` when a story enters `In Progress` —
+see that package's own README. What's still open: neither `specialist-sandbox` nor `temporal-workers` has
+ever had a real image built and deployed — `cdktf.json`'s `image-tag` is still the `REPLACE_ME` placeholder
+for both, since the CI workflows that push a real one only trigger on a merge to `main`.
 
 ## Why a Fargate service, and why exactly one task
 
@@ -361,12 +365,8 @@ Honest about what this does not do.
   unavoidable, since Terraform provider authentication doesn't support the ARN-indirection ECS container
   secrets use. See the Temporal workers section above.
 - **Temporal worker egress is unrestricted**, same reasoning and same gap as the specialist sandbox's.
-- **No webhook-listener trigger for the dispatch workflow.** `temporal-workers.ts` now wires the worker's
-  task role with the IAM permission to call `ecs:RunTask`/`ecs:DescribeTasks` against `specialist-sandbox`
-  (scoped to that cluster/task-definition, plus `iam:PassRole` on its two roles — see
-  `constructs/temporal-worker-service.ts`'s `dispatchTarget` config) and passes it the
-  `SPECIALIST_CLUSTER_ARN`/`SPECIALIST_TASK_DEFINITION_ARN`/`SPECIALIST_CONTAINER_NAME`/
-  `SPECIALIST_SECURITY_GROUP_ID`/`SPECIALIST_SUBNET_IDS` env vars [`dispatch-worker/`](../dispatch-worker)
-  expects. But nothing calls `WorkflowClient.start(dispatchStoryWorkflow, ...)` yet — that trigger is a
-  separate, tracked follow-up, deliberately kept apart from webhook-listener's own already-flagged
-  column→label routing rebuild.
+- **Neither `specialist-sandbox` nor `temporal-workers` has ever had a real image deployed.** Both
+  applications, their Dockerfiles, and their CI push workflows all exist now, but those workflows only
+  push on a merge to `main` — until one lands, `cdktf.json`'s `image-tag` for both stacks stays the
+  `REPLACE_ME` placeholder and a `deploy` against either would fail resolving it. See the Temporal
+  workers section above for what's already wired and ready once a real image exists.

@@ -17,7 +17,7 @@
  *                     matches on presence. The specialist-dispatch lane uses
  *                     the symmetric `requireLabelsPresentPrefix` to scope its
  *                     own status_entered trigger to stories (which carry a
- *                     `specialist:*` label) and exclude epics (which share
+ *                     `surface:*` label) and exclude epics (which share
  *                     the same status workflow but never carry one) — a pure,
  *                     synchronous check against the event's own label set, no
  *                     extra I/O.

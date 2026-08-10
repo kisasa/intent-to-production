@@ -1,18 +1,12 @@
 /**
- * Everything this worker process needs at startup, read once. Two groups:
- *
- * - Temporal connection vars already flow from `infrastructure/stacks/
- *   temporal-workers.ts`'s container environment today (TEMPORAL_HOST,
- *   TEMPORAL_NAMESPACE, TEMPORAL_TASK_QUEUE, TEMPORAL_API_KEY).
- * - The specialist-sandbox dispatch-target vars (SPECIALIST_*) are NEW —
- *   not yet wired into that stack's container environment. This module
- *   defines the contract; wiring the actual Terraform outputs
- *   (`specialist-sandbox-stack-output.ts`'s clusterArn/taskDefinitionArn/
- *   securityGroupId, plus `network`'s publicSubnetIds) into
- *   `temporal-workers.ts` is a tracked follow-up. Until then this worker
- *   fails fast at startup naming whichever var is missing — same posture as
- *   `specialist-sandbox`/`temporal-workers` being "registered but not yet
- *   applyable."
+ * Everything this worker process needs at startup, read once. All of it flows
+ * from `infrastructure/stacks/temporal-workers.ts`'s container environment:
+ * the Temporal connection vars (TEMPORAL_HOST, TEMPORAL_NAMESPACE,
+ * TEMPORAL_TASK_QUEUE, TEMPORAL_API_KEY) and the specialist-sandbox
+ * dispatch-target vars (SPECIALIST_*, wired from `specialist-sandbox-stack-
+ * output.ts`'s clusterArn/taskDefinitionArn/securityGroupId plus `network`'s
+ * publicSubnetIds). This worker fails fast at startup naming whichever var is
+ * missing, rather than partway through a dispatch.
  */
 
 import { envOr } from "./env.js";

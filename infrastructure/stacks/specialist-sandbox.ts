@@ -13,11 +13,9 @@ import { BaseStack } from "./base-stack";
 
 /**
  * Environment variables a specialist run reads at process start, and where each one
- * comes from. Provisional: no specialist application code exists yet, so this list
- * is the minimal set the automated-dispatch design names (Anthropic, the tracker
- * MCP, source control) rather than a contract mirrored from a real `.env.example`
- * the way the listener's SECRET_PARAMETER_NAMES mirrors webhook-listener's. Revisit
- * once the specialist's own entrypoint exists.
+ * comes from — mirrors `specialist-runner/.env.example`'s own secrets section
+ * exactly, same as the listener's SECRET_PARAMETER_NAMES mirrors
+ * webhook-listener's.
  */
 const SECRET_PARAMETER_NAMES: string[] = ["ANTHROPIC_API_KEY", "LINEAR_AGENT_API_KEY", "GITHUB_TOKEN"];
 
@@ -29,8 +27,8 @@ const SECRET_PARAMETER_NAMES: string[] = ["ANTHROPIC_API_KEY", "LINEAR_AGENT_API
  * anything touching the always-on listener service.
  *
  * Nothing in this stack calls `RunTask`. That belongs to the Temporal-workers
- * stack this is meant to precede, which will read this stack's outputs via remote
- * state exactly as `listener.ts` reads `network`'s today.
+ * stack this precedes, which reads this stack's outputs via remote state
+ * exactly as `listener.ts` reads `network`'s.
  */
 export class SpecialistSandboxStack extends BaseStack {
   constructor(scope: Construct) {
@@ -41,9 +39,10 @@ export class SpecialistSandboxStack extends BaseStack {
     const network = networkStackOutputFromRemoteState(this.remoteState(tfStateKeys.network));
 
     // Read, not managed — same posture as the listener's own ECR repository.
-    // Unlike the listener's, no CI workflow pushes to this repository yet; the
-    // specialist's application code and Dockerfile don't exist. Recorded as a
-    // prerequisite in the README rather than built here.
+    // `specialist-runner/Dockerfile` and `.github/workflows/build-and-push-
+    // specialist-ecr.yml` both exist and push on merge to main; what hasn't
+    // happened yet is a real deploy — `config.imageTag` is still the
+    // `REPLACE_ME` placeholder in cdktf.json until a push actually lands.
     const repository = new DataAwsEcrRepository(this, "ecr-repository", {
       name: config.ecrRepositoryName,
     });

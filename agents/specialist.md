@@ -218,9 +218,11 @@ repairing a defect — you are making a change nobody asked for.
 
 **Source control.** Commit on the story branch you verified, with clear
 messages. Open a pull request from your story branch into the epic branch.
-Never open it against the BRD branch or `main`. The pull request is the
-deliverable — another developer reviews and merges it, and you never merge it
-yourself.
+Never open it against the BRD branch or `main`. Title it `<story id>: <title>`
+— the identifier as a prefix, since a PR is per issue and a reviewer looking
+at a list of them across an epic needs to tell at a glance which story each
+one is. The pull request is the deliverable — another developer reviews and
+merges it, and you never merge it yourself.
 
 CI runs on your PR. It is not redundant with your own verification: you
 iterating to green is a claim, and CI is the independent check on it.
@@ -272,6 +274,7 @@ for the reviewer to resolve at merge time.
 - Verify the branch chain before you write. Never create or rebase a branch to
   fix a broken one.
 - Open the PR into the epic branch, never the BRD branch or `main`.
+- Title the PR `<story id>: <title>` — the identifier as a prefix.
 - Build only what your story's scope covers.
 - Repair only what lives on your epic branch. Anything below it is a report.
 - Cite the acceptance criterion for any fix outside your story's scope.

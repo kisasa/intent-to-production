@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { fetchStoryDispatchContext, parseSpecialistType } from "./story-context.js";
+import { fetchStoryDispatchContext, parseSurfaces } from "./story-context.js";
 
 const API_KEY = "test-api-key";
 const BASE_URL = "https://api.linear.app/graphql";
@@ -19,43 +19,27 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("parseSpecialistType", () => {
-  it("extracts a supported specialist type from its label", () => {
-    expect(parseSpecialistType(["size:medium", "specialist:backend"])).toEqual({ type: "backend" });
+describe("parseSurfaces", () => {
+  it("extracts a single surface from its label", () => {
+    expect(parseSurfaces(["size:medium", "surface:backend"])).toEqual({ surfaces: ["backend"] });
   });
 
-  it("extracts 'tests' as a supported specialist type", () => {
-    expect(parseSpecialistType(["size:medium", "specialist:tests"])).toEqual({ type: "tests" });
+  it("accepts any surface name — the vocabulary is open, not a fixed list", () => {
+    expect(parseSurfaces(["surface:mobile"])).toEqual({ surfaces: ["mobile"] });
   });
 
-  it("extracts 'e2e' as a supported specialist type", () => {
-    expect(parseSpecialistType(["size:medium", "specialist:e2e"])).toEqual({ type: "e2e" });
+  it("extracts more than one surface label, in the order they were applied", () => {
+    expect(parseSurfaces(["surface:web", "surface:e2e", "size:medium"])).toEqual({ surfaces: ["web", "e2e"] });
   });
 
-  it("reports when no specialist:* label is present", () => {
-    expect(parseSpecialistType(["size:medium"])).toEqual({
-      reason: "no specialist:<type> label found",
+  it("dedupes a repeated label", () => {
+    expect(parseSurfaces(["surface:web", "size:medium", "surface:web"])).toEqual({ surfaces: ["web"] });
+  });
+
+  it("reports when no surface:* label is present", () => {
+    expect(parseSurfaces(["size:medium"])).toEqual({
+      reason: "no surface:<name> label found",
     });
-  });
-
-  it("reports when the specialist type isn't one this trigger supports", () => {
-    const result = parseSpecialistType(["specialist:design"]);
-    expect("reason" in result && result.reason).toMatch(/not a supported specialist type/);
-  });
-
-  it("ignores a leftover outcome label from an earlier dispatch attempt (real PROJ-64 shape)", () => {
-    const result = parseSpecialistType(["specialist:waiting", "specialist:frontend", "tier:small", "size:medium"]);
-    expect(result).toEqual({ type: "frontend" });
-  });
-
-  it("ignores a leftover outcome label regardless of label order", () => {
-    expect(parseSpecialistType(["specialist:backend", "specialist:complete"])).toEqual({ type: "backend" });
-    expect(parseSpecialistType(["specialist:blocked", "specialist:backend"])).toEqual({ type: "backend" });
-  });
-
-  it("reports when a story carries more than one specialist type label", () => {
-    const result = parseSpecialistType(["specialist:backend", "specialist:frontend"]);
-    expect("reason" in result && result.reason).toMatch(/more than one specialist type label/);
   });
 });
 
@@ -64,7 +48,7 @@ describe("fetchStoryDispatchContext", () => {
     stubIssueQuery({
       id: "story-1",
       branchName: "story/story-1-add-refund-model",
-      labels: { nodes: [{ name: "specialist:backend" }, { name: "size:medium" }] },
+      labels: { nodes: [{ name: "surface:backend" }, { name: "size:medium" }] },
       parent: { id: "epic-1", branchName: "epic/epic-1-refunds" },
     });
 
@@ -75,7 +59,29 @@ describe("fetchStoryDispatchContext", () => {
       context: {
         storyId: "story-1",
         storyBranch: "story/story-1-add-refund-model",
-        specialistType: "backend",
+        surfaces: ["backend"],
+        epicId: "epic-1",
+        epicBranch: "epic/epic-1-refunds",
+      },
+    });
+  });
+
+  it("carries more than one surface label through when a story has several", async () => {
+    stubIssueQuery({
+      id: "story-1",
+      branchName: "story/story-1-refund-flow",
+      labels: { nodes: [{ name: "surface:web" }, { name: "surface:e2e" }] },
+      parent: { id: "epic-1", branchName: "epic/epic-1-refunds" },
+    });
+
+    const result = await fetchStoryDispatchContext("story-1", API_KEY, BASE_URL, TRACE_ID);
+
+    expect(result).toEqual({
+      ok: true,
+      context: {
+        storyId: "story-1",
+        storyBranch: "story/story-1-refund-flow",
+        surfaces: ["web", "e2e"],
         epicId: "epic-1",
         epicBranch: "epic/epic-1-refunds",
       },
@@ -86,7 +92,7 @@ describe("fetchStoryDispatchContext", () => {
     stubIssueQuery({
       id: "story-1",
       branchName: "story/story-1",
-      labels: { nodes: [{ name: "specialist:backend" }] },
+      labels: { nodes: [{ name: "surface:backend" }] },
       parent: null,
     });
 
@@ -94,7 +100,7 @@ describe("fetchStoryDispatchContext", () => {
     expect(result).toEqual({ ok: false, reason: "story has no parent epic recorded" });
   });
 
-  it("returns ok:false when no specialist:* label is present", async () => {
+  it("returns ok:false when no surface:* label is present", async () => {
     stubIssueQuery({
       id: "story-1",
       branchName: "story/story-1",
@@ -103,7 +109,7 @@ describe("fetchStoryDispatchContext", () => {
     });
 
     const result = await fetchStoryDispatchContext("story-1", API_KEY, BASE_URL, TRACE_ID);
-    expect(result).toEqual({ ok: false, reason: "no specialist:<type> label found" });
+    expect(result).toEqual({ ok: false, reason: "no surface:<name> label found" });
   });
 
   it("returns ok:false when the story could not be read from the tracker", async () => {

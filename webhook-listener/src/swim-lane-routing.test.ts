@@ -38,7 +38,7 @@ const lanes: LaneConfig[] = [
     name: "specialist-dispatch",
     entityType: "issue",
     agent: specialistDispatchAgent,
-    firstPass: { on: "status_entered", status: "In-Process", requireLabelsPresentPrefix: "specialist:" },
+    firstPass: { on: "status_entered", status: "In-Process", requireLabelsPresentPrefix: "surface:" },
     awaitingLabels: [],
   },
 ];
@@ -197,9 +197,9 @@ describe("route — Decompose (label_added, presence-gated)", () => {
 });
 
 describe("route — specialist-dispatch (status_entered, presence-gated, stories not epics)", () => {
-  it("fires first pass when a story (carrying a specialist:* label) enters In-Process", () => {
+  it("fires first pass when a story (carrying a surface:* label) enters In-Process", () => {
     const decision = route(
-      event({ kind: "status_changed", entityType: "issue", status: "In-Process", labels: ["specialist:backend"] }),
+      event({ kind: "status_changed", entityType: "issue", status: "In-Process", labels: ["surface:backend"] }),
       cfg,
     );
     expect(decision).toMatchObject({ fire: true, pass: "first", lane: "specialist-dispatch" });
@@ -208,13 +208,13 @@ describe("route — specialist-dispatch (status_entered, presence-gated, stories
   it("carries the event's actor through as entityActor — reviewer-of-record's source", () => {
     const mover = { id: "user-1", name: "Example User", email: "user@example.com" };
     const decision = route(
-      event({ kind: "status_changed", entityType: "issue", status: "In-Process", labels: ["specialist:backend"], actor: mover }),
+      event({ kind: "status_changed", entityType: "issue", status: "In-Process", labels: ["surface:backend"], actor: mover }),
       cfg,
     );
     expect(decision).toMatchObject({ fire: true, entityActor: mover });
   });
 
-  it("does not fire for an epic entering In-Process with no specialist:* label — the presence gate", () => {
+  it("does not fire for an epic entering In-Process with no surface:* label — the presence gate", () => {
     const decision = route(
       event({ kind: "status_changed", entityType: "issue", status: "In-Process", labels: ["size:medium"] }),
       cfg,
@@ -224,7 +224,7 @@ describe("route — specialist-dispatch (status_entered, presence-gated, stories
 
   it("does not fire when entering a different status", () => {
     const decision = route(
-      event({ kind: "status_changed", entityType: "issue", status: "To-Do", labels: ["specialist:frontend"] }),
+      event({ kind: "status_changed", entityType: "issue", status: "To-Do", labels: ["surface:frontend"] }),
       cfg,
     );
     expect(decision.fire).toBe(false);
