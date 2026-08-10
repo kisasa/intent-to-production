@@ -40,7 +40,22 @@ COPY src ./src
 # src/dispatch-context.ts for the required ones and README.md for the full
 # list. No .env file; nothing here has a meaningful default except FRAMEWORK_REPO/
 # FRAMEWORK_REF.
-ENV NODE_ENV=production
+#
+# NODE_ENV=development, deliberately not production despite matching
+# webhook-listener's and dispatch-worker's own Dockerfiles otherwise — this
+# container's own code never reads NODE_ENV, but the specialist's shelled-out
+# `npm install` in whatever target repo it clones inherits it, and
+# NODE_ENV=production makes npm silently skip devDependencies. Confirmed live
+# (2026-08-10, PROJ-78 and PROJ-84): a target repo whose test tooling (Angular
+# CLI, Playwright) lives in devDependencies got an empty-looking node_modules
+# and a misleading failure — PROJ-78's specialist worked around it with
+# `npm ci --include=dev`; PROJ-84's didn't, and shipped without running its
+# suite at all. Set explicitly to `development` rather than left unset — this
+# container's actual job is developing against a target repo, and some
+# tooling branches on the literal value rather than just "not production,"
+# so this states what's true instead of relying on an implicit default
+# happening to behave the same way.
+ENV NODE_ENV=development
 
 RUN mkdir -p /workspace && chown -R node:node /app /workspace
 USER node

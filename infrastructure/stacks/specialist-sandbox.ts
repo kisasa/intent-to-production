@@ -77,7 +77,14 @@ export class SpecialistSandboxStack extends BaseStack {
       image: imageUri,
       cpu: config.cpu,
       memory: config.memory,
-      environment: [{ name: "NODE_ENV", value: "production" }],
+      // NODE_ENV=development, deliberately not production — see
+      // specialist-runner/Dockerfile's own note. This container's job is
+      // shelling out `npm install` in whatever target repo it clones, and
+      // NODE_ENV=production makes npm silently skip devDependencies there —
+      // confirmed live breaking a target repo's own Angular CLI/Playwright
+      // installs. Set explicitly here too, not just baked into the image,
+      // matching this project's own explicit-over-implicit convention.
+      environment: [{ name: "NODE_ENV", value: "development" }],
       secrets: secrets,
       secretParameterArns: parameters.map((parameter) => parameter.arn),
       awsRegion: this.aws.region,
