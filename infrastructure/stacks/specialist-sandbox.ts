@@ -6,7 +6,7 @@ import { EcsClusterCapacityProviders } from "@cdktn/provider-aws/lib/ecs-cluster
 
 import { formatName, tfStateKeys } from "../common";
 import { SpecialistTask } from "../constructs/specialist-task";
-import type { ContainerSecret } from "../constructs/single-instance-service";
+import type { ContainerEnvironmentVariable, ContainerSecret } from "../constructs/single-instance-service";
 import type { SpecialistSandboxStackOutput } from "../models/specialist-sandbox-stack-output";
 import { networkStackOutputFromRemoteState } from "../models/network-stack-output";
 import { BaseStack } from "./base-stack";
@@ -18,6 +18,21 @@ import { BaseStack } from "./base-stack";
  * webhook-listener's.
  */
 const SECRET_PARAMETER_NAMES: string[] = ["ANTHROPIC_API_KEY", "LINEAR_AGENT_API_KEY", "GITHUB_TOKEN"];
+
+/**
+ * NODE_ENV=development, deliberately not production — this container's job
+ * is shelling out `npm install`/build/test against whatever target repo it
+ * clones, and NODE_ENV=production makes npm silently skip devDependencies
+ * there, confirmed live breaking a target repo's own Angular CLI/Playwright
+ * installs (see `specialist-runner/Dockerfile`'s own note, which sets the
+ * same value as the image's default). A code constant here rather than a
+ * `cdktf.json` context key on purpose: unlike `config.cpu`/`config.imageTag`,
+ * this doesn't vary by engagement or deploy environment — there's no
+ * legitimate scenario where this container should run as `production`, so
+ * it isn't exposed as a knob someone could reasonably flip to reintroduce
+ * this exact bug.
+ */
+const CONTAINER_ENVIRONMENT: ContainerEnvironmentVariable[] = [{ name: "NODE_ENV", value: "development" }];
 
 /**
  * The specialist sandbox: registers a Fargate task definition for on-demand
@@ -77,14 +92,7 @@ export class SpecialistSandboxStack extends BaseStack {
       image: imageUri,
       cpu: config.cpu,
       memory: config.memory,
-      // NODE_ENV=development, deliberately not production — see
-      // specialist-runner/Dockerfile's own note. This container's job is
-      // shelling out `npm install` in whatever target repo it clones, and
-      // NODE_ENV=production makes npm silently skip devDependencies there —
-      // confirmed live breaking a target repo's own Angular CLI/Playwright
-      // installs. Set explicitly here too, not just baked into the image,
-      // matching this project's own explicit-over-implicit convention.
-      environment: [{ name: "NODE_ENV", value: "development" }],
+      environment: CONTAINER_ENVIRONMENT,
       secrets: secrets,
       secretParameterArns: parameters.map((parameter) => parameter.arn),
       awsRegion: this.aws.region,
