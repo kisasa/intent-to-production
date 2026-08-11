@@ -18,9 +18,6 @@ export interface TemporalConfiguration {
   readonly memory: number;
   readonly desiredCount: number;
   readonly logRetentionDays: number;
-
-  /** Prefix under which the worker's own container-secret SSM parameters live. */
-  readonly parameterPrefix: string;
 }
 
 export function temporalConfigurationFromContext(node: ContextNode): TemporalConfiguration {
@@ -35,6 +32,5 @@ export function temporalConfigurationFromContext(node: ContextNode): TemporalCon
     memory: requireNumber(node, "memory", path),
     desiredCount: requireNumber(node, "desired-count", path),
     logRetentionDays: requireNumber(node, "log-retention-days", path),
-    parameterPrefix: requireString(node, "parameter-prefix", path),
   };
 }

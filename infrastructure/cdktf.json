@@ -1,7 +1,7 @@
 {
   "language": "typescript",
   "app": "npx tsx main.ts",
-  "output": "cdktn.out",
+  "output": "prod-2.out",
   "sendCrashReports": false,
   "terraformProviders": ["temporalio/temporalcloud@~> 0"],
   "terraformModules": [],
@@ -13,53 +13,51 @@
     "aws": {
       "region": "us-east-1",
       "account-number": "000000000000",
-      "profile": "example-org"
+      "profile": "example"
     },
-    "state-bucket-name": "ki-webhook-listener-tfstate",
+    "state-bucket-name": "example-tfstate",
     "global-tags": {
       "terraform": "true",
       "project": "intent-to-production",
-      "environment": "prod"
+      "environment": "prod-2"
     },
     "domain-name": "example.com",
     "hosted-zone-id": "Z0000000000000000000",
-    "vpc-cidr-block": "10.10.0.0/22",
+    "vpc-cidr-block": "10.9.0.0/22",
+    "parameter-prefix": "/example/prod/",
     "listener": {
-      "environment-name": "prod",
+      "environment-name": "prod-2",
       "subdomain": "intent",
       "ecr-repository-name": "intent-to-production",
-      "image-tag": "83c609b7afac",
+      "image-tag": "3330144c6579",
       "port": 8787,
       "cpu": 512,
       "memory": 1024,
-      "log-retention-days": 30,
+      "log-retention-days": 14,
       "debounce-ms": 15000,
-      "log-level": "info",
-      "parameter-prefix": "/example/prod/",
+      "log-level": "debug",
       "linear-api-url": null,
       "linear-mcp-url": null,
       "github-mcp-url": null,
       "product-context-paths": null
     },
     "specialist-sandbox": {
-      "environment-name": "prod",
+      "environment-name": "prod-2",
       "ecr-repository-name": "intent-to-production-specialist",
-      "image-tag": "REPLACE_ME",
+      "image-tag": "3330144c6579",
       "cpu": 1024,
       "memory": 2048,
-      "log-retention-days": 30,
-      "parameter-prefix": "/example/prod/specialist/"
+      "log-retention-days": 14
     },
     "temporal": {
-      "environment-name": "prod",
-      "namespace-name": "intent-to-production-prod",
+      "environment-name": "prod-2",
+      "namespace-name": "intent-to-production-prod2",
       "ecr-repository-name": "intent-to-production-temporal-worker",
-      "image-tag": "REPLACE_ME",
+      "image-tag": "3330144c6579",
       "cpu": 512,
       "memory": 1024,
       "desired-count": 1,
-      "log-retention-days": 30,
-      "parameter-prefix": "/example/prod/temporal/"
+      "log-retention-days": 14
     }
   },
   "projectId": "181a046c-3409-4a14-a5b9-f827800976cf"

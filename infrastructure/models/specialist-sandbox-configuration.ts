@@ -6,10 +6,6 @@ import { type ContextNode, requireNumber, requireString } from "./context";
  * Mirrors `listener-configuration.ts`'s shape; kept as a separate type because the
  * two are provisioned and scaled on entirely different terms (one always-on
  * singleton service vs. many short-lived tasks).
- *
- * `parameterPrefix` is intentionally its own value, not the listener's — sandbox
- * credentials are provisioned separately so a compromised or misbehaving
- * specialist run never has access to the listener's production secrets.
  */
 export interface SpecialistSandboxConfiguration {
   readonly environmentName: string;
@@ -18,9 +14,6 @@ export interface SpecialistSandboxConfiguration {
   readonly cpu: number;
   readonly memory: number;
   readonly logRetentionDays: number;
-
-  /** Prefix under which the sandbox's own SSM parameters live (see the README). */
-  readonly parameterPrefix: string;
 }
 
 export function specialistSandboxConfigurationFromContext(node: ContextNode): SpecialistSandboxConfiguration {
@@ -33,6 +26,5 @@ export function specialistSandboxConfigurationFromContext(node: ContextNode): Sp
     cpu: requireNumber(node, "cpu", path),
     memory: requireNumber(node, "memory", path),
     logRetentionDays: requireNumber(node, "log-retention-days", path),
-    parameterPrefix: requireString(node, "parameter-prefix", path),
   };
 }

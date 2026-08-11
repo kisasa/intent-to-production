@@ -22,12 +22,6 @@ export interface ListenerConfiguration {
   readonly debounceMs: number;
   readonly logLevel: string;
 
-  /**
-   * Prefix under which the five SSM parameters live, created out-of-band (see
-   * the README). Terraform only reads their ARNs — it never sees a value.
-   */
-  readonly parameterPrefix: string;
-
   /** Optional overrides for values webhook-listener already defaults itself. */
   readonly linearApiUrl: string | undefined;
   readonly linearMcpUrl: string | undefined;
@@ -60,7 +54,6 @@ export function listenerConfigurationFromContext(node: ContextNode): ListenerCon
     logRetentionDays: requireNumber(node, "log-retention-days", path),
     debounceMs: requireNumber(node, "debounce-ms", path),
     logLevel: requireString(node, "log-level", path),
-    parameterPrefix: requireString(node, "parameter-prefix", path),
     linearApiUrl: optionalString(node, "linear-api-url", path),
     linearMcpUrl: optionalString(node, "linear-mcp-url", path),
     githubMcpUrl: optionalString(node, "github-mcp-url", path),

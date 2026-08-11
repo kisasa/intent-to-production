@@ -85,7 +85,7 @@ export class TemporalWorkersStack extends BaseStack {
 
     const parameters = SECRET_PARAMETER_NAMES.map((name) => {
       return new DataAwsSsmParameter(this, `ssm-${name.toLowerCase().replace(/_/g, "-")}`, {
-        name: `${config.parameterPrefix}${name}`,
+        name: `${this.parameterPrefix}${name}`,
         withDecryption: false,
       });
     });
@@ -130,7 +130,7 @@ export class TemporalWorkersStack extends BaseStack {
     // value reaches state the same way the admin API key above does — flagged
     // in the class comment and README's Known gaps, not hidden.
     const temporalApiKeyParameter = new SsmParameter(this, "ssm-temporal-worker-api-key", {
-      name: `${config.parameterPrefix}TEMPORAL_API_KEY`,
+      name: `${this.parameterPrefix}TEMPORAL_API_KEY`,
       type: "SecureString",
       value: namespace.apiKeyToken,
       tags: tags,

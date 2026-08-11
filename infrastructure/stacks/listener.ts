@@ -21,12 +21,12 @@ import { BaseStack } from "./base-stack";
  * Environment variables the application reads at module load, and where each one
  * comes from. Names must match webhook-listener's `.env.example` exactly.
  *
- * The five secret-backed values here are SSM parameters created out-of-band (see
- * the README) and read here only for their arns. AGENT_USER_ID is not itself
- * sensitive, but it lives alongside the others so that provisioning the service's
- * credentials is one step rather than two. TEMPORAL_API_KEY is a sixth
- * secret-backed value, handled separately below (not in this list) because its
- * parameter lives under `temporal.parameterPrefix`, not `listener.parameterPrefix`.
+ * All six are SSM parameters under the deployment's shared `parameter-prefix`
+ * (see the README), read here only for their arns. AGENT_USER_ID is not itself
+ * sensitive, but it lives alongside the others so that provisioning the
+ * service's credentials is one step rather than two. TEMPORAL_API_KEY is the
+ * parameter `temporal-workers.ts` creates for its own worker service — read
+ * here, not created again, now that every stack shares one prefix.
  */
 const SECRET_PARAMETER_NAMES: string[] = [
   "LINEAR_WEBHOOK_SECRET",
@@ -34,6 +34,7 @@ const SECRET_PARAMETER_NAMES: string[] = [
   "AGENT_USER_ID",
   "ANTHROPIC_API_KEY",
   "GITHUB_TOKEN",
+  "TEMPORAL_API_KEY",
 ];
 
 export class ListenerStack extends BaseStack {
@@ -58,7 +59,7 @@ export class ListenerStack extends BaseStack {
 
     const parameters = SECRET_PARAMETER_NAMES.map((name) => {
       return new DataAwsSsmParameter(this, `ssm-${name.toLowerCase().replace(/_/g, "-")}`, {
-        name: `${this.listener.parameterPrefix}${name}`,
+        name: `${this.parameterPrefix}${name}`,
 
         // The arn is all this stack wants. Decryption happens in the ECS agent at
         // task start, under the execution role — never during synth or apply.
@@ -70,17 +71,6 @@ export class ListenerStack extends BaseStack {
       const parameter = parameters[index];
       if (parameter === undefined) throw new Error(`No SSM parameter resolved for ${name}`);
       return { name: name, valueFrom: parameter.arn };
-    });
-
-    // Not part of the generic loop above: this parameter lives under
-    // `temporal.parameterPrefix`, not `listener.parameterPrefix` — the two
-    // are deliberately distinct per-stack values (see
-    // specialist-sandbox-configuration.ts's own note on the same point).
-    // Reads the parameter `temporal-workers.ts` itself already creates; does
-    // not create a second one.
-    const temporalApiKeyParameter = new DataAwsSsmParameter(this, "ssm-temporal-api-key", {
-      name: `${this.temporal.parameterPrefix}TEMPORAL_API_KEY`,
-      withDecryption: false,
     });
 
     const certificate = new DomainCertificate(this, "certificate", {
@@ -121,8 +111,8 @@ export class ListenerStack extends BaseStack {
       cpu: this.listener.cpu,
       memory: this.listener.memory,
       environment: this.containerEnvironment(temporal),
-      secrets: [...secrets, { name: "TEMPORAL_API_KEY", valueFrom: temporalApiKeyParameter.arn }],
-      secretParameterArns: [...parameters.map((parameter) => parameter.arn), temporalApiKeyParameter.arn],
+      secrets: secrets,
+      secretParameterArns: parameters.map((parameter) => parameter.arn),
       awsRegion: this.aws.region,
       logRetentionDays: this.listener.logRetentionDays,
       loadBalancerSecurityGroupId: loadBalancer.securityGroupId,

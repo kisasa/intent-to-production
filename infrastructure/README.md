@@ -97,10 +97,10 @@ process outside it.
 | Route53 hosted zone for the domain | Usually predates the project; the certificate and DNS record attach to it |
 | ECR repository (listener) | The image must exist before a task can start from it, and CI pushes it independently of any Terraform run — see [`build-and-push-webhook-listener-ecr.yml`](../.github/workflows/build-and-push-webhook-listener-ecr.yml), which creates the repository idempotently. Read here as a data source. |
 | ECR repository (specialist sandbox) | Same posture as the listener's — the application code, Dockerfile, and CI workflow now exist ([`specialist-runner/`](../specialist-runner), [`build-and-push-specialist-ecr.yml`](../.github/workflows/build-and-push-specialist-ecr.yml)), so this repository gets created and populated the same idempotent way the listener's is. `specialist-sandbox` still won't apply until the first merge to `main` under `specialist-runner/` actually runs that workflow. |
-| The listener's five SSM parameters | See below — keeping creation out-of-band is what keeps secret values out of state |
-| The specialist sandbox's SSM parameters | Same mechanism, separate prefix (`specialist-sandbox.parameter-prefix`) — provisioned separately from the listener's so a specialist run never has access to production credentials |
+| The listener's SSM parameters | See below — keeping creation out-of-band is what keeps secret values out of state |
+| The specialist sandbox's SSM parameters | Same mechanism, same shared `parameter-prefix` as every other stack — see below |
 | ECR repository (Temporal worker) | Same posture as the other two — the application code, Dockerfile, and CI workflow now exist ([`dispatch-worker/`](../dispatch-worker), [`build-and-push-dispatch-worker-ecr.yml`](../.github/workflows/build-and-push-dispatch-worker-ecr.yml)). `temporal-workers` still won't apply until the first merge to `main` under `dispatch-worker/` actually runs that workflow. |
-| The temporal-workers stack's SSM parameters | Same mechanism, `temporal.parameter-prefix` |
+| The temporal-workers stack's SSM parameters | Same mechanism, same shared `parameter-prefix` |
 | A Temporal Cloud account, with an admin API key | Out-of-band, same category as the AWS account itself — the `temporalcloud` provider creates namespaces *within* an existing account, it doesn't create the account. The admin key goes in its own SSM parameter (`/example/prod/temporal-admin/API_KEY`), read directly (not by ARN) at synth — see the Temporal workers section above and Known gaps |
 | The `temporalcloud` provider's generated bindings | No prebuilt `@cdktn/provider-temporalcloud` package exists — run `npx cdktn get` locally (needs Terraform on PATH) before this stack will typecheck or synth. See Known gaps |
 | An AWS profile named in `aws.profile` | |
@@ -112,7 +112,7 @@ Terraform behaves best on Linux; WSL with Ubuntu works well on Windows. Keep lin
 
 Terraform reads only these parameters' ARNs and grants the task execution role permission to fetch
 them. No secret value ever enters the synthesized JSON or the state file. Create them once per
-environment, matching `listener.parameter-prefix`:
+environment, matching the deployment's shared `parameter-prefix`:
 
 ```bash
 PREFIX=/example/prod
@@ -137,39 +137,32 @@ at task start, so Terraform has nothing to re-apply:
 aws ecs update-service --region "us-east-1" --profile example --cluster example-prod --service webhook-listener-prod-svc --force-new-deployment
 ```
 
-### Creating the specialist sandbox's SSM parameters
+### The specialist sandbox and Temporal workers reuse the listener's parameters
 
-Same mechanism as the listener's, under `specialist-sandbox.parameter-prefix` instead — a distinct set of
-values so a specialist run is never holding a production credential:
-
-```bash
-PREFIX=/example/prod/specialist
-PROFILE=kisasa
-for name in ANTHROPIC_API_KEY LINEAR_AGENT_API_KEY GITHUB_TOKEN; do
-  read -rsp "$name: " value; echo
-  aws ssm put-parameter --region "us-east-1" --profile "$PROFILE" --name "$PREFIX/$name" --type SecureString --value "$value" --overwrite
-done
-```
-
-Confirmed against `specialist-runner/`'s own env var reads — same three names, same mechanism as the
-listener's parameter list mirroring `webhook-listener`'s. (No longer provisional: this used to name the
-minimum the automated-dispatch design committed to before the application code existed; it now matches
-the actual reads in `specialist-runner/src/run.ts` and `mcp-servers.ts`.)
+All three stacks now read from one shared `parameter-prefix`, and `specialist-sandbox`'s three secret
+names (`ANTHROPIC_API_KEY`, `LINEAR_AGENT_API_KEY`, `GITHUB_TOKEN`) and `temporal-workers`'s two
+(`LINEAR_AGENT_API_KEY`, `GITHUB_TOKEN`) are each an exact subset of the listener's own five — so the
+"Creating the SSM parameters" step above already provisions everything both stacks need. There is no
+separate provisioning step for either, and no separate credential per stack: a specialist run and the
+listener now read the identical `ANTHROPIC_API_KEY` value, not distinct ones.
 
 ### Creating the Temporal admin API key parameter
 
 Read directly by the `temporalcloud` provider at synth, not by ARN — the one place in this project a
-secret value legitimately reaches Terraform state (see the Temporal workers section above):
+secret value legitimately reaches Terraform state (see the Temporal workers section above). Deliberately
+**not** under the shared `parameter-prefix` — this is a single Temporal Cloud account-level admin
+credential, not one deployment's secret, so `temporal-workers.ts` reads it from a fixed path regardless
+of which deployment's context it's synthesizing:
 
 ```bash
 read -rsp "Temporal Cloud admin API key: " value; echo
 aws ssm put-parameter --region "us-east-1" --profile example --name /example/prod/temporal-admin/API_KEY --type SecureString --value "$value" --overwrite
 ```
 
-The worker's own three container secrets (same provisional list as the specialist sandbox's) go under
-`temporal.parameter-prefix` the same way as every other stack's — see the pattern above. The namespace's
-own worker API key does **not** go here: `temporal-workers.ts` writes it into SSM itself, generated fresh
-each apply from the `temporalcloud` provider's `Apikey` resource.
+The namespace's own generated worker API key is different: `temporal-workers.ts` writes it into SSM
+itself (under the shared `parameter-prefix`, as `TEMPORAL_API_KEY`), generated fresh each apply from the
+`temporalcloud` provider's `Apikey` resource, then read back by both `temporal-workers.ts` and
+`listener.ts` — see the pattern above.
 
 ### Generating the `temporalcloud` provider bindings
 
@@ -202,6 +195,7 @@ manage. Values marked `REPLACE_ME` in the committed file must be filled in befor
 | `domain-name` | `example.com` | |
 | `hosted-zone-id` | `Z0852…` | |
 | `vpc-cidr-block` | `10.6.0.0/22` | Split into /24 subnets; two blocks left spare |
+| `parameter-prefix` | `/example/prod/` | Trailing slash included. One shared prefix for every stack's SSM secrets — see Creating the SSM parameters |
 | `listener.environment-name` | `prod` | **Max 30 characters** — load balancer and target group names cap at 32 |
 | `listener.subdomain` | `hooks` | Combines into `hooks.prod.example.com` |
 | `listener.ecr-repository-name` | `intent-to-production` | Must match the CI workflow's `ECR_REPOSITORY` |
@@ -211,14 +205,12 @@ manage. Values marked `REPLACE_ME` in the committed file must be filled in befor
 | `listener.log-retention-days` | `30` | |
 | `listener.debounce-ms` | `15000` | Passed through as `DEBOUNCE_MS` |
 | `listener.log-level` | `info` | Passed through as `LOG_LEVEL` |
-| `listener.parameter-prefix` | `/example/prod/` | Trailing slash included |
 | `listener.linear-api-url`, `.linear-mcp-url`, `.github-mcp-url`, `.product-context-paths` | `null` | Optional. `null` means the application's own default applies; the keys are spelled out to document that they exist |
 | `specialist-sandbox.environment-name` | `prod` | Validated independently of `listener.environment-name`, though today they're the same value |
 | `specialist-sandbox.ecr-repository-name` | `intent-to-production-specialist` | Doesn't exist yet — see Prerequisites |
 | `specialist-sandbox.image-tag` | `REPLACE_ME` | Placeholder until the specialist has a Dockerfile and a CI push target |
 | `specialist-sandbox.cpu` / `.memory` | `1024` / `2048` | Task-level Fargate sizing |
 | `specialist-sandbox.log-retention-days` | `30` | |
-| `specialist-sandbox.parameter-prefix` | `/example/prod/specialist/` | Trailing slash included; deliberately distinct from `listener.parameter-prefix` |
 | `temporal.environment-name` | `prod` | Validated independently of the other stacks' `environment-name`, though today they're the same value |
 | `temporal.namespace-name` | `intent-to-production-prod` | Base name — Temporal Cloud appends an account-id suffix to form the fully-qualified namespace id |
 | `temporal.ecr-repository-name` | `intent-to-production-temporal-worker` | Doesn't exist yet — see Prerequisites |
@@ -226,7 +218,6 @@ manage. Values marked `REPLACE_ME` in the committed file must be filled in befor
 | `temporal.cpu` / `.memory` | `512` / `1024` | Task-level Fargate sizing |
 | `temporal.desired-count` | `1` | Not a singleton constraint like the listener's — safe to raise once there's real load to justify it |
 | `temporal.log-retention-days` | `30` | |
-| `temporal.parameter-prefix` | `/example/prod/temporal/` | Trailing slash included; holds the worker's own three provisional secrets, not the Temporal admin key or the generated worker API key (see above) |
 
 ### Image tags
 
@@ -267,10 +258,10 @@ npx cdktn deploy --skip-synth --auto-approve temporal-workers
 
 **`listener` now depends on `temporal-workers` having deployed first** — it reads that stack's remote
 state (namespace address, namespace id, task queue name) for the webhook listener's own Temporal client,
-plus the `TEMPORAL_API_KEY` SSM parameter `temporal-workers.ts` creates (read, not created again, under
-`temporal.parameter-prefix`, not `listener.parameter-prefix` — the two are deliberately distinct
-per-stack values). On a from-scratch stand-up, deploy `temporal-workers` before `listener`, not the two
-together the way `network`+`listener` used to be a single step:
+plus the `TEMPORAL_API_KEY` SSM parameter `temporal-workers.ts` creates under the shared
+`parameter-prefix` — read there, not created again, the same way `listener.ts` reads its own other five
+secrets. On a from-scratch stand-up, deploy `temporal-workers` before `listener`, not the two together the
+way `network`+`listener` used to be a single step:
 
 ```bash
 npx cdktn diff --skip-synth listener

@@ -6,11 +6,11 @@ import type { DataTerraformRemoteStateS3 } from "cdktn";
  * state to give the webhook listener's own Temporal client the connection
  * info it needs to start a dispatch workflow — the `TEMPORAL_API_KEY` secret
  * itself is read separately, directly from its own already-existing SSM
- * parameter (`${config.parameterPrefix}TEMPORAL_API_KEY`, created by
- * `temporal-workers.ts`), the same way `temporal-workers.ts` itself reads its
- * other secrets — not published here, since a stack output isn't the right
- * place for even an arn pointing at sensitive material when a well-known SSM
- * path already addresses it.
+ * parameter (`${this.parameterPrefix}TEMPORAL_API_KEY`, created by
+ * `temporal-workers.ts`), the same way every other stack reads its own
+ * secrets — not published here, since a stack output isn't the right place
+ * for even an arn pointing at sensitive material when a well-known SSM path
+ * already addresses it.
  *
  * Note what's absent: a future activity calling `ecs:RunTask` against the
  * specialist sandbox needs *that* stack's outputs

@@ -32,6 +32,7 @@ export abstract class BaseStack extends TerraformStack {
     "hosted-zone-id",
     "vpc-cidr-block",
     "state-bucket-name",
+    "parameter-prefix",
   ];
 
   protected readonly aws: AwsConfiguration;
@@ -42,6 +43,9 @@ export abstract class BaseStack extends TerraformStack {
   protected readonly domainName: string;
   protected readonly hostedZoneId: string;
   protected readonly vpcCidrBlock: string;
+
+  /** Prefix under which every stack's SSM secrets live — one shared value, not one per stack. */
+  protected readonly parameterPrefix: string;
 
   private readonly stateBucketName: string;
 
@@ -61,6 +65,7 @@ export abstract class BaseStack extends TerraformStack {
     this.hostedZoneId = requireString(context, "hosted-zone-id", "context");
     this.vpcCidrBlock = requireString(context, "vpc-cidr-block", "context");
     this.stateBucketName = requireString(context, "state-bucket-name", "context");
+    this.parameterPrefix = requireString(context, "parameter-prefix", "context");
 
     new AwsProvider(this, "aws", {
       region: this.aws.region,

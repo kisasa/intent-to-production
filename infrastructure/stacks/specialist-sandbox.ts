@@ -65,7 +65,7 @@ export class SpecialistSandboxStack extends BaseStack {
 
     const parameters = SECRET_PARAMETER_NAMES.map((name) => {
       return new DataAwsSsmParameter(this, `ssm-${name.toLowerCase().replace(/_/g, "-")}`, {
-        name: `${config.parameterPrefix}${name}`,
+        name: `${this.parameterPrefix}${name}`,
         withDecryption: false,
       });
     });

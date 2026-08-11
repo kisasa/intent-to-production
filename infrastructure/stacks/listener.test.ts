@@ -12,6 +12,7 @@ const TEST_CONTEXT = {
   "domain-name": "example.com",
   "hosted-zone-id": "Z0000000000000000000",
   "vpc-cidr-block": "10.10.0.0/22",
+  "parameter-prefix": "/example/test/",
   listener: {
     "environment-name": "test",
     subdomain: "intent",
@@ -23,7 +24,6 @@ const TEST_CONTEXT = {
     "log-retention-days": 30,
     "debounce-ms": 15000,
     "log-level": "info",
-    "parameter-prefix": "/example/test/",
     "linear-api-url": null,
     "linear-mcp-url": null,
     "github-mcp-url": null,
@@ -36,7 +36,6 @@ const TEST_CONTEXT = {
     cpu: 1024,
     memory: 2048,
     "log-retention-days": 30,
-    "parameter-prefix": "/example/test/specialist/",
   },
   temporal: {
     "environment-name": "test",
@@ -47,7 +46,6 @@ const TEST_CONTEXT = {
     memory: 1024,
     "desired-count": 1,
     "log-retention-days": 30,
-    "parameter-prefix": "/example/test/temporal/",
   },
 };
 
@@ -77,11 +75,11 @@ describe("ListenerStack", () => {
     expect(temporalApiKeySecret).toBeDefined();
   });
 
-  it("reads the TEMPORAL_API_KEY parameter under temporal's own prefix, not listener's", () => {
+  it("reads the TEMPORAL_API_KEY parameter under the deployment's shared prefix", () => {
     const json = JSON.parse(synth());
     const ssmParameters = Object.values(json.data?.aws_ssm_parameter ?? {}) as Array<{ name: string }>;
     const temporalApiKeyParameter = ssmParameters.find((parameter) => parameter.name.endsWith("TEMPORAL_API_KEY"));
-    expect(temporalApiKeyParameter?.name).toBe("/example/test/temporal/TEMPORAL_API_KEY");
+    expect(temporalApiKeyParameter?.name).toBe("/example/test/TEMPORAL_API_KEY");
   });
 
   it("grants the execution role read access to the TEMPORAL_API_KEY parameter's arn", () => {
