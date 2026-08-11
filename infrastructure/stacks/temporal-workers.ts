@@ -5,6 +5,7 @@ import { DataAwsSsmParameter } from "@cdktn/provider-aws/lib/data-aws-ssm-parame
 import { EcsCluster } from "@cdktn/provider-aws/lib/ecs-cluster";
 import { EcsClusterCapacityProviders } from "@cdktn/provider-aws/lib/ecs-cluster-capacity-providers";
 import { SsmParameter } from "@cdktn/provider-aws/lib/ssm-parameter";
+import { TimeProvider } from "@cdktn/provider-time/lib/provider";
 
 // Locally generated bindings — see temporal-namespace.ts's own note.
 import { TemporalcloudProvider } from "../.gen/providers/temporalcloud/provider";
@@ -71,6 +72,11 @@ export class TemporalWorkersStack extends BaseStack {
     new TemporalcloudProvider(this, "temporalcloud", {
       apiKey: adminApiKeyParameter.value,
     });
+
+    // Backs `temporal-namespace.ts`'s `Offset` resource — computes the API
+    // key's expiry once, at creation, instead of recomputing `Date.now()`
+    // on every synth.
+    new TimeProvider(this, "time", {});
 
     // Read, not managed — same posture as the listener's and specialist
     // sandbox's own ECR repositories. `dispatch-worker/Dockerfile` and

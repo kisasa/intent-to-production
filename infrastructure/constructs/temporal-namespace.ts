@@ -1,5 +1,6 @@
 import { Construct } from "constructs";
 import { Route53Record } from "@cdktn/provider-aws/lib/route53-record";
+import { Offset } from "@cdktn/provider-time/lib/offset";
 
 // Locally generated bindings — no prebuilt `@cdktn/provider-temporalcloud` package
 // exists (confirmed via `npm view`), so run `npx cdktn get` once before this
@@ -88,16 +89,33 @@ export class TemporalNamespace extends Construct {
       namespaceAccesses: [{ namespaceId: namespace.id, permission: "admin" }],
     });
 
+    // One year out, matching the reference project's own expiry window —
+    // computed by the `time` provider, not `Date.now()`: a client-side
+    // `Date.now() + 365d` recomputes to a new literal on every single synth,
+    // so Terraform saw a diff on `expiryTime` on every plan, forever, even
+    // seconds after the last apply. `Offset` with no `baseRfc3339` captures
+    // the timestamp once, at this resource's own creation, and its `rfc3339`
+    // output then stays fixed in state — no further drift until the key is
+    // deliberately rotated (e.g. by tainting this resource).
+    // A short, fixed id rather than the namespaceName-prefixed pattern the
+    // siblings below use: that pattern truncates at 32 characters, and for a
+    // long enough namespaceName, "...-api-key" and "...-api-key-expiry"
+    // truncate to the identical prefix — a real duplicate-construct-id
+    // collision, confirmed against this deployment's own namespaceName
+    // (`intent-to-production-prod2`). Uniqueness only needs to hold among
+    // this construct's own children, so a plain id sidesteps the problem
+    // entirely rather than needing a cleverer truncation-safe suffix.
+    const apiKeyExpiry = new Offset(this, "api-key-expiry", {
+      offsetYears: 1,
+    });
+
     // Token is only available at create time; API key is also
     // deployment-specific.
     const apiKey = new Apikey(this, formatTerraformId(`${config.namespaceName}-api-key`), {
       displayName: formatName(`${config.environmentName}-${config.namespaceName}`),
       ownerType: "service-account",
       ownerId: serviceAccount.id,
-
-      // yyyy-MM-ddTHH:mm:ssZ, one year out — matches the reference project's
-      // own expiry window.
-      expiryTime: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().replace(/\.\d+Z$/, "Z"),
+      expiryTime: apiKeyExpiry.rfc3339,
       disabled: false,
       description: `API key for the Temporal worker service account in the ${config.environmentName} deployment`,
     });
