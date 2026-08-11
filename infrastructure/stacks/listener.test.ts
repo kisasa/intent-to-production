@@ -36,6 +36,8 @@ const TEST_CONTEXT = {
     cpu: 1024,
     memory: 2048,
     "log-retention-days": 30,
+    "framework-repo": "example-org/intent-to-production",
+    "framework-ref": "main",
   },
   temporal: {
     "environment-name": "test",

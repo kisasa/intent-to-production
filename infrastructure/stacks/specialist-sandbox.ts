@@ -7,6 +7,7 @@ import { EcsClusterCapacityProviders } from "@cdktn/provider-aws/lib/ecs-cluster
 import { formatName, tfStateKeys } from "../common";
 import { SpecialistTask } from "../constructs/specialist-task";
 import type { ContainerEnvironmentVariable, ContainerSecret } from "../constructs/single-instance-service";
+import type { SpecialistSandboxConfiguration } from "../models/specialist-sandbox-configuration";
 import type { SpecialistSandboxStackOutput } from "../models/specialist-sandbox-stack-output";
 import { networkStackOutputFromRemoteState } from "../models/network-stack-output";
 import { BaseStack } from "./base-stack";
@@ -31,8 +32,22 @@ const SECRET_PARAMETER_NAMES: string[] = ["ANTHROPIC_API_KEY", "LINEAR_AGENT_API
  * legitimate scenario where this container should run as `production`, so
  * it isn't exposed as a knob someone could reasonably flip to reintroduce
  * this exact bug.
+ *
+ * FRAMEWORK_REPO/FRAMEWORK_REF are the opposite case — which agents/skills
+ * repo and ref a specialist clones for its own definitions genuinely does
+ * vary by engagement (a fork, a pinned ref for a controlled rollout), so
+ * those come from `config` below rather than being baked in here.
+ * `specialist-runner/src/dispatch-context.ts` requires both with no
+ * fallback — if this task definition doesn't set them, the container fails
+ * fast at startup naming whichever is missing.
  */
-const CONTAINER_ENVIRONMENT: ContainerEnvironmentVariable[] = [{ name: "NODE_ENV", value: "development" }];
+function containerEnvironment(config: SpecialistSandboxConfiguration): ContainerEnvironmentVariable[] {
+  return [
+    { name: "NODE_ENV", value: "development" },
+    { name: "FRAMEWORK_REPO", value: config.frameworkRepo },
+    { name: "FRAMEWORK_REF", value: config.frameworkRef },
+  ];
+}
 
 /**
  * The specialist sandbox: registers a Fargate task definition for on-demand
@@ -92,7 +107,7 @@ export class SpecialistSandboxStack extends BaseStack {
       image: imageUri,
       cpu: config.cpu,
       memory: config.memory,
-      environment: CONTAINER_ENVIRONMENT,
+      environment: containerEnvironment(config),
       secrets: secrets,
       secretParameterArns: parameters.map((parameter) => parameter.arn),
       awsRegion: this.aws.region,

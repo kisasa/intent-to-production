@@ -9,10 +9,12 @@ const REQUIRED_VARS = {
   SURFACE_REPO: "kisasa/example-api",
   STORY_BRANCH: "proj-101-refund-endpoint",
   EPIC_BRANCH: "proj-10-refunds",
+  FRAMEWORK_REPO: "example-org/intent-to-production",
+  FRAMEWORK_REF: "main",
   MAX_TURNS: "40",
 };
 
-type StubbableVar = keyof typeof REQUIRED_VARS | "FRAMEWORK_REF" | "FRAMEWORK_REPO";
+type StubbableVar = keyof typeof REQUIRED_VARS;
 
 function stubAll(overrides: Partial<Record<StubbableVar, string | undefined>> = {}): void {
   const merged = { ...REQUIRED_VARS, ...overrides };
@@ -63,9 +65,14 @@ describe("loadDispatchContext", () => {
     expect(loadDispatchContext().surfaces).toEqual(["mobile"]);
   });
 
-  it("defaults frameworkRef to main when unset", () => {
+  it("throws naming the missing var when FRAMEWORK_REPO is unset", () => {
+    stubAll({ FRAMEWORK_REPO: undefined });
+    expect(() => loadDispatchContext()).toThrow(/FRAMEWORK_REPO/);
+  });
+
+  it("throws naming the missing var when FRAMEWORK_REF is unset", () => {
     stubAll({ FRAMEWORK_REF: undefined });
-    expect(loadDispatchContext().frameworkRef).toBe("main");
+    expect(() => loadDispatchContext()).toThrow(/FRAMEWORK_REF/);
   });
 
   it("respects an explicit frameworkRef", () => {

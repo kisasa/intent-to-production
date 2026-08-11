@@ -36,10 +36,10 @@ RUN npm ci
 COPY tsconfig.json ./
 COPY src ./src
 
-# The platform injects every env var below as an ECS RunTask override — see
-# src/dispatch-context.ts for the required ones and README.md for the full
-# list. No .env file; nothing here has a meaningful default except FRAMEWORK_REPO/
-# FRAMEWORK_REF.
+# The platform injects every env var below — most as an ECS RunTask override,
+# FRAMEWORK_REPO/FRAMEWORK_REF from the task definition itself instead — see
+# src/dispatch-context.ts for the required ones (no defaults; all of them fail
+# fast if unset) and README.md for the full list. No .env file.
 #
 # NODE_ENV=development, deliberately not production despite matching
 # webhook-listener's and dispatch-worker's own Dockerfiles otherwise — this

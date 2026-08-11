@@ -14,6 +14,12 @@ export interface SpecialistSandboxConfiguration {
   readonly cpu: number;
   readonly memory: number;
   readonly logRetentionDays: number;
+
+  /** `org/name` on GitHub for the framework (agents/skills) repo the specialist clones. */
+  readonly frameworkRepo: string;
+
+  /** Git ref of the framework repo to clone. */
+  readonly frameworkRef: string;
 }
 
 export function specialistSandboxConfigurationFromContext(node: ContextNode): SpecialistSandboxConfiguration {
@@ -26,5 +32,7 @@ export function specialistSandboxConfigurationFromContext(node: ContextNode): Sp
     cpu: requireNumber(node, "cpu", path),
     memory: requireNumber(node, "memory", path),
     logRetentionDays: requireNumber(node, "log-retention-days", path),
+    frameworkRepo: requireString(node, "framework-repo", path),
+    frameworkRef: requireString(node, "framework-ref", path),
   };
 }

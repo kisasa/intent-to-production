@@ -77,20 +77,26 @@ it doesn't today.
 
 ## Dispatch context — the contract for whoever calls this
 
-`dispatch-worker/src/activities/dispatch-specialist.ts` sets these as
-`RunTask` container overrides (see `src/dispatch-context.ts`, which validates
-all of them at startup and fails fast naming whatever's missing):
+`src/dispatch-context.ts` validates all of these at startup and fails fast
+naming whatever's missing. Most come from `dispatch-worker/src/activities/
+dispatch-specialist.ts`'s per-dispatch `RunTask` container overrides;
+`FRAMEWORK_REPO`/`FRAMEWORK_REF` don't — they're baked into the specialist
+sandbox's own task definition instead (`infrastructure/stacks/
+specialist-sandbox.ts`, from `specialist-sandbox.framework-repo`/
+`.framework-ref` in `cdktf.json`), since which agents/skills repo and ref a
+specialist run uses is a deployment-level setting, not something that varies
+per story:
 
-| Var | Required | Meaning |
-|---|---|---|
-| `STORY_ID`, `STORY_TITLE` | yes | The story |
-| `EPIC_ID` | yes | Parent epic |
-| `SURFACES` | yes | Comma-separated `surface:<name>` label(s) the story carries, e.g. `backend` or `web,e2e` |
-| `SURFACE_REPO` | yes | `org/name` on GitHub — the one repo this run writes to |
-| `STORY_BRANCH`, `EPIC_BRANCH` | yes | Branch names the tracker already assigned |
-| `MAX_TURNS` | yes | Hard cap on Agent SDK turns — the ledger is explicit a session doesn't time out on its own |
-| `FRAMEWORK_REPO` | no | Default `example-org/intent-to-production` |
-| `FRAMEWORK_REF` | no | Default `main` |
+| Var | Required | Meaning | Set by |
+|---|---|---|---|
+| `STORY_ID`, `STORY_TITLE` | yes | The story | `dispatch-specialist.ts` (`RunTask` override) |
+| `EPIC_ID` | yes | Parent epic | `dispatch-specialist.ts` (`RunTask` override) |
+| `SURFACES` | yes | Comma-separated `surface:<name>` label(s) the story carries, e.g. `backend` or `web,e2e` | `dispatch-specialist.ts` (`RunTask` override) |
+| `SURFACE_REPO` | yes | `org/name` on GitHub — the one repo this run writes to | `dispatch-specialist.ts` (`RunTask` override) |
+| `STORY_BRANCH`, `EPIC_BRANCH` | yes | Branch names the tracker already assigned | `dispatch-specialist.ts` (`RunTask` override) |
+| `MAX_TURNS` | yes | Hard cap on Agent SDK turns — the ledger is explicit a session doesn't time out on its own | `dispatch-specialist.ts` (`RunTask` override) |
+| `FRAMEWORK_REPO` | yes | `org/name` on GitHub for the framework (agents/skills) repo | `specialist-sandbox.ts` (task definition) |
+| `FRAMEWORK_REF` | yes | Git ref of the framework repo to clone | `specialist-sandbox.ts` (task definition) |
 
 Plus the secrets every container in this project reads the same way (SSM,
 injected by the ECS agent — see `infrastructure/README.md`):

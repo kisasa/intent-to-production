@@ -28,21 +28,17 @@
 # other per-dispatch fields) are the *only* env vars the launched container
 # gets, and specialist-runner fails fast on the first missing one.
 #
-# FRAMEWORK_REPO/FRAMEWORK_REF are baked in the same way, for a different
-# reason: specialist-runner's own fallback is "example-org/intent-to-production"
-# at "main" (dispatch-context.ts), and confirmed live (2026-08-06) that
-# `main` has no `agents/` directory at all — this whole framework has only
-# ever lived on a feature branch. Left empty here (specialist-runner's own
-# default still applies) until this work merges; override in
-# docker-compose.yml or docker-compose.override.yml with the branch actually
-# under test.
+# FRAMEWORK_REPO/FRAMEWORK_REF are baked in the same way — dispatch-context.ts
+# requires both with no fallback, so this script does too. Override in
+# docker-compose.yml or docker-compose.override.yml to test against a
+# feature branch of the framework repo.
 set -eu
 
 : "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set in docker-compose.override.yml}"
 : "${LINEAR_AGENT_API_KEY:?LINEAR_AGENT_API_KEY must be set in docker-compose.override.yml}"
 : "${GITHUB_TOKEN:?GITHUB_TOKEN must be set in docker-compose.override.yml}"
-FRAMEWORK_REPO="${FRAMEWORK_REPO:-}"
-FRAMEWORK_REF="${FRAMEWORK_REF:-}"
+: "${FRAMEWORK_REPO:?FRAMEWORK_REPO must be set in docker-compose.yml}"
+: "${FRAMEWORK_REF:?FRAMEWORK_REF must be set in docker-compose.yml}"
 
 ENDPOINT="${AWS_ENDPOINT_URL:-http://localstack:4566}"
 REGION="${AWS_REGION:-us-east-1}"

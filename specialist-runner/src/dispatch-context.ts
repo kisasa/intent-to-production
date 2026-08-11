@@ -7,8 +7,6 @@
  * instead of a JSON context tree.
  */
 
-import { envOr } from "./env.js";
-
 // A surface is a place work happens — a repo, or a project inside one. The
 // vocabulary is open (whatever this engagement actually has), not a fixed
 // union, so this is a plain string alias, matching `dispatch-worker/src/
@@ -28,10 +26,10 @@ export interface DispatchContext {
   readonly storyBranch: string;
   readonly epicBranch: string;
 
-  /** `org/name` on GitHub for the framework repo. Default `example-org/intent-to-production`. */
+  /** `org/name` on GitHub for the framework repo. */
   readonly frameworkRepo: string;
 
-  /** Git ref of the framework repo to clone. Default `main`. */
+  /** Git ref of the framework repo to clone. */
   readonly frameworkRef: string;
 
   /**
@@ -89,8 +87,8 @@ export function loadDispatchContext(): DispatchContext {
     surfaceRepo: requireEnv("SURFACE_REPO"),
     storyBranch: requireEnv("STORY_BRANCH"),
     epicBranch: requireEnv("EPIC_BRANCH"),
-    frameworkRepo: envOr("FRAMEWORK_REPO", "example-org/intent-to-production"),
-    frameworkRef: envOr("FRAMEWORK_REF", "main"),
+    frameworkRepo: requireEnv("FRAMEWORK_REPO"),
+    frameworkRef: requireEnv("FRAMEWORK_REF"),
     maxTurns: requireMaxTurns("MAX_TURNS"),
   };
 }

@@ -211,6 +211,8 @@ manage. Values marked `REPLACE_ME` in the committed file must be filled in befor
 | `specialist-sandbox.image-tag` | `REPLACE_ME` | Placeholder until the specialist has a Dockerfile and a CI push target |
 | `specialist-sandbox.cpu` / `.memory` | `1024` / `2048` | Task-level Fargate sizing |
 | `specialist-sandbox.log-retention-days` | `30` | |
+| `specialist-sandbox.framework-repo` | `example-org/intent-to-production` | `org/name` on GitHub — where the specialist clones its own `agents/`/`skills/` definitions from. Baked into the task definition's container environment as `FRAMEWORK_REPO`; not part of any per-dispatch `RunTask` override |
+| `specialist-sandbox.framework-ref` | `main` | Git ref of the framework repo to clone, as `FRAMEWORK_REF`. A pinned ref here controls what every specialist run in this deployment uses, independent of whatever ref this deployment's own listener/temporal-workers images were built from |
 | `temporal.environment-name` | `prod` | Validated independently of the other stacks' `environment-name`, though today they're the same value |
 | `temporal.namespace-name` | `intent-to-production-prod` | Base name — Temporal Cloud appends an account-id suffix to form the fully-qualified namespace id |
 | `temporal.ecr-repository-name` | `intent-to-production-temporal-worker` | Doesn't exist yet — see Prerequisites |

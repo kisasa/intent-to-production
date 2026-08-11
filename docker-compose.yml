@@ -117,13 +117,10 @@ services:
       ANTHROPIC_API_KEY: ""
       LINEAR_AGENT_API_KEY: ""
       GITHUB_TOKEN: ""
-      # specialist-runner's own fallback is "example-org/intent-to-production" at
-      # "main" (dispatch-context.ts) — confirmed live (2026-08-06) that main
-      # has no agents/ directory at all, since this whole framework has only
-      # ever lived on a feature branch. Defaulted here to the branch actually
-      # under local test; update or clear once this work merges to main.
-      FRAMEWORK_REPO: ""
-      FRAMEWORK_REF: infra/automated-dispatch-sandbox-temporal
+      # dispatch-context.ts requires both — no fallback. Override with a
+      # feature branch when testing framework changes locally.
+      FRAMEWORK_REPO: example-org/intent-to-production
+      FRAMEWORK_REF: main
     volumes:
       - ./scripts/localstack-bootstrap.sh:/bootstrap.sh:ro
       # A host bind mount, not a named volume: env_file (below, on
