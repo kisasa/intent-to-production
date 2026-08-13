@@ -59,7 +59,12 @@
       "cpu": 512,
       "memory": 1024,
       "desired-count": 1,
-      "log-retention-days": 14
+      "log-retention-days": 14,
+      "reviewer-email-to-github-login": {
+        "user@example.com": "example-login",
+        "contributor-a@example.com": "example-login-a",
+        "contributor-b@example.com": "example-login-b"
+      }
     }
   },
   "projectId": "181a046c-3409-4a14-a5b9-f827800976cf"

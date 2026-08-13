@@ -27,12 +27,7 @@ const TASK_QUEUE_NAME = "dispatch-task-queue";
  * as the listener's and specialist sandbox's own lists. Deliberately no
  * ANTHROPIC_API_KEY here — this worker never calls Anthropic itself; only the
  * specialist it dispatches does, so that key lives in specialist-sandbox's
- * own list instead. REVIEWER_EMAIL_TO_GITHUB_LOGIN is a real var this app
- * reads too (see worker-config.ts's parseReviewerMapping) but isn't wired
- * into this stack's container environment at all yet — open item, not an
- * oversight to fix silently: it's architect-updated data that changes as
- * people join/leave, so whether it belongs here as an SSM parameter (update
- * without a redeploy) or a plain context value is a real design call.
+ * own list instead.
  */
 const SECRET_PARAMETER_NAMES: string[] = ["LINEAR_AGENT_API_KEY", "GITHUB_TOKEN"];
 
@@ -172,6 +167,11 @@ export class TemporalWorkersStack extends BaseStack {
         // resolved at apply time — same as network-vpc.ts already uses Fn for
         // its own token math.
         { name: "SPECIALIST_SUBNET_IDS", value: Fn.join(",", network.publicSubnetIds) },
+        // Reviewer-of-record's static email -> GitHub-login table (see
+        // class-doc above and worker-config.ts's parseReviewerMapping). A
+        // context value, not a secret — re-serialized here to the same JSON
+        // object string the app parses from process.env.
+        { name: "REVIEWER_EMAIL_TO_GITHUB_LOGIN", value: JSON.stringify(config.reviewerEmailToGithubLogin) },
       ],
       secrets: [...secrets, { name: "TEMPORAL_API_KEY", valueFrom: temporalApiKeyParameter.arn }],
       secretParameterArns: [...parameters.map((parameter) => parameter.arn), temporalApiKeyParameter.arn],

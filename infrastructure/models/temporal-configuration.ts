@@ -1,4 +1,4 @@
-import { type ContextNode, requireNumber, requireString } from "./context";
+import { type ContextNode, requireNumber, requireString, requireStringMap } from "./context";
 
 /**
  * Everything that varies between environments for the Temporal worker service —
@@ -18,6 +18,11 @@ export interface TemporalConfiguration {
   readonly memory: number;
   readonly desiredCount: number;
   readonly logRetentionDays: number;
+  // Reviewer-of-record's static Linear-email -> GitHub-login table (see
+  // dispatch-worker/src/worker-config.ts's parseReviewerMapping). Context, not
+  // an SSM parameter: it's architect-maintained data, not a credential, and
+  // nothing here needs it to change without a redeploy already happening.
+  readonly reviewerEmailToGithubLogin: Record<string, string>;
 }
 
 export function temporalConfigurationFromContext(node: ContextNode): TemporalConfiguration {
@@ -32,5 +37,6 @@ export function temporalConfigurationFromContext(node: ContextNode): TemporalCon
     memory: requireNumber(node, "memory", path),
     desiredCount: requireNumber(node, "desired-count", path),
     logRetentionDays: requireNumber(node, "log-retention-days", path),
+    reviewerEmailToGithubLogin: requireStringMap(node, "reviewer-email-to-github-login", path),
   };
 }

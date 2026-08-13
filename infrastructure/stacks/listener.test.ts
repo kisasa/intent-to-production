@@ -48,6 +48,7 @@ const TEST_CONTEXT = {
     memory: 1024,
     "desired-count": 1,
     "log-retention-days": 30,
+    "reviewer-email-to-github-login": { "test@example.com": "test-login" },
   },
 };
 
