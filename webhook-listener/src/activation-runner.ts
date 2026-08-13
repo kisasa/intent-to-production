@@ -29,7 +29,10 @@
  *
  * Failure handling is fail-fast and narrow, per the design ledger's write-path
  * collapse: three cases post the error comment — (a) the Anthropic call
- * itself throws (timeout, 5xx, network failure), (b) an mcp_tool_result
+ * itself throws (timeout, 5xx, network failure, or a stream that dropped with
+ * no error frame and no message — the last of these retried up to
+ * maxStreamRetries times first, since nothing was produced or written on that
+ * attempt and retrying it is safe), (b) an mcp_tool_result
  * error block appears in the final response — unless that same write, against
  * the same target, was retried later in the conversation and succeeded (see
  * findMcpError) — or (c) the run is still paused (stop_reason: "pause_turn")
@@ -51,6 +54,15 @@ import trackerNotifier, { pickPatienceQuip } from "./tracker-notifier.js";
 import { createLogger, type Logger } from "./logger.js";
 import { envOr } from "./env.js";
 import { readFile } from "node:fs/promises";
+
+// The exact string @anthropic-ai/sdk's MessageStream throws when the SSE
+// connection ends with no message_stop and no error frame — confirmed
+// against the installed SDK's own MessageStream.ts, thrown with no `cause`,
+// so a direct message match is reliable rather than needing describeError's
+// formatting. Distinct from a timeout (which throws a different, aborted
+// error) or an explicit API error (which sets stream.errored) — this is the
+// "nothing was produced, nothing was written, safe to retry" case.
+const STREAM_ENDED_WITHOUT_MESSAGE = "stream ended without producing a Message with role=assistant";
 
 const LINEAR_MCP_URL = envOr("LINEAR_MCP_URL", "https://mcp.linear.app/mcp");
 const LINEAR_AGENT_API_KEY = process.env.LINEAR_AGENT_API_KEY ?? "";
@@ -369,6 +381,26 @@ export function createActivationRunner(lane: AgentLaneConfig): AgentFn {
     // or a thrown exception — so a finished or failed run never keeps ticking.
     let progressTimer: ReturnType<typeof setInterval> | undefined;
 
+    // request_id/errored/aborted/receivedMessages are only available on the
+    // stream object itself, not on whatever error it throws — this is the
+    // only way to tell, on a mid-stream failure, how far the run got (did it
+    // even connect? did content start arriving?) versus dying with nothing.
+    // warn, not trace: a run that failed needs this visible without having
+    // pre-set LOG_LEVEL=trace before the failure happened — observed
+    // 2026-08-13 (PROJ-460), where the only way to see this was to
+    // deliberately re-trigger the same failure a second time with trace
+    // logging already turned on.
+    function logStreamDiagnostics(message: string): void {
+      if (!stream) return;
+      reqLog.warn(
+        `${message} — request_id=${stream.request_id ?? "(none)"} errored=${stream.errored} ` +
+          `aborted=${stream.aborted} receivedMessages=${stream.receivedMessages.length}`,
+      );
+      if (stream.receivedMessages.length > 0) {
+        reqLog.trace(`last received message: ${JSON.stringify(stream.receivedMessages.at(-1))}`);
+      }
+    }
+
     try {
       reqLog.trace(`loading system blocks (agent file + ${lane.skills.length} skill(s)) and product context`);
       const [systemBlocks, productContexts] = await Promise.all([getSystemBlocks(lane), getProductContexts()]);
@@ -464,21 +496,31 @@ export function createActivationRunner(lane: AgentLaneConfig): AgentFn {
       // nothing downstream (error scanning, content-block inspection) needs
       // to know the transport was streaming.
       async function callOnce(): Promise<Anthropic.Message> {
-        attempt++;
-        callStartedAt = Date.now();
-        reqLog.trace(`calling Anthropic messages.stream, model=${lane.model} (attempt ${attempt})`);
-        stream = client.messages.stream(params, { headers: { "anthropic-beta": "mcp-client-2025-04-04" } });
+        for (let streamAttempt = 0; ; streamAttempt++) {
+          attempt++;
+          callStartedAt = Date.now();
+          reqLog.trace(`calling Anthropic messages.stream, model=${lane.model} (attempt ${attempt})`);
+          stream = client.messages.stream(params, { headers: { "anthropic-beta": "mcp-client-2025-04-04" } });
 
-        // Raw visibility into what Anthropic actually sent, event by event —
-        // the only way to tell, on a mid-stream failure, how far the run got
-        // (did it even connect? did content start arriving?) versus dying
-        // with nothing. Trace-only: at full verbosity, not the default.
-        stream.on("connect", () => reqLog.trace(`stream connected, request_id=${stream?.request_id ?? "(none)"}`));
-        stream.on("streamEvent", (event) => {
-          reqLog.trace(`stream event: ${JSON.stringify(event).slice(0, 500)}`);
-        });
+          // Raw visibility into what Anthropic actually sent, event by event —
+          // the only way to tell, on a mid-stream failure, how far the run got
+          // (did it even connect? did content start arriving?) versus dying
+          // with nothing. Trace-only: at full verbosity, not the default.
+          stream.on("connect", () => reqLog.trace(`stream connected, request_id=${stream?.request_id ?? "(none)"}`));
+          stream.on("streamEvent", (event) => {
+            reqLog.trace(`stream event: ${JSON.stringify(event).slice(0, 500)}`);
+          });
 
-        return stream.finalMessage();
+          try {
+            return await stream.finalMessage();
+          } catch (err) {
+            const isStreamDrop = err instanceof Error && err.message === STREAM_ENDED_WITHOUT_MESSAGE;
+            if (!isStreamDrop || streamAttempt >= activationConfig.maxStreamRetries) throw err;
+            logStreamDiagnostics(
+              `stream dropped with no error/abort/message — retrying (${streamAttempt + 1}/${activationConfig.maxStreamRetries})`,
+            );
+          }
+        }
       }
 
       let response = await callOnce();
@@ -569,16 +611,7 @@ export function createActivationRunner(lane: AgentLaneConfig): AgentFn {
       }
     } catch (err) {
       const message = describeError(err);
-      if (stream) {
-        reqLog.trace(
-          `stream diagnostics — request_id=${stream.request_id ?? "(none)"} ` +
-            `errored=${stream.errored} aborted=${stream.aborted} ` +
-            `receivedMessages=${stream.receivedMessages.length}`,
-        );
-        if (stream.receivedMessages.length > 0) {
-          reqLog.trace(`last received message: ${JSON.stringify(stream.receivedMessages.at(-1))}`);
-        }
-      }
+      logStreamDiagnostics("stream diagnostics");
       reqLog.trace(`run threw before completing: ${message}`);
       await postErrorComment(reqLog, lane, entityId, traceId, message);
     } finally {
