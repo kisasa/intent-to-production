@@ -169,9 +169,17 @@ export class TemporalWorkersStack extends BaseStack {
         { name: "SPECIALIST_SUBNET_IDS", value: Fn.join(",", network.publicSubnetIds) },
         // Reviewer-of-record's static email -> GitHub-login table (see
         // class-doc above and worker-config.ts's parseReviewerMapping). A
-        // context value, not a secret — re-serialized here to the same JSON
-        // object string the app parses from process.env.
-        { name: "REVIEWER_EMAIL_TO_GITHUB_LOGIN", value: JSON.stringify(config.reviewerEmailToGithubLogin) },
+        // context value, not a secret. Same class of bug as SPECIALIST_SUBNET_IDS
+        // above, just triggered by different content: JSON.stringify produces a
+        // plain JS string carrying literal `"` characters (from the emails'
+        // quoted keys), and CDKTF's outer Fn.jsonencode splice doesn't re-escape
+        // those when embedding a plain string value — confirmed live
+        // (2026-08-13): synth produced HCL with the quotes unescaped, and
+        // Terraform's parser rejected it ("Invalid character" mid-string).
+        // Fn.jsonencode here instead makes this one value its own token, built
+        // from the real object rather than pre-stringified text — Terraform
+        // encodes and escapes it correctly when the outer jsonencode resolves.
+        { name: "REVIEWER_EMAIL_TO_GITHUB_LOGIN", value: Fn.jsonencode(config.reviewerEmailToGithubLogin) },
       ],
       secrets: [...secrets, { name: "TEMPORAL_API_KEY", valueFrom: temporalApiKeyParameter.arn }],
       secretParameterArns: [...parameters.map((parameter) => parameter.arn), temporalApiKeyParameter.arn],

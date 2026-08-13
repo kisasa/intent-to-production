@@ -111,4 +111,34 @@ describe("TemporalWorkerService", () => {
     };
     assertSafeContainerDefinitions(synth(configWithJoinToken));
   });
+
+  it("regression: a literal object value goes through Fn.jsonencode, not JSON.stringify, to avoid raw embedded quotes", () => {
+    // Reproduces the exact bug found wiring REVIEWER_EMAIL_TO_GITHUB_LOGIN:
+    // JSON.stringify({"a@b.com": "c"}) produces a plain JS string carrying
+    // literal `"` characters, from its own quoted keys and values — a
+    // different trigger than the Fn.join case above (there it was a token's
+    // own HCL call syntax; here it's a plain string that happens to contain
+    // quote characters), but the same underlying gap: CDKTF's outer
+    // Fn.jsonencode splice embeds a plain string's content raw, without
+    // re-escaping it for the surrounding HCL string literal. Confirmed live
+    // (2026-08-13, deploying REVIEWER_EMAIL_TO_GITHUB_LOGIN): Terraform's
+    // parser rejected the result with "Invalid character," three characters
+    // into what should have been one string value. Fn.jsonencode on the
+    // object itself, instead of JSON.stringify, makes this one value its own
+    // token — Terraform encodes and escapes it correctly when the outer
+    // jsonencode resolves, the same fix already applied one call site over.
+    const configWithQuotedLiteral = {
+      ...baseConfig,
+      environment: [...baseConfig.environment, { name: "REVIEWER_EMAIL_TO_GITHUB_LOGIN", value: Fn.jsonencode({ "a@b.com": "c" }) }],
+    };
+    const json = synth(configWithQuotedLiteral);
+    assertSafeContainerDefinitions(json);
+
+    const parsed = JSON.parse(json) as {
+      resource: { aws_ecs_task_definition: Record<string, { container_definitions: string }> };
+    };
+    const containerDefinitions = Object.values(parsed.resource.aws_ecs_task_definition)[0]?.container_definitions ?? "";
+    expect(containerDefinitions).toContain('"value" = jsonencode({"a@b.com" = "c"})');
+    expect(containerDefinitions).not.toContain('"value" = "{"a@b.com":"c"}"');
+  });
 });
