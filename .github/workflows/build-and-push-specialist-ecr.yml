@@ -7,6 +7,11 @@ name: Build and push specialist-runner image to ECR
 # webhook-listener/Dockerfile needs), so an unrelated webhook-listener or
 # infra-only change should not rebuild this image.
 on:
+  push:
+    paths:
+      - "specialist-runner/**"
+    branches:
+      - dev
   pull_request:
     types: [closed]
     paths:
@@ -28,13 +33,13 @@ concurrency:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event_name == 'pull_request' &&
-        github.event.pull_request.merged == true &&
-        github.event.pull_request.base.ref == 'main'
-      )
+#    if: >
+#      github.event_name == 'workflow_dispatch' ||
+#      (
+#        github.event_name == 'pull_request' &&
+#        github.event.pull_request.merged == true &&
+#        github.event.pull_request.base.ref == 'main'
+#      )
     env:
       ECR_REPOSITORY: intent-to-production-specialist
     steps:

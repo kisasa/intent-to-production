@@ -7,6 +7,11 @@ name: Build and push dispatch-worker image to ECR
 # (dispatch-worker/ only), so an unrelated webhook-listener/infra/
 # specialist-runner change should not rebuild this image.
 on:
+  push:
+    paths:
+      - "dispatch-worker/**"
+    branches:
+      - dev
   pull_request:
     types: [closed]
     paths:
@@ -28,13 +33,13 @@ concurrency:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event_name == 'pull_request' &&
-        github.event.pull_request.merged == true &&
-        github.event.pull_request.base.ref == 'main'
-      )
+#    if: >
+#      github.event_name == 'workflow_dispatch' ||
+#      (
+#        github.event_name == 'pull_request' &&
+#        github.event.pull_request.merged == true &&
+#        github.event.pull_request.base.ref == 'main'
+#      )
     env:
       ECR_REPOSITORY: intent-to-production-temporal-worker
     steps:

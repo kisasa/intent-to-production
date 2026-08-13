@@ -3,8 +3,15 @@ name: Build and push webhook-listener image to ECR
 # Fires when a PR targeting main is merged, and can also be run manually
 # from the Actions tab (e.g. to rebuild/push without a fresh merge).
 on:
+  push:
+    paths:
+      - "webhook-listener/**"
+    branches:
+      - dev
   pull_request:
     types: [closed]
+    paths:
+      - "webhook-listener/**"
   workflow_dispatch:
     inputs:
       ref:
@@ -31,13 +38,13 @@ jobs:
     # rather than silently running with real AWS access in that case. Merging
     # into a protected main branch already requires write access on GitHub's
     # side, so no extra author_association check is needed here.
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event_name == 'pull_request' &&
-        github.event.pull_request.merged == true &&
-        github.event.pull_request.base.ref == 'main'
-      )
+#    if: >
+#      github.event_name == 'workflow_dispatch' ||
+#      (
+#        github.event_name == 'pull_request' &&
+#        github.event.pull_request.merged == true &&
+#        github.event.pull_request.base.ref == 'main'
+#      )
     env:
       ECR_REPOSITORY: intent-to-production
     steps:
