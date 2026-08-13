@@ -175,7 +175,7 @@ services:
       LINEAR_AGENT_API_KEY: ""
       # Reviewer-of-record's static email->GitHub-login table (JSON object
       # string). Optional — unset just skips requesting a reviewer.
-      REVIEWER_EMAIL_TO_GITHUB_LOGIN: '{"user@example.com":"example-login"}'
+      REVIEWER_EMAIL_TO_GITHUB_LOGIN: '{"user@example.com":"example-login","contributor-a@example.com":"example-login-a","contributor-b@example.com":"example-login-b"}'
       # LocalStack, not real AWS — the installed AWS SDK respects
       # AWS_ENDPOINT_URL natively, no code change needed for this.
       AWS_ENDPOINT_URL: http://localstack:4566
