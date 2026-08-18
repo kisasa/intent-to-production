@@ -95,6 +95,41 @@ export function parseRepoBase(comments: string[], surface: string): RepoBase | n
   return null;
 }
 
+/**
+ * Finds a line that was plainly an attempt at recording this surface's repo
+ * base but didn't match `parseRepoBase`'s strict pattern — loose on purpose
+ * (just "repo base" and the surface name, both normalized), since the whole
+ * point is to catch typos in the part `parseRepoBase` is strict about (the
+ * colon, the dash character, the segment count). Confirmed live: an
+ * architect posted `Repo base — management-web — github/org/repo/main` (em
+ * dash where the format wants a colon) and the resulting failure comment
+ * gave no hint that a line existed at all, let alone what was wrong with it.
+ * Returns the raw line so the failure message can quote it back verbatim —
+ * seeing your own typo is faster than re-deriving it from a rule.
+ */
+function findMalformedCandidateLine(comments: string[], surface: string): string | null {
+  const surfaceNormalized = normalizeForComparison(surface);
+  for (let i = comments.length - 1; i >= 0; i--) {
+    const comment = comments[i];
+    if (comment === undefined) continue;
+    for (const line of comment.split("\n")) {
+      const normalized = normalizeForComparison(line);
+      if (normalized.includes("repobase") && normalized.includes(surfaceNormalized)) {
+        return line.trim();
+      }
+    }
+  }
+  return null;
+}
+
+function normalizeForComparison(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function formatExample(surface: string): string {
+  return `\`Repo base — ${surface}: <host>/<org>/<repo>/<ref>\` (e.g. \`Repo base — ${surface}: github/example-org/example-app/main\`)`;
+}
+
 export type ResolveCommonRepoBaseResult =
   | { readonly ok: true; readonly repoBase: RepoBase }
   | { readonly ok: false; readonly reason: string };
@@ -120,10 +155,19 @@ export function resolveCommonRepoBase(comments: string[], surfaces: Surface[]): 
 
   const missing = resolved.filter((r) => r.base === null).map((r) => r.surface);
   if (missing.length > 0) {
+    const guidance = missing
+      .map((surface) => {
+        const malformed = findMalformedCandidateLine(comments, surface);
+        return malformed
+          ? `- ${surface}: found \`${malformed}\`, which doesn't match the required format. Expected ${formatExample(surface)}`
+          : `- ${surface}: expected ${formatExample(surface)}`;
+      })
+      .join("\n");
+
     return {
       ok: false,
       reason: `No recorded repo base found for surface(s): ${missing.join(", ")}. The architect needs to ` +
-        `record one (see specification-agent.md's format) before this story can dispatch.`,
+        `record one (see specification-agent.md's format) before this story can dispatch.\n\n${guidance}`,
     };
   }
 

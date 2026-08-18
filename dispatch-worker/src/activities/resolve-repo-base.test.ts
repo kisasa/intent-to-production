@@ -94,6 +94,31 @@ describe("resolveCommonRepoBase", () => {
     expect(!result.ok && result.reason).toMatch(/No recorded repo base found for surface\(s\): web, e2e/);
   });
 
+  it("includes a worked example for a surface with no recorded line at all", () => {
+    const result = resolveCommonRepoBase([], ["web"]);
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.reason).toContain("- web: expected `Repo base — web: <host>/<org>/<repo>/<ref>`");
+  });
+
+  it("quotes back a malformed line instead of reporting the surface as unrecorded (confirmed live: em dash where a colon was required)", () => {
+    const comments = ["Repo base — management-web — github/example-org/example-web/main"];
+    const result = resolveCommonRepoBase(comments, ["management-web"]);
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.reason).toContain(
+      "- management-web: found `Repo base — management-web — github/example-org/example-web/main`, " +
+        "which doesn't match the required format.",
+    );
+    expect(!result.ok && result.reason).toContain("Expected `Repo base — management-web: <host>/<org>/<repo>/<ref>`");
+  });
+
+  it("doesn't confuse one surface's malformed line for another's when both are missing", () => {
+    const comments = ["Repo base — management-web — github/example-org/example-web/main"];
+    const result = resolveCommonRepoBase(comments, ["management-web", "services"]);
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.reason).toContain("management-web: found `Repo base — management-web —");
+    expect(!result.ok && result.reason).toContain("- services: expected `Repo base — services:");
+  });
+
   it("rejects surfaces that resolve to different repo bases, naming each one's resolution", () => {
     const comments = [
       "Repo base — web: github/example-org/example-web/main",
