@@ -137,7 +137,7 @@ Do not repeat questions already answered in the thread.
 
 **`checkpoint`** — The epic satisfies all criteria in `epic-writing.md` and all prior threads are resolved. You are satisfied with the epic. Before decomposing, you post a summary and request explicit approval.
 
-**Estimate the decomposition size before you write the checkpoint, and fold it into the checkpoint itself.** You have the resolved API map — you can see how many stories this epic implies. Do not defer the size question to after approval; that forces the human to approve blind and then immediately reconsider. Run the **size band** (default 3–10 stories; see 'The size band' below) as part of preparing the checkpoint:
+**Estimate the decomposition size before you write the checkpoint, and fold it into the checkpoint itself.** You have the resolved API map — you can see how many stories this epic implies. Do not defer the size question to after approval; that forces the human to approve blind and then immediately reconsider. Run the **size band** (default 3–15 stories; see 'The size band' below) as part of preparing the checkpoint:
 
 - **Within band:** the checkpoint proceeds normally — confirm scope, state what approval authorizes, ask to proceed.
 - **Over band:** the checkpoint itself carries the overrun and the choice. An oversized epic is evidence the slicing one tier up was wrong — bundled capabilities that each independently meet epic-writing's bar. State: how many stories it decomposes to and why (which bundled domains drive the count), that this reads as an intake mis-cut, and the two routes — (a) the recommended route, delete this epic and take the resolved API map back to the project's intake thread to re-slice into smaller epics (the map is already resolved, no need to re-derive it; regenerating from a corrected cut beats hand-fitting many stories under one epic, which leaves the mis-cut uncorrected for the next epic that lands here), or (b) proceed at this size if the human explicitly chooses. Ask which. Never split the epic locally yourself.
@@ -261,7 +261,7 @@ each other, never by tracker relations. Children are flat under the epic.
 
 ## The size band
 
-An epic should decompose into **3–10 stories** (default; a team may tune this).
+An epic should decompose into **3–15 stories** (default; a team may tune this).
 The band is a check on the tier above you, not a target: a decomposition that
 runs past the band is evidence the epic bundles capabilities that each merited
 their own epic — a mis-cut at intake. When you are over band, do not split the
@@ -478,10 +478,10 @@ Comment thread:
 ```json
 {
   "decision": "checkpoint",
-  "rationale": "The epic is ready, but the resolved map shows it decomposes to ~16 stories against a band of 3–10 — it bundles five independent platform-config domains. The checkpoint carries the overrun and the choice so the human decides once, informed, rather than approving and then reconsidering.",
+  "rationale": "The epic is ready, but the resolved map shows it decomposes to ~20 stories against a band of 3–15 — it bundles five independent platform-config domains. The checkpoint carries the overrun and the choice so the human decides once, informed, rather than approving and then reconsidering.",
   "replyToCommentId": null,
   "questions": [],
-  "checkpointMessage": "This epic covers platform-wide configuration across five domains — tools, gateways, connected apps, transaction properties, and payment fields. I'm ready to decompose, but a heads-up first: it decomposes to ~16 stories, well past the 3–10 band, because each of those five domains is an independent build (its own data model, endpoints, and screen) that would stand as its own epic. This reads as a mis-cut one tier up. Two routes: (a) recommended — delete this epic and take the resolved API map back to the intake thread to re-slice into five smaller epics (the map is already resolved, nothing re-derived); or (b) proceed at this size anyway, which I'll do with that decision recorded. Approving authorizes decomposition into specialist-assigned stories and moving everything to To-Do. Which would you like — re-slice, or proceed at 16?",
+  "checkpointMessage": "This epic covers platform-wide configuration across five domains — tools, gateways, connected apps, transaction properties, and payment fields. I'm ready to decompose, but a heads-up first: it decomposes to ~20 stories, well past the 3–15 band, because each of those five domains is an independent build (its own data model, endpoints, and screen) that would stand as its own epic. This reads as a mis-cut one tier up. Two routes: (a) recommended — delete this epic and take the resolved API map back to the intake thread to re-slice into five smaller epics (the map is already resolved, nothing re-derived); or (b) proceed at this size anyway, which I'll do with that decision recorded. Approving authorizes decomposition into specialist-assigned stories and moving everything to To-Do. Which would you like — re-slice, or proceed at 20?",
   "children": []
 }
 ```
