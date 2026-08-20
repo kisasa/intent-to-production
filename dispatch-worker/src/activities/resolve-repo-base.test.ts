@@ -130,4 +130,32 @@ describe("resolveCommonRepoBase", () => {
       /web: github\/kisasa\/example-web\/main; e2e: github\/kisasa\/example-e2e\/main/,
     );
   });
+
+  it("flags a shadowed correction — a newer line for the mismatched surface that didn't parse (confirmed live, PROJ-647)", () => {
+    const comments = [
+      "Repo base — management-web: github/example-org/example-web/main\n\n" +
+        "Repo base — e2e: github/example-org/example-web/playwright/main",
+      // Posted later, intended as a fix, but the em dash didn't survive — this
+      // uses a plain hyphen, so parseRepoBase's strict pattern never matches
+      // it and the older "playwright/main" line above keeps winning.
+      "Repo base - e2e: github/example-org/example-web/main",
+    ];
+    const result = resolveCommonRepoBase(comments, ["management-web", "e2e"]);
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.reason).toContain(
+      "e2e: github/example-org/example-web/playwright/main " +
+        "(a more recent comment says `Repo base - e2e: github/example-org/example-web/main`, " +
+        "which didn't match the required format and was ignored)",
+    );
+  });
+
+  it("does not flag a shadowed correction when the most recent mention is the one that actually resolved", () => {
+    const comments = [
+      "Repo base — web: github/example-org/example-web/main",
+      "Repo base — e2e: github/example-org/example-e2e/main",
+    ];
+    const result = resolveCommonRepoBase(comments, ["web", "e2e"]);
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.reason).not.toContain("more recent comment");
+  });
 });

@@ -143,6 +143,28 @@ function formatRepoBase(base: RepoBase): string {
 }
 
 /**
+ * Catches the case `parseRepoBase`'s own newest-first scan can't surface on
+ * its own: the most recent comment mentioning this surface isn't the one
+ * that actually resolved, because it failed the strict format and an older,
+ * valid line won by falling through. Confirmed live (PROJ-647, 2026-08-20):
+ * an architect posted a corrected `e2e` line, it silently didn't parse (the
+ * em dash didn't survive copy/paste), and the story kept failing against the
+ * stale line with no hint a newer attempt even existed — the only reason it
+ * was ever found was a human re-reading the raw comment text by hand.
+ *
+ * `findMalformedCandidateLine` already returns the single most recent line
+ * loosely mentioning this surface's repo base, regardless of whether it's
+ * the one that actually resolved — so if that line's text doesn't contain
+ * the value that *did* resolve, something newer and different exists.
+ */
+function findShadowedCorrection(comments: string[], surface: string, resolved: RepoBase): string | null {
+  const mostRecentMention = findMalformedCandidateLine(comments, surface);
+  if (mostRecentMention === null) return null;
+  if (mostRecentMention.includes(formatRepoBase(resolved))) return null;
+  return mostRecentMention;
+}
+
+/**
  * The pure decision at this activity's core, split out so it's testable
  * without mocking `getIssue` — same pattern as `parseRepoBase` itself and
  * `check-dependencies.ts`'s `parseBlockingDependencyIds`. Resolves every
@@ -181,7 +203,16 @@ export function resolveCommonRepoBase(comments: string[], surfaces: Surface[]): 
 
   const mismatched = resolved.filter((r) => !repoBasesEqual(r.base as RepoBase, first));
   if (mismatched.length > 0) {
-    const detail = resolved.map((r) => `${r.surface}: ${formatRepoBase(r.base as RepoBase)}`).join("; ");
+    const detail = resolved
+      .map((r) => {
+        const base = r.base as RepoBase;
+        const shadow = findShadowedCorrection(comments, r.surface, base);
+        const resolvedText = `${r.surface}: ${formatRepoBase(base)}`;
+        return shadow
+          ? `${resolvedText} (a more recent comment says \`${shadow}\`, which didn't match the required format and was ignored)`
+          : resolvedText;
+      })
+      .join("; ");
     return {
       ok: false,
       reason: `This story's surfaces resolve to different repo bases (${detail}) — they must all resolve to ` +
