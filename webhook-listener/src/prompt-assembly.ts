@@ -21,17 +21,28 @@ import { loadSkills } from "./skills.js";
 const AGENTS_DIR = fileURLToPath(new URL("../../agents/", import.meta.url));
 const TEMPLATES_DIR = fileURLToPath(new URL("./prompt-templates/", import.meta.url));
 
-export type SystemBlock = { type: "text"; text: string };
+export type SystemBlock = { type: "text"; text: string; cache_control?: { type: "ephemeral" } };
 
 export async function loadAgentFile(agentFile: string): Promise<SystemBlock> {
   const text = await readFile(join(AGENTS_DIR, agentFile), "utf8");
   return { type: "text", text: text };
 }
 
+/**
+ * The agent file + its skills are static per lane for the process lifetime
+ * (activation-runner.ts's own getSystemBlocks caches this call's result) but
+ * were still sent, and billed, at full price on every activation and every
+ * pause_turn resume within one run — no cache_control breakpoint anywhere.
+ * A breakpoint caches everything up through the marked block, so marking
+ * only the last one covers the whole agent+skills prefix in one write.
+ */
 export async function buildSystemBlocks(agentFile: string, skills: string[]): Promise<SystemBlock[]> {
   const agentBlock = await loadAgentFile(agentFile);
   const skillBlocks: SkillBlock[] = await loadSkills(skills);
-  return [agentBlock, ...skillBlocks];
+  const blocks: SystemBlock[] = [agentBlock, ...skillBlocks];
+  const lastBlock = blocks[blocks.length - 1];
+  if (lastBlock) lastBlock.cache_control = { type: "ephemeral" };
+  return blocks;
 }
 
 export async function renderActivationPrompt(
