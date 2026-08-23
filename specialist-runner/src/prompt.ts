@@ -32,7 +32,7 @@ const SKILL_NAMES = ["story-contract", "epic-writing"];
 export async function buildSystemPrompt(frameworkPath: string, context: DispatchContext): Promise<string> {
   const agentText = await readFile(join(frameworkPath, "agents", AGENT_FILE), "utf8");
   const skillTexts = await Promise.all(
-    SKILL_NAMES.map((name) => readFile(join(frameworkPath, "skills", name, `${name}.md`), "utf8")),
+    SKILL_NAMES.map((name) => readFile(join(frameworkPath, "skills", name, "SKILL.md"), "utf8")),
   );
   return [agentText, ...skillTexts].join("\n\n---\n\n");
 }

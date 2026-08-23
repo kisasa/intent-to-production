@@ -62,8 +62,8 @@ describe("buildSystemPrompt", () => {
     await mkdir(join(frameworkPath, "skills", "story-contract"), { recursive: true });
     await mkdir(join(frameworkPath, "skills", "epic-writing"), { recursive: true });
     await writeFile(join(frameworkPath, "agents", "specialist.md"), "AGENT DEFINITION");
-    await writeFile(join(frameworkPath, "skills", "story-contract", "story-contract.md"), "STORY CONTRACT SKILL");
-    await writeFile(join(frameworkPath, "skills", "epic-writing", "epic-writing.md"), "EPIC WRITING SKILL");
+    await writeFile(join(frameworkPath, "skills", "story-contract", "SKILL.md"), "STORY CONTRACT SKILL");
+    await writeFile(join(frameworkPath, "skills", "epic-writing", "SKILL.md"), "EPIC WRITING SKILL");
 
     const systemPrompt = await buildSystemPrompt(frameworkPath, context);
 

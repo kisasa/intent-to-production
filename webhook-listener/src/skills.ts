@@ -3,10 +3,12 @@
  * them as Anthropic system prompt content blocks. Skills are portable expertise —
  * shared across agent types, not specific to any one agent.
  *
- * Each skill lives at skills/<name>/<name>.md, alongside a SKILL.md used by a
- * separate tool (the Claude Skills convention) — the two are parallel files
- * with the same content, not one derived from the other. This loader reads
- * only the former.
+ * Each skill lives at skills/<name>/SKILL.md — the Claude Skills convention,
+ * and now the only copy. This loader used to read a parallel
+ * skills/<name>/<name>.md kept in sync by hand; that duplicate is removed
+ * (docs/design-ledger.md, 2026-08-23), because two hand-synced copies of the
+ * same instructions is a silent-divergence hazard and the mechanism is about
+ * to carry per-surface skills as well.
  *
  * Each agent declares the skill names it needs. This loader resolves those names
  * to files and returns one content block per skill, ready to spread into the
@@ -25,7 +27,7 @@ export async function loadSkills(names: string[]): Promise<SkillBlock[]> {
   if (names.length === 0) return [];
   return Promise.all(
     names.map(async (name) => {
-      const text = await readFile(join(SKILLS_DIR, name, `${name}.md`), "utf8");
+      const text = await readFile(join(SKILLS_DIR, name, "SKILL.md"), "utf8");
       return { type: "text" as const, text: text };
     }),
   );

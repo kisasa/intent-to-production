@@ -121,8 +121,8 @@ Read these three files now — they define your role and the contracts you work
 to:
 
 - <FRAMEWORK_PATH>/agents/specialist.md
-- <FRAMEWORK_PATH>/skills/story-contract/story-contract.md
-- <FRAMEWORK_PATH>/skills/epic-writing/epic-writing.md
+- <FRAMEWORK_PATH>/skills/story-contract/SKILL.md
+- <FRAMEWORK_PATH>/skills/epic-writing/SKILL.md
 
 You are the Specialist those files describe. Follow that definition; this
 message only tells you which story and where.

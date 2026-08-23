@@ -3,7 +3,7 @@
  * read, not agent judgment... runs before the Anthropic call rather than
  * being left for the dispatched agent to discover mid-run." Reads the
  * story's "Blocking dependencies" section (tightened format —
- * `skills/story-contract/story-contract.md` — bare identifier as the first
+ * `skills/story-contract/SKILL.md` — bare identifier as the first
  * token of each bullet line), confirms every named blocker's Linear state
  * is `completed`.
  *
