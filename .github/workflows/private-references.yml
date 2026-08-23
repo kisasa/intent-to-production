@@ -1,0 +1,28 @@
+name: No private references
+
+# Enforces CLAUDE.md's "No Private References" rule: nothing in this repository
+# may reference a private tracker team or issue, a client organization or repo,
+# a person, or a named deployed environment. The rule was violated within an
+# hour of being written down, which is why it is checked here rather than
+# remembered.
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # No dependencies: the check reads `git ls-files` and the working tree
+      # with Node built-ins only, so it needs no install step and cannot be
+      # broken by a lockfile change.
+      - name: Check for private references
+        run: node scripts/check-no-private-references.mjs
