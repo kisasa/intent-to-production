@@ -82,8 +82,15 @@ const PLACEHOLDER_KEY = /^PROJ-\d+$/;
 
 const RULES = [
   {
+    /**
+     * Case-insensitive on purpose: a branch name derived from an issue key
+     * (`proj-58`, `proj-101-refund-endpoint`) is the same leak in lower case,
+     * and the uppercase-only version of this rule walked past thirteen of
+     * them in test fixtures. The shape heuristic below stays uppercase-only —
+     * lower case would match every `utf-8` and `node-22` in the tree.
+     */
     label: "tracker issue keys (use PROJ-<n> instead)",
-    pattern: /\b(?:LET|PROJ|AIP|TARJAY|MGMT)-\d+\b/g,
+    pattern: /\b(?:LET|PROJ|AIP|TARJAY|MGMT)-\d+/gi,
   },
   {
     /**
