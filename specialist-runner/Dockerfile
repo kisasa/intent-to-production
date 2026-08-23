@@ -11,7 +11,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 # Chromium's OS-level shared libraries (libglib-2.0.so.0, libnss3, libatk*,
-# libx11*, etc.) — confirmed missing live (2026-08-07, PROJ-70): a specialist
+# libx11*, etc.) — confirmed missing live (2026-08-07): a specialist
 # tried to sanity-check its own E2E spec locally, per specialist-e2e.md's "if
 # you can stand up and exercise the app locally as you write, do," and
 # chromium/chromium-headless-shell both failed to launch with "error while
@@ -46,10 +46,10 @@ COPY src ./src
 # container's own code never reads NODE_ENV, but the specialist's shelled-out
 # `npm install` in whatever target repo it clones inherits it, and
 # NODE_ENV=production makes npm silently skip devDependencies. Confirmed live
-# (2026-08-10, PROJ-78 and PROJ-84): a target repo whose test tooling (Angular
+# (2026-08-10, two live runs): a target repo whose test tooling (Angular
 # CLI, Playwright) lives in devDependencies got an empty-looking node_modules
-# and a misleading failure — PROJ-78's specialist worked around it with
-# `npm ci --include=dev`; PROJ-84's didn't, and shipped without running its
+# and a misleading failure — one run's specialist worked around it with
+# `npm ci --include=dev`; the other's didn't, and shipped without running its
 # suite at all. Set explicitly to `development` rather than left unset — this
 # container's actual job is developing against a target repo, and some
 # tooling branches on the literal value rather than just "not production,"

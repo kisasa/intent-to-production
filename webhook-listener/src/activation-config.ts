@@ -75,7 +75,7 @@ export const activationConfig: ActivationConfig = {
 
   // How many times a single stream attempt is retried when the SDK throws
   // "stream ended without producing a Message with role=assistant" —
-  // observed twice in a row on 2026-08-13 (PROJ-460), both times right
+  // observed twice in a row on 2026-08-13, both times right
   // after the model fired a burst of concurrent MCP tool_use blocks and the
   // connection went quiet: no message_stop, no error frame (errored=false),
   // no client-side abort (aborted=false), receivedMessages=0. Nothing was

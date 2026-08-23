@@ -60,18 +60,18 @@ No parent, no Project — this epic isn't part of any BRD.
 
 ## Known PROJ surfaces and repos
 
-Confirmed live against Linear as of 2026-08-13 (PROJ-459's API map, "all
-six bases are now settled," and the team's current label set). Treat this
+Confirmed live against the tracker as of 2026-08-13 (an epic's API map, in
+which "all six bases are now settled," and the team's current label set). Treat this
 as a fast default, not gospel — if a developer names a surface not listed
 here, or you have live Linear access and want to double-check, look it up
 fresh (`list_issue_labels` for the team, or search documents titled "API
-Map" — several exist per epic, e.g. PROJ-459) rather than assuming this
+Map" — several exist per epic) rather than assuming this
 table is still complete.
 
 | Surface label | Repo | What it is |
 |---|---|---|
 | `surface:management-web` | `github/example-org/example-web` (Angular) | admin frontend |
-| `surface:vt-web` | `github/example-org/example-vt-web` | merchant-facing Virtual Terminal + Pay Invoice |
+| `surface:vt-web` | `github/example-org/example-vt-web` | merchant-facing secondary web app |
 | `surface:paynow-web` | `github/example-org/example-paynow-web` | merchant-facing Pay Now |
 | `surface:services` | `github/example-org/example-api` (.NET, modular: Merchants, Transactions, Users, Invoices, Payers, Identity...) | backend — **use this one, not the older `surface:backend`** |
 | `surface:e2e`, `surface:tests` | cross-cutting, no single repo | only when the epic genuinely needs a dedicated test/E2E story |

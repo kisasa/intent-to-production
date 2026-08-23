@@ -40,7 +40,7 @@ describe("parseRepoBase", () => {
     });
   });
 
-  it("ignores Specification's own kickoff-question template line (confirmed live, PROJ-58)", () => {
+  it("ignores Specification's own kickoff-question template line (confirmed live)", () => {
     const comments = [
       "Before I can draft the API map for this epic, I need the repo coordinates. " +
         "@architect — could you confirm the repo base for the frontend surface? Format:\n" +
@@ -127,11 +127,11 @@ describe("resolveCommonRepoBase", () => {
     const result = resolveCommonRepoBase(comments, ["web", "e2e"]);
     expect(result.ok).toBe(false);
     expect(!result.ok && result.reason).toMatch(
-      /web: github\/kisasa\/example-web\/main; e2e: github\/kisasa\/example-e2e\/main/,
+      /web: github\/example-org\/example-web\/main; e2e: github\/example-org\/example-e2e\/main/,
     );
   });
 
-  it("flags a shadowed correction — a newer line for the mismatched surface that didn't parse (confirmed live, PROJ-647)", () => {
+  it("flags a shadowed correction — a newer line for the mismatched surface that didn't parse (confirmed live)", () => {
     const comments = [
       "Repo base — management-web: github/example-org/example-web/main\n\n" +
         "Repo base — e2e: github/example-org/example-web/playwright/main",

@@ -59,7 +59,7 @@ the same project, or a prior turn here — use them; do not re-ask. Recorded
 coordinates are binding evidence, like any other recorded decision. If a
 surface's repo base is not yet known, ask the architect in-thread, one
 targeted question naming the surfaces you need bases for. A repo base is:
-host, org, repo name, and ref (e.g. `github / kisasa / example-web /
+host, org, repo name, and ref (e.g. `github / example-org / example-web /
 main`).
 
 When you record a resolved base, the comment carries one fixed-format line

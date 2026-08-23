@@ -47,7 +47,7 @@ function escapeRegExp(value: string): string {
 
 /**
  * Rejects a matched line that is the Specification Agent's own format
- * instruction, not a recorded answer — confirmed live (PROJ-58, 2026-08-06):
+ * instruction, not a recorded answer — confirmed live (2026-08-06):
  * the kickoff question that asks the architect to record a repo base
  * necessarily *shows* the exact format it wants back, e.g. `` `Repo base —
  * frontend: <host>/<org>/<repo>/<ref>` (e.g. `Repo base — frontend:
@@ -146,7 +146,7 @@ function formatRepoBase(base: RepoBase): string {
  * Catches the case `parseRepoBase`'s own newest-first scan can't surface on
  * its own: the most recent comment mentioning this surface isn't the one
  * that actually resolved, because it failed the strict format and an older,
- * valid line won by falling through. Confirmed live (PROJ-647, 2026-08-20):
+ * valid line won by falling through. Confirmed live (2026-08-20):
  * an architect posted a corrected `e2e` line, it silently didn't parse (the
  * em dash didn't survive copy/paste), and the story kept failing against the
  * stale line with no hint a newer attempt even existed — the only reason it

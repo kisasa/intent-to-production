@@ -35,7 +35,7 @@ describe("parseBlockingDependencyIds — bold-heading form (story-contract.md's 
 });
 
 describe("parseBlockingDependencyIds — markdown-heading form (what Decompose actually renders live)", () => {
-  it("extracts identifiers from a real PROJ-63-shaped description (## headings, ## References footer)", () => {
+  it("extracts identifiers from a real observed description shape (## headings, ## References footer)", () => {
     const description = [
       "## Scope boundary",
       "Nothing else.",
@@ -71,7 +71,7 @@ describe("parseBlockingDependencyIds — markdown-heading form (what Decompose a
     expect(parseBlockingDependencyIds(description)).toEqual(["PROJ-7", "PROJ-8"]);
   });
 
-  it("accepts a bare identifier line with no bullet marker at all (real PROJ-64 shape)", () => {
+  it("accepts a bare identifier line with no bullet marker at all (an observed real shape)", () => {
     const description = [
       "## Blocking dependencies",
       "",

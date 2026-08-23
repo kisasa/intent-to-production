@@ -47,8 +47,8 @@ const KNOWN_TIERS: readonly Tier[] = ["small", "mid", "large"];
 
 // story-contract.md: "size — small, medium, or large: relative effort within
 // this epic." A different axis from Tier: tier is architectural weight (which
-// model class runs it), size is volume of work. Confirmed live (2026-08-10,
-// PROJ-84) that a story can be `tier:small` and still `size:medium` — the two
+// model class runs it), size is volume of work. Confirmed live
+// (2026-08-10) that a story can be `tier:small` and still `size:medium` — the two
 // don't move together, which is exactly why dispatch-trigger.ts's turn budget
 // takes the larger of what each one implies rather than trusting tier alone.
 export type Size = "small" | "medium" | "large";

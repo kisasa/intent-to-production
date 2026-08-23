@@ -10,7 +10,7 @@ const context: DispatchContext = {
   storyTitle: "Add refund endpoint",
   epicId: "PROJ-10",
   surfaces: ["backend"],
-  surfaceRepo: "kisasa/example-api",
+  surfaceRepo: "example-org/example-api",
   storyBranch: "proj-101-refund-endpoint",
   epicBranch: "proj-10-refunds",
   frameworkRepo: "example-org/intent-to-production",

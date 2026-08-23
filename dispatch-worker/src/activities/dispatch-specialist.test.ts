@@ -22,7 +22,7 @@ describe("buildContainerOverrides", () => {
       { name: "STORY_TITLE", value: "Add refund endpoint" },
       { name: "EPIC_ID", value: "PROJ-10" },
       { name: "SURFACES", value: "backend" },
-      { name: "SURFACE_REPO", value: "kisasa/example-api" },
+      { name: "SURFACE_REPO", value: "example-org/example-api" },
       { name: "STORY_BRANCH", value: "proj-101-refund-endpoint" },
       { name: "EPIC_BRANCH", value: "proj-10-refunds" },
       { name: "MAX_TURNS", value: "40" },

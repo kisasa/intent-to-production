@@ -48,7 +48,7 @@ dispatch are merged and closed-without-merging.
    `open` first, then the single most recent `closed` PR for the same pair,
    trusting it only if it was actually merged — a merge that happened faster
    than this check's own next poll must still read as complete, not "no-pr"
-   (confirmed live 2026-08-07, PROJ-67). No matching PR at all → moves the
+   (confirmed live 2026-08-07). No matching PR at all → moves the
    story back to To-Do and returns `{ outcome: "no-pr" }` — waiting on a
    dependency, blocked, still thinking, or crashed all look the same to this
    workflow; the specialist's own comment on the story is the record of
@@ -148,8 +148,8 @@ Every path through `dispatchStoryWorkflow` that ends without a specialist
 actively running or a PR left open to watch — dependencies not ready
 (`checkDependencies`), a non-`"complete"` specialist outcome (waiting,
 blocked, or unknown), or the catch-all failure above — also calls
-`moveStoryToTodo`. Confirmed live (2026-08-07): PROJ-64's story description
-recorded its blocking dependency (PROJ-63) as a bare line with no bullet
+`moveStoryToTodo`. Confirmed live (2026-08-07): a story's description
+recorded its blocking dependency as a bare line with no bullet
 marker, which `checkDependencies`' own parser silently missed (fixed —
 `BULLET_IDENTIFIER` now accepts a bare identifier line, not just a bulleted
 one) — the specialist itself caught the real blocker mid-run instead and
@@ -166,7 +166,7 @@ status by name (`findStateIdByName`/`updateIssueState` in `tracker.ts` —
 state ids are per-team, so this is a two-step lookup, not a literal), and a
 missing/renamed status or a Linear error is logged and swallowed rather than
 failing the dispatch outcome it's just trying to reflect. "Todo" is this
-team's actual configured name (confirmed live against the sandbox team's team state
+team's actual configured name (confirmed live against the tracker's own state
 list, 2026-08-07) — the same engagement-specific-literal category as
 `specialist-dispatch.ts`'s own "In Progress", not CLAUDE.md's hyphenated
 "To-Do" framework vocabulary.

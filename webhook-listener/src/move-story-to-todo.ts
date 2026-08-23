@@ -7,7 +7,7 @@
  * own "story isn't dispatchable" and "workflow could not start" branches —
  * which dispatch-worker's own `moveStoryToTodo` activity never gets a
  * chance to run for, since no workflow exists yet. Confirmed live
- * (2026-08-07): PROJ-64 hit exactly this — a bad specialist-type label
+ * (2026-08-07): a live story hit exactly this — a bad specialist-type label
  * resolution failed before any workflow started, and the story was left in
  * "In Progress" with only an error comment, no automatic move back.
  *

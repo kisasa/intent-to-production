@@ -17,8 +17,8 @@
  *
  * Checks `open` first, then falls back to the most recent `closed` PR for
  * the same head/base pair and trusts it only if it was actually merged.
- * Confirmed live (2026-08-07, PROJ-67): querying `state=open` alone lost a
- * genuine race — the architect merged the specialist's PR within ~40 seconds of it
+ * Confirmed live (2026-08-07): querying `state=open` alone lost a
+ * genuine race — a reviewer merged the specialist's PR within ~40 seconds of it
  * opening, faster than this activity's own next check, which then found
  * zero open PRs and told the workflow "no-pr," moving a story that had
  * already succeeded back to Todo with no comment explaining why (the

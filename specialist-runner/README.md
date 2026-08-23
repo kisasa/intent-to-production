@@ -143,7 +143,7 @@ live run.
 The image installs Chromium's OS-level shared libraries
 (`npx playwright@latest install-deps chromium`) at build time, as root,
 before the runtime switch to `USER node` — confirmed missing live
-(2026-08-07, PROJ-70): a real E2E specialist run tried to sanity-check its
+(2026-08-07): a real E2E specialist run tried to sanity-check its
 spec locally per `specialist-e2e.md`'s "if you can stand up and exercise the
 app locally as you write, do," and chromium/chromium-headless-shell both
 failed to launch ("error while loading shared libraries"), with no root

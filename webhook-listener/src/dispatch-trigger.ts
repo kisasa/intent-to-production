@@ -43,12 +43,12 @@ const WORKFLOW_TYPE = "dispatchStoryWorkflow";
 /**
  * Sizes the specialist's turn budget from two labels, not one flat number.
  * Replaces the old flat `DEFAULT_MAX_TURNS = 80` applied to every dispatch
- * regardless of scope — confirmed live (2026-08-10, PROJ-84) that a single
+ * regardless of scope — confirmed live (2026-08-10) that a single
  * flat number doesn't fit every story: an e2e story enumerating several flow
  * scenarios plus a cross-surface consistency check hit the 80-turn ceiling
  * and got bounced back to To-Do.
  *
- * A tier-only lookup was the first cut, then PROJ-84 itself disproved it: the
+ * A tier-only lookup was the first cut, then a live story disproved it: the
  * story was `tier:small` (per story-contract.md, tier is "which execution
  * tier — model class — runs the specialist," i.e. architectural weight) but
  * `size:medium` ("relative effort within this epic," i.e. volume of work) —
@@ -59,7 +59,7 @@ const WORKFLOW_TYPE = "dispatchStoryWorkflow";
  * number pulled from nowhere. Each label independently multiplies that floor;
  * a story elevated on both axes compounds rather than being capped at
  * whichever axis is worse, since tier and size are read as genuinely
- * independent cost signals, not two votes on one "difficulty" score. PROJ-84
+ * independent cost signals, not two votes on one "difficulty" score. That story
  * (`tier:small` × `size:medium` → 1 × 2) would have gotten 160 turns instead
  * of 80. Not a claim these specific multipliers are correct forever — a
  * story that still runs out at its combined budget is real information (the
@@ -136,7 +136,7 @@ export function createDispatchTrigger(config: DispatchTriggerConfig): AgentFn {
       // activity never gets a chance to run — this failure happens entirely
       // before that. Without this, the story is left in In Progress with
       // only an error comment and nothing dispatched (confirmed live
-      // 2026-08-07, PROJ-64).
+      // 2026-08-07).
       await moveStoryToTodo(entityId, config.linearAgentApiKey, config.linearApiUrl, traceId);
       return;
     }

@@ -49,7 +49,7 @@ entry rather than in the prose.
 
 > **Instead of:** "Follow the list+modal pattern in `GatewaysSection` /
 > `GatewayModal` (see `features/gateways/gateways.page.ts:233-237`) when adding
-> the roster table, as established in PROJ-19's resolved API map."
+> the roster table, as established in the epic's resolved API map."
 >
 > **Write:** "Add the roster table using the existing list and modal pattern."
 >

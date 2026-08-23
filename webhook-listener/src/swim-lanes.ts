@@ -44,7 +44,7 @@ export const lanes: LaneConfig[] = [
     // spec:awaiting-answers covers a pre-draft `ask` (e.g. an unresolved repo
     // base) — the one case where the agent needs to hear back before a map
     // exists at all, so awaiting-architect/designer aren't up yet to route
-    // the reply. Observed 2026-07-29 on PROJ-457: without it, a reply to a
+    // the reply. Observed live 2026-07-29: without it, a reply to a
     // pre-draft question matched neither the first-pass trigger (not a fresh
     // status entry) nor the other two awaiting labels (never applied pre-map),
     // leaving the epic stuck with no route back to Specification.

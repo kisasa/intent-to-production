@@ -216,7 +216,7 @@ describe("dispatchStoryWorkflow", () => {
         // No activity anticipates this failure with its own comment — the
         // exact shape of today's real createStoryBranch/GitHub-404 incident.
         createStoryBranch: async () => {
-          throw new Error("Could not read epic branch \"proj-10-refunds\" in kisasa/example-api: GitHub returned 404");
+          throw new Error("Could not read epic branch \"proj-10-refunds\" in example-org/example-api: GitHub returned 404");
         },
         dispatchSpecialist: unexpectedCall("dispatchSpecialist"),
         postSpecialistStarted: unexpectedCall("postSpecialistStarted"),
@@ -244,7 +244,7 @@ describe("dispatchStoryWorkflow", () => {
       ).rejects.toThrow();
     });
 
-    expect(postedMessages).toEqual(['Could not read epic branch "proj-10-refunds" in kisasa/example-api: GitHub returned 404']);
+    expect(postedMessages).toEqual(['Could not read epic branch "proj-10-refunds" in example-org/example-api: GitHub returned 404']);
     expect(movedStoryIds).toEqual([baseInput.storyId]);
   }, 30_000);
 });

@@ -121,7 +121,7 @@ describe("findDuplicateWrites", () => {
     expect(findDuplicateWrites(content as never, allToolUses)).toEqual([]);
   });
 
-  it("flags the same successful write repeated against the same target (the observed PROJ-32 case)", () => {
+  it("flags the same successful write repeated against the same target (the observed real case)", () => {
     // Real shape from a 2026-07-20 run: decompose posted the exact same
     // save_comment (same issueId, byte-identical body) twice, 219ms apart.
     // Neither call errored, so findMcpError has nothing to see here — this

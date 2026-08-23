@@ -255,7 +255,7 @@ export function findMcpError(
   return null;
 }
 
-// Observed 2026-07-20: a single decompose run against PROJ-32 posted the exact
+// Observed 2026-07-20: a single decompose run against one epic posted the exact
 // same save_comment — same issueId, byte-identical body — twice, 219ms apart.
 // Both calls succeeded (no is_error block on either), so findMcpError had
 // nothing to flag; the only visible symptom was two duplicate comments on the
@@ -387,7 +387,7 @@ export function createActivationRunner(lane: AgentLaneConfig): AgentFn {
     // even connect? did content start arriving?) versus dying with nothing.
     // warn, not trace: a run that failed needs this visible without having
     // pre-set LOG_LEVEL=trace before the failure happened — observed
-    // 2026-08-13 (PROJ-460), where the only way to see this was to
+    // 2026-08-13, where the only way to see this was to
     // deliberately re-trigger the same failure a second time with trace
     // logging already turned on.
     function logStreamDiagnostics(message: string): void {

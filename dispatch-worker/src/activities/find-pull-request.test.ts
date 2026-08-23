@@ -13,7 +13,7 @@ describe("pickPullRequest", () => {
 });
 
 describe("pickMergedPullRequest", () => {
-  it("returns the most recent closed PR when it was merged (real PROJ-67 race: merged before the open-check ran)", () => {
+  it("returns the most recent closed PR when it was merged (a real observed race: merged before the open-check ran)", () => {
     const mostRecentFirst = [{ number: 7, html_url: "https://github.com/example-org/example-app/pull/7", merged_at: "2026-08-07T18:16:38.000Z" }];
     expect(pickMergedPullRequest(mostRecentFirst)).toEqual({ number: 7, url: "https://github.com/example-org/example-app/pull/7" });
   });

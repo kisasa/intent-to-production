@@ -117,7 +117,7 @@ describe("createDispatchTrigger", () => {
     );
   });
 
-  it("compounds tier and size multipliers together (the real PROJ-84 shape)", async () => {
+  it("compounds tier and size multipliers together (a real observed shape)", async () => {
     fetchStoryDispatchContext.mockResolvedValue({
       ok: true,
       context: { ...WELL_FORMED_CONTEXT.context, tier: "small", size: "medium" },
@@ -221,7 +221,7 @@ describe("resolveMaxTurns", () => {
     expect(resolveMaxTurns(null, "large")).toBe(320);
   });
 
-  it("compounds both multipliers — the real PROJ-84 shape: tier:small × size:medium", () => {
+  it("compounds both multipliers — a real observed shape: tier:small × size:medium", () => {
     expect(resolveMaxTurns("small", "medium")).toBe(160);
   });
 

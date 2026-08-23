@@ -25,8 +25,8 @@ export interface DependencyCheckResult {
 // "-" or "*" — both are valid Markdown bullet markers and Decompose isn't
 // pinned to one (the References section on this exact story used "*" while
 // its own Blocking-dependencies section used "-"). The bullet marker itself
-// is optional — confirmed live (2026-08-06, PROJ-64): Decompose rendered a
-// single blocker as a bare line ("PROJ-63 — Story: ...") with no marker at
+// is optional — confirmed live (2026-08-06): Decompose rendered a single
+// blocker as a bare line ("PROJ-63 — Story: ...") with no marker at
 // all, which silently produced zero blocker ids and let checkDependencies
 // wave the story through — the specialist itself had to catch the real
 // blocker mid-run. The identifier's own hyphen (e.g. "PROJ-42") is real
@@ -51,7 +51,7 @@ function normalizeForComparison(text: string): string {
  * A section heading, in either markup form seen in real story descriptions:
  * `**Blocking dependencies**` (story-contract.md's own documented example)
  * or `## Blocking dependencies` (what Decompose actually renders live —
- * confirmed against PROJ-63, 2026-08-06 — matching the `## References`
+ * confirmed live 2026-08-06 — matching the `## References`
  * footer convention the tracker-writing prose standard introduced the same
  * day). Accepting both, rather than picking one, is the lesson the
  * status-name mismatch just taught: match what Decompose actually produces,
