@@ -13,20 +13,19 @@ elements with the breakages that shaped them, and entries here should be
 written so they can be lifted into that section with dates and sequence
 intact.
 
-**On `LET-*` identifiers and "the sandbox team" (added 2026-08-03).** These appear
-throughout the entries below as the substrate decisions were worked out against.
-They were a **framework-development sandbox** — a tracker team and a synthetic
-engagement built to exercise the pipeline, not a client and not a deliverable.
-Its issues have since been cleared, so no identifier below resolves any more.
+**On the substrate the early entries were derived against (added 2026-08-03).**
+The decisions below were worked out against a **framework-development sandbox** —
+a tracker team and a synthetic engagement built to exercise the pipeline, not a
+real client engagement and not a deliverable.
 
-Read them accordingly: an entry saying "found while working through PROJ-24" is
-recording *what forced a rule*, which is exactly what the provenance contract
-above asks for, and it stays. An entry treating a particular LET issue as a
-milestone was a category error and has been rewritten — what matters is the
-mechanism and the preconditions that made a first run possible, never which
-ticket happened to carry it. When an observation is durable but its anchor is
-not, state the finding and note it was confirmed against a live issue before the
-team was cleared; do not cite an identifier a reader cannot open.
+That is recorded because it is what forced several of the rules here. Read the
+entries accordingly: an entry saying a rule was found while working through a
+particular story is recording *what forced that rule*, which is exactly what the
+provenance contract above asks for, and it stays. An entry treating a particular
+issue as a milestone was a category error and has been rewritten — what matters
+is the mechanism and the preconditions that made a first run possible, never
+which ticket happened to carry it. When an observation is durable but its anchor
+is not, state the finding; do not cite an identifier a reader cannot open.
 
 ---
 
@@ -655,7 +654,7 @@ renamed to Decompose.
   test code in the specialist run (contextual).
 
 - **Design sign-off added at the API-map gate (two-reviewer AND-gate).** From
-  the designer's review (design lead): the spec checkpoint was engineering-only
+  the design lead's review: the spec checkpoint was engineering-only
   (architect resolves existence), but the API map is also where design intent
   meets reality, and design needs to sign off. Added `spec:awaiting-designer`
   alongside `spec:awaiting-architect`; decomposition releases only when BOTH
@@ -737,7 +736,7 @@ renamed to Decompose.
   in Done.
 
 - **Conventions are a spec in the codebase, not a skill in the framework.**
-  Working through what a specialist needs (against PROJ-24) surfaced the
+  Working through what a specialist needs (against a real story) surfaced the
   over-provisioning trap: if the codebase is the ONLY source of house
   conventions, a greenfield surface would need a complete example of every
   pattern before the pipeline could run. Rejected the first fix (per-type
@@ -759,7 +758,7 @@ renamed to Decompose.
   the four `*-conventions` skills removed from the framework.)
 
 - **Spec-readiness gate — the codebase must be readable before the map is
-  drawn (Specification Agent, blocking).** Real failure from the last LET run:
+  drawn (Specification Agent, blocking).** Real failure from the last live run:
   the agent was given a frontend-only repo (old POS app, no backend, wrong
   folder structure) and would infer "backend is TypeScript because the frontend
   is" — a wrong runtime assumption nothing downstream could catch, hardening
@@ -781,7 +780,7 @@ renamed to Decompose.
 
 - **Specialist model settled: a Claude Code agent driven by a developer prompt,
   taught the pipeline's structure, not any story's content.** Reconciling the
-  stale specialist definitions against the real PROJ-24 story and the MCP shift.
+  stale specialist definitions against a real live story and the MCP shift.
   Rejected app-orchestrated specialists (verdict-consuming, context-fed-by-app —
   the whole `submit_verdict` model). Adopted: a developer points the specialist
   at a story identifier; it is taught the pipeline's STRUCTURE and how to
@@ -794,7 +793,7 @@ renamed to Decompose.
   scenario coverage map, questions/assumptions = feedback to the shaping tier,
   blockers). Two sharpenings fell out: read the dependency's actual MERGED code,
   not the story's description of it; and reads the surface conventions spec if
-  present. Validated in reasoning (not yet a run) by PROJ-24's self-containment:
+  present. Validated in reasoning (not yet a run) by that story's self-containment:
   the story carried its own why + the architect's map ruling + exact anchors, so
   a lean specialist can execute it — which is the evidence that decomposition
   thoroughness is what makes lean specialists possible. (Superseded in part,
@@ -949,8 +948,9 @@ prevents. Left strict — strict is reversible.
 Raised again later the same day: the architect read the developer runbook's "branch
 chain set up in the target repo" checklist line and asked whether the specialist
 was not supposed to be doing that. The answer is that verification was the
-decision — his own words were "looks to see if branching has been initialized …
-and the bases are correct," and "the given story branch," meaning it pre-exists.
+decision — the architect's own words were "looks to see if branching has been
+initialized … and the bases are correct," and "the given story branch,"
+meaning it pre-exists.
 But the question came back unprompted, which is worth recording: the strict
 reading makes a developer do a mechanical step (cut a branch off an epic branch,
 using a name the tracker already supplies) that an agent could do safely,
@@ -1294,7 +1294,7 @@ pre-dispatch dependency check already covers this generically at the
 mechanism level; what changes here is recognizing the rule applies to every
 epic-to-epic dependency the slice map records, not only the closing epic's
 dependency on the other three — that dependency was simply the first one to
-exist and force the question. (the architect's question, generalizing the
+exist and force the question. (The architect's question, generalizing the
 closing-epic case: shouldn't a dependent epic not be sliced or shaped until
 its dependency is actually ready, since cross-cutting things a dependency
 introduces can only be picked up once it's real?)
@@ -1491,7 +1491,7 @@ application code, same scoping precedent as the specialist sandbox.
   generated import path and property casing, inferred from the reference
   project's C# namespace rather than confirmed against real bindings —
   recorded as "not yet typecheckable in this session," a different category
-  of gap than "not yet applyable." the architect ran `npx cdktn get` on his own
+  of gap than "not yet applyable." The architect ran `npx cdktn get` on their own
   machine the same day: every inferred import path and property name was
   correct on the first try — `npm run typecheck`, `npm run test:unit`, and
   `npm run synth` all pass clean, and the synthesized JSON confirms the real
@@ -1580,7 +1580,7 @@ was built) finally gets an image.
   needs a target repo and tracker state that don't exist yet.
 - **Model and effort made explicit, same day (the architect's correction).** The
   first cut of `run.ts` left `model`/`effort` unset on the `query()` call,
-  relying on the Agent SDK's own default. the architect's rule: never default these —
+  relying on the Agent SDK's own default. The architect's rule: never default these —
   an unset value silently tracks whatever the CLI's default happens to be on
   a given build, drifting behavior out from under this codebase without a
   line changing here. Fixed via a new `claude-config.ts`
@@ -1665,7 +1665,7 @@ environment deferred to whenever that stack is next touched.
   tracker and GitHub state.
 
 **Correction, same day: this session didn't use the `temporal-developer`
-skill, and it should have.** the architect asked directly whether it had been —
+skill, and it should have.** The architect asked directly whether it had been —
 answer was no, this was built from general Temporal knowledge plus reading
 the installed SDK's own type definitions. Loading the skill's TypeScript
 reference afterward surfaced three real gaps, not stylistic ones:
@@ -1708,7 +1708,7 @@ all already matched the skill's own patterns — arrived at independently,
 not by luck, but worth having the skill confirm rather than assume.
 
 **Same-day follow-up: "matched the pattern" wasn't the same as "was
-tested."** the architect asked to focus specifically on testing and pointed at the
+tested."** The architect asked to focus specifically on testing and pointed at the
 Temporal TypeScript SDK's own GitHub repo for examples rather than the
 skill's docs alone. Reading `temporalio/samples-typescript`'s `hello-world`
 sample confirmed the workflow test already written
@@ -1791,7 +1791,7 @@ than assumed.
 
 ## Ad-hoc synth checks became real tests (2026-08-05)
 
-the architect's correction: the previous entry's verification — one-off `node -e`
+The architect's correction: the previous entry's verification — one-off `node -e`
 scripts parsing `cdktf.out/` JSON by hand, run once and thrown away — caught
 a real bug but left nothing behind to catch a regression. "All of these
 little checks you are doing at each change should be tests. You should make
@@ -1953,7 +1953,7 @@ from a live sandbox run and forwarded them. Every Issue/Project webhook —
 human or bot-authored — carries a top-level `actor` object
 (`{id, name, email, avatarUrl, url, type}`), including on a `status_changed`
 event, not only on comments. Confirmed on two real events on the same issue
-(a design-tier reference issue, PROJ-47): a human status move recorded
+(a design-tier reference issue): a human status move recorded
 `actor: {name: "Example User", email: "user@example.com"}`; an
 agent-driven one (Intake advancing the design issue to In Progress via MCP,
 per the design-issue entry above) recorded the pipeline's own bot user
@@ -2262,27 +2262,28 @@ over-generalized from a full-stack scenario that does not exist yet.
 ## Open items
 
 - **RESOLVED: design-intent capture.** (Kept here as the trail from problem to
-  fix; the resolution is the design-issue keeper above.) the designer's convenience-
+  fix; the resolution is the design-issue keeper above.) The designer's convenience-
   fees example: "turn on Cardpoint -> convenience fees auto-light-up" is a
   behavioral rule / cross-surface dependency, likely ABSENT from artifacts
   because (a) evidence was a crawl of the running prototype + stabilization
   docx, and behavioral rules/defaults/edge-state dependencies don't survive a
   UI crawl, and (b) the rules live in two places the pipeline doesn't ingest:
-  the designer's FINDINGS DOCUMENT (text) and her PROTOTYPE SOURCE CODE (she asked it
-  be treated as evidence -- "so many empty states and edge cases," "a lot have
-  dependencies"). Reachability principle, 4th occurrence. Candidate fix:
-  findings doc becomes required evidence routed into the BRD as a project
-  document; the design source becomes evidence the Specification Agent reads.
+  the designer's FINDINGS DOCUMENT (text) and their PROTOTYPE SOURCE CODE
+  (they asked it be treated as evidence -- "so many empty states and edge
+  cases," "a lot have dependencies"). Reachability principle, 4th occurrence.
+  Candidate fix: findings doc becomes required evidence routed into the BRD as
+  a project document; the design source becomes evidence the Specification
+  Agent reads.
   RESOLVED into the design-issue design below — and corrected: design output is
-  NOT always a repo (the designer had source; another designer has Figma + PNGs, or a
+  NOT always a repo (this designer had source; another has Figma + PNGs, or a
   PDF, or a folder of HTML). So the reference side is form-agnostic *evidence*,
   never a repo base. "Prototype" scrubbed from all agents/skills as engagement-
   specific vocabulary (like "feature brief" before it).
-- **Full-stack story option.** the designer advocates a full-stack story for context-
-  rich single-agent execution; the architect leans split-with-shared-E2E. Agreed to
-  add a decompose-time question (split vs. full-stack) and judge on code
-  quality from real runs.
-- **PARKED: generated specialist.** the architect wants to reach a place where the
+- **Full-stack story option.** The designer advocates a full-stack story for
+  context-rich single-agent execution; the architect leans
+  split-with-shared-E2E. Agreed to add a decompose-time question (split vs.
+  full-stack) and judge on code quality from real runs.
+- **PARKED: generated specialist.** The architect wants to reach a place where the
   specialist agent is GENERATED — composed per-story from the invariant agent +
   the team conventions spec + the story's context — but "now is not the time."
   Validate the static prompt-driven specialist first: you cannot build a good
@@ -2480,8 +2481,8 @@ over-generalized from a full-stack scenario that does not exist yet.
   longer describes how that work starts. Whatever it is kept for, it is not
   that.
 
-  Not resolved here — the call is the architect's, since it may still be serving a live
-  purpose the framework does not know about.
+  Not resolved here — the call is the architect's, since it may still be
+  serving a live purpose the framework does not know about.
 - **A house prose standard for tracker text — `tracker-writing` (2026-08-06).**
   Feedback from people reading the output: issue descriptions and comments are
   hard to read as English. Not layout — sentences. Three complaints, all
@@ -2561,7 +2562,7 @@ over-generalized from a full-stack scenario that does not exist yet.
   format capability scope actually wants — the PM, a designer, and whoever owns
   the budget disagreeing out loud once beats a week of thread.
 - **PARKED: surfaces within an epic finish at different rates, and the next
-  epic cannot start clean (2026-08-08).** the architect: the backend developer is done
+  epic cannot start clean (2026-08-08).** The architect: the backend developer is done
   while the frontend still needs time, and wants to move to the next epic rather
   than wait.
 
@@ -2646,9 +2647,9 @@ over-generalized from a full-stack scenario that does not exist yet.
 
 ## First live specialist-dispatch attempts — three real bugs, one general lesson (2026-08-06)
 
-the architect ran the pipeline live against a real sandbox (the sandbox team, `github/
-example-org/example-app`), through decompose, and moved the first real story
-(PROJ-63) to `In Progress` to trigger a specialist dispatch. Two real failures,
+The architect ran the pipeline live against a real sandbox (the sandbox team,
+`github/example-org/example-app`), through decompose, and moved the first real
+story to `In Progress` to trigger a specialist dispatch. Two real failures,
 each caught from real logs the architect forwarded, not from a test suite — both were
 already unit-tested against hand-written fixtures that happened to match an
 assumed literal, and both broke the instant they met Decompose's actual live
@@ -2669,7 +2670,7 @@ vocabulary.
 
 **Bug 2: `check-dependencies.ts` matched a doc example, not Decompose's real
 output.** Once the story actually dispatched, `checkDependencies` threw
-`Story description has no "**Blocking dependencies**" section` — PROJ-63's
+`Story description has no "**Blocking dependencies**" section` — that story's
 real description used `## Blocking dependencies` (a real markdown heading),
 matching the new `## References` footer convention from the same day's
 tracker-writing work, while `story-contract.md`'s own documented example
@@ -2685,7 +2686,7 @@ match now strips all non-alphanumeric characters before comparing (so
 `**Blocking dependencies**`, `## Blocking-Dependencies`, and
 `###   blocking dependencies` all normalize identically), and its bullet
 regex now accepts both `-` and `*` markers — a second, worse-than-the-crash
-risk caught in the same pass: PROJ-63's own References section used `*` while
+risk caught in the same pass: that same story's References section used `*` while
 its Blocking-dependencies section used `-`, and a bullet-marker mismatch
 would have silently returned zero blockers on a story that actually had some,
 rather than throwing. The identifier's own hyphen (`PROJ-42`) stays literal —
@@ -2811,13 +2812,14 @@ what makes `describeFailure` testable outside `TestWorkflowEnvironment`.
 
 ## Moving back to Todo, and a second parsing bug the first one hid (2026-08-07)
 
-the architect tried PROJ-64 while PROJ-63 was still dispatching. It got a comment
-saying it depended on PROJ-63 and couldn't continue, and separately noticed
-its Temporal workflow was still showing running — his read: he assumed it
-was sitting there waiting on PROJ-63 to merge. **General rule, stated
-directly:** the next step should always be left to the developer, not a
-Temporal workflow waiting on one. Posting a comment explaining what's
-going on *and* moving the issue back to To-Do is the right action.
+The architect tried a second story while the first was still dispatching. It
+got a comment saying it depended on that first story and couldn't continue,
+and separately noticed its Temporal workflow was still showing running — the
+architect's read was that it was sitting there waiting on the first story to
+merge. **General rule, stated directly:** the next step should always be left
+to the developer, not a Temporal workflow waiting on one. Posting a comment
+explaining what's going on *and* moving the issue back to To-Do is the right
+action.
 
 Checking the real story against Linear directly (not assumed) turned up two
 things, not one:
@@ -2826,19 +2828,19 @@ things, not one:
 `checkDependencies` reads a story's "Blocking dependencies" section
 specifically so a story that can't proceed never reaches the specialist at
 all — "a plain tracker read... before the Anthropic call rather than being
-left for the dispatched agent to discover mid-run." PROJ-64's own comment
-thread showed the specialist itself caught the block, mid-run, having
+left for the dispatched agent to discover mid-run." The blocked story's own
+comment thread showed the specialist itself caught the block, mid-run, having
 already read the codebase and verified branch state (`specialist:waiting`,
-a well-reasoned comment naming PROJ-63 by name) — meaning `checkDependencies`
-had already let it through. Its story description recorded the blocker as
-a bare line with no bullet marker at all — `PROJ-63 — Story: Extend the
-Employee model...` rather than `- PROJ-63 — ...` — and `BULLET_IDENTIFIER`
-required a leading `-`/`*`. Same class of bug as the heading-format and
-repo-base issues from 2026-08-06 (agent-produced formatting varies; match
-what's actually produced, not one literal shape) — this is the third
-occurrence of exactly that lesson in this file, and the specialist's own
-run was the only thing standing between a formatting variance and a wasted
-dispatch. Fixed: the bullet marker is now optional in the regex.
+a well-reasoned comment naming the blocking story explicitly) — meaning
+`checkDependencies` had already let it through. Its story description recorded
+the blocker as a bare line with no bullet marker at all — `<identifier> —
+Story: Extend the Employee model...` rather than `- <identifier> — ...` — and
+`BULLET_IDENTIFIER` required a leading `-`/`*`. Same class of bug as the
+heading-format and repo-base issues from 2026-08-06 (agent-produced
+formatting varies; match what's actually produced, not one literal shape) —
+this is the third occurrence of exactly that lesson in this file, and the
+specialist's own run was the only thing standing between a formatting variance
+and a wasted dispatch. Fixed: the bullet marker is now optional in the regex.
 
 **Second, and the part actually requested:** regardless of which layer
 catches a block — the mechanical check, or the specialist's own outcome —
@@ -2852,15 +2854,16 @@ catch-all failure. `moveStoryToTodo` resolves the story's team's "Todo"
 status by name via two new `tracker.ts` reads (`findStateIdByName`,
 `updateIssueState` — state ids are per-team, so name lookup is a real extra
 round trip) and never fails the outcome it's reflecting, same as every
-other courtesy activity here. "Todo" is confirmed live against the sandbox team's
-own team state list (2026-08-07) as the actual configured name — the same
+other courtesy activity here. "Todo" is confirmed live against the sandbox
+team's own state list (2026-08-07) as the actual configured name — the same
 engagement-specific-literal category as `specialist-dispatch.ts`'s own
 "In Progress", not CLAUDE.md's hyphenated "To-Do" vocabulary.
 
 ## A third bug, found by actually retrying: the label namespace collides with itself (2026-08-07)
 
-the architect rebuilt the containers with the two fixes above, left PROJ-63 alone,
-and retried PROJ-64. It failed immediately with a new error: "specialist:waiting
+The architect rebuilt the containers with the two fixes above, left the first
+story alone, and retried the blocked one. It failed immediately with a new
+error: "specialist:waiting
 is not a supported specialist type." Different bug, same session, found only
 because the retry was real rather than assumed to work.
 
@@ -2872,8 +2875,8 @@ run finishes (`specialist:complete`/`:waiting`/`:blocked` — see this
 session's "Reviewer-of-record" era note: "resolving the `specialist:<type>`
 vs `spec:<type>` conflict... flagged as unresolved," resolved by reusing
 one prefix for both). Nothing ever clears an outcome label once written, so
-PROJ-64 — blocked on its first attempt, per the entry above — still carried
-`specialist:waiting` alongside its real `specialist:frontend` assignment
+the retried story — blocked on its first attempt, per the entry above — still
+carried `specialist:waiting` alongside its real `specialist:frontend` assignment
 label on the retry. The old code took `specialistLabels[0]`, the first
 `specialist:`-prefixed label in whatever order Linear returned them, with
 no distinction between the two label families. This time it was `:waiting`.
@@ -2890,7 +2893,7 @@ differently.
 failure branches — "story isn't dispatchable" and "workflow could not
 start" — sit entirely before `dispatchStoryWorkflow` is ever started, so
 the `moveStoryToTodo` activity added above never gets a chance to run for
-either one; PROJ-64 was left "In Progress" with only an error comment,
+either one; the retried story was left "In Progress" with only an error comment,
 exactly the gap the day's whole "never leave a developer waiting on a
 workflow" rule exists to close. Added a second, small `moveStoryToTodo`
 (`webhook-listener/src/move-story-to-todo.ts` — no shared lib between the
@@ -2899,7 +2902,7 @@ from both of `dispatch-trigger.ts`'s failure branches, excluding the
 benign `WorkflowExecutionAlreadyStartedError` case where a workflow really
 is already running and a status move would be wrong.
 
-PROJ-64 itself was moved back to Todo by hand, with the stale
+The retried story itself was moved back to Todo by hand, with the stale
 `specialist:waiting` label removed, once both fixes were verified —
 the running system doesn't self-heal a story stuck by a bug that predates
 the fix.
@@ -2957,7 +2960,7 @@ and was already being made.
   READMEs updated to match.
 
 **What this closes, structurally, not just this one incident:** the label
-family that just caused the PROJ-64 collision (outcome labels sharing the
+family that just caused the collision above (outcome labels sharing the
 `specialist:` prefix with the assignment label) no longer exists, so that
 whole bug class can't recur from a future dispatch. `parseSpecialistType`'s
 own defensive filtering (previous entry) stays regardless — cheap, and
@@ -2966,7 +2969,7 @@ current design can create the specific collision that motivated it anymore.
 
 ## Propagating LOG_LEVEL down to the specialist (2026-08-07)
 
-the architect asked whether `dispatch-worker`'s own `LOG_LEVEL` (docker-compose
+The architect asked whether `dispatch-worker`'s own `LOG_LEVEL` (docker-compose
 locally, whatever the ECS task definition sets in prod) could be reused
 when spinning up the specialist container, rather than the specialist
 needing a separate setting maintained in sync by hand. Checked before
@@ -2994,8 +2997,9 @@ contract or its validation.
 
 ## A merge, missed by a race, unwound a genuinely complete story (2026-08-07)
 
-the architect: "Something happened to PROJ-67. The PR was opened and I merged it. But
-the issue was moved back to To Do. And there's no PR merged comment."
+The architect: "Something happened to [a story]. The PR was opened and I
+merged it. But the issue was moved back to To Do. And there's no PR merged
+comment."
 
 Checked the real data (Linear's own diff sync — `get_diff` on the PR URL —
 plus the story's state history) rather than guessing: PR #7 opened at
@@ -3007,7 +3011,7 @@ gap is `dispatchStoryWorkflow`'s own `findPullRequest` call, running
 moments after `awaitSpecialistTask` noticed the container had stopped.
 
 Root cause: `find-pull-request.ts` queried GitHub with `state=open` only.
-the architect merged the PR faster than this activity's own check ran — by the time
+The architect merged the PR faster than this activity's own check ran — by the time
 it asked, the PR was no longer "open," so the query found nothing.
 `dispatchStoryWorkflow` treated zero-results the same as "the specialist
 didn't finish this run" (waiting/blocked/crashed) and called
@@ -3034,21 +3038,22 @@ tested directly; `listPullRequests` is the one shared IO wrapper, now
 explicitly `sort=created&direction=desc` so "most recent" doesn't depend on
 GitHub's own undocumented default ordering.
 
-PROJ-67 itself was moved back to Done by hand, with a comment explaining the
-reversal was a pipeline bug now fixed — same pattern as PROJ-64's manual
-recovery: the running system doesn't self-heal a story a bug already
+That story itself was moved back to Done by hand, with a comment explaining the
+reversal was a pipeline bug now fixed — same pattern as the stale-label
+recovery above: the running system doesn't self-heal a story a bug already
 corrupted before the fix landed.
 
 ## `tests` joins app-dispatch — the registration CLAUDE.md already anticipated (2026-08-07)
 
-the architect tried PROJ-69 (`specialist:tests`) and got the expected rejection:
-"specialist:tests is not a supported specialist type. Supported: backend,
-frontend." Correct behavior, not a bug — CLAUDE.md already documented
-Tests/E2E as deliberately still the human-in-Claude-Code model. His own
-read: "I guess we found the next steps." Asked which scope he wanted rather
-than assuming: wire up `tests` only (registration-scale, no new infra),
-both `tests` and `e2e` (e2e needs a real environment-stand-up build), or
-just dispatch PROJ-69 manually for now. He chose `tests` only.
+The architect tried an integration-test story (`specialist:tests`) and got
+the expected rejection: "specialist:tests is not a supported specialist type.
+Supported: backend, frontend." Correct behavior, not a bug — CLAUDE.md
+already documented Tests/E2E as deliberately still the human-in-Claude-Code
+model. The architect's own read: "I guess we found the next steps." Asked
+which scope was wanted rather than assuming: wire up `tests` only
+(registration-scale, no new infra), both `tests` and `e2e` (e2e needs a real
+environment-stand-up build), or just dispatch that story manually for now.
+The architect chose `tests` only.
 
 Confirmed before writing anything that "registration, not rearchitecture"
 (the framework's own prediction, from the original app-dispatch build) held
@@ -3091,9 +3096,9 @@ packages for the new supported value and the fixed validation bug.
 
 ## Decompose asks for every surface's repo base up front, not just the API map's (2026-08-07)
 
-PROJ-69's dispatch failed on a real but avoidable gap: `resolveRepoBase`
-correctly demanded a `Repo base — tests: ...` line (see the entry above),
-but nobody had ever recorded one. Checking why: Specification resolves
+The integration-test story's dispatch failed on a real but avoidable gap:
+`resolveRepoBase` correctly demanded a `Repo base — tests: ...` line (see the
+entry above), but nobody had ever recorded one. Checking why: Specification resolves
 repo bases from the API map's own surfaces — for this epic, "frontend
 only," decided before Decompose ever ran. Decompose is the one that
 actually assigns `specialist:tests`/`specialist:e2e` to individual stories,
@@ -3103,7 +3108,7 @@ have a recorded repo base. The gap wasn't a wording problem in one kickoff
 question — it was structural: the agent that resolves repo bases runs
 *before* the agent that knows which specialist-type surfaces will exist.
 
-the architect's own framing, precisely: don't just say "tests" — there are many
+The architect's own framing, precisely: don't just say "tests" — there are many
 kinds, and the question (and every description of this specialist
 throughout the framework) should name the actual kind. `specialist-tests.md`
 already did this correctly (title: "Tests Specialist (Integration)"); several
@@ -3138,14 +3143,16 @@ earlier this session (2026-08-07, "Outcome labels removed") that the
 grep sweep at the time missed, since it didn't contain any of the literal
 label strings being searched for. Removed.
 
-PROJ-58 was not corrected in this pass — the actual `Repo base — tests: ...`
-line still needs to be recorded there before PROJ-69 can retry; that's a
-separate, explicit decision pending confirmation, not something this
-process fix does automatically for an epic that already exists.
+The live epic was not corrected in this pass — the actual
+`Repo base — tests: ...` line still needs to be recorded on it before the
+integration-test story can retry; that's a separate, explicit decision pending
+confirmation, not something this process fix does automatically for an epic
+that already exists.
 
 ### Integration tests are not symmetric with unit tests — the taxonomy needed a real fix, not just precision (2026-08-07)
 
-the architect caught a gap the terminology sweep above didn't touch, working from PROJ-58/69: integration
+The architect caught a gap the terminology sweep above didn't touch, working
+from the live epic and its integration-test story: integration
 tests are a **backend-only** concern, not something every epic gets a story
 for. Frontend work carries unit tests only — there is nothing on the frontend
 side that "integration testing" verifies the way it does on the backend
@@ -3176,41 +3183,42 @@ No code changed — this is agent-definition judgment, the same invariant-layer
 material `decompose-agent.md` already carries directly rather than through a
 forked skill.
 
-**The live epic that surfaced it, PROJ-58, had already made exactly this
-mistake.** the architect's report — "There is only frontend change. I don't have
-integration test location to share" — was the tell: checked PROJ-58 directly
-and confirmed all six of its implementation stories (PROJ-63–68) are
+**The live epic that surfaced it had already made exactly this
+mistake.** The architect's report — "There is only frontend change. I don't have
+integration test location to share" — was the tell: checked that epic directly
+and confirmed all six of its implementation stories are
 `specialist:frontend`, with no backend touchpoint anywhere in the epic (its
 own scope boundary explicitly excludes backend auth work). Decompose had
-still created PROJ-69, a `specialist:tests` story, before this fix existed —
+still created a `specialist:tests` story before this fix existed —
 exactly the assignment the corrected taxonomy now rules out. There was
-never going to be a "Repo base — tests: ..." to record on PROJ-58, because
+never going to be a "Repo base — tests: ..." to record on that epic, because
 this epic was never a candidate for one.
 
-**Resolution:** PROJ-69's specific scenarios (least-privilege/empty-visible-set
-across nav + guard + permission model at once, and the Receiving Associate
-storewide case) were real, worth-keeping coverage — just miscategorized. They
-were folded into PROJ-70, the epic's existing `specialist:e2e` story, as
-additional requirements/acceptance-criteria/scenarios (PROJ-70 already
-exercises the same three surfaces via full sign-in flows per tier, so the
-consistency check now runs there instead of needing a repo of its own).
-PROJ-69 was then canceled (not deleted) with a comment explaining why and
-pointing to PROJ-70. This is a live-dispatch data fix on top of the process
+**Resolution:** the integration-test story's specific scenarios
+(least-privilege/empty-visible-set across nav + guard + permission model at
+once, and the Receiving Associate storewide case) were real, worth-keeping
+coverage — just miscategorized. They were folded into the epic's existing E2E
+story (`specialist:e2e`) as additional requirements/acceptance-criteria/scenarios
+(that story already exercises the same three surfaces via full sign-in flows
+per tier, so the consistency check now runs there instead of needing a repo of
+its own). The integration-test
+story was then canceled (not deleted) with a comment explaining why and
+pointing to the E2E story. This is a live-dispatch data fix on top of the process
 fix above — the corrected `decompose-agent.md` prevents a *future* epic from
 repeating this, it does not retroactively repair one already decomposed
 before the fix landed.
 
 ### E2E execution moves from the story's own PR to the epic→BRD PR; the specialist stops self-verifying (2026-08-07)
 
-the architect set up PROJ-58's actual `e2e/` project (a real Playwright project with a
-`CONVENTIONS.md`, scaffolded directly onto the epic branch — see the entry
-above) and then asked the operational question this revealed: why can't he
-just move PROJ-70 to In Progress and get tests written? Two answers, one old
-and one that needed revisiting.
+The architect set up the live epic's actual `e2e/` project (a real Playwright
+project with a `CONVENTIONS.md`, scaffolded directly onto the epic branch —
+see the entry above) and then asked the operational question this revealed:
+why not just move the epic's E2E story to In Progress and get tests written?
+Two answers, one old and one that needed revisiting.
 
 **Old answer, still true:** E2E isn't app-dispatched. `webhook-listener`'s
 `specialist-dispatch` lane only recognizes `backend`/`frontend`/`tests`;
-moving PROJ-70 to In Progress today fails fast and bounces back to To-Do via
+moving that story to In Progress today fails fast and bounces back to To-Do via
 `moveStoryToTodo`, exactly as designed. E2E stays on the human-in-Claude-Code
 model until the epic-branch environment stand-up gets built.
 
@@ -3262,13 +3270,13 @@ the document still tells the specialist to run its own suite.
 
 ### `e2e` joins app-dispatch — the last barrier was self-verification, not mechanics (2026-08-07)
 
-the architect's next question, after the fix above: "I don't want you to run anything
+The architect's next question, after the fix above: "I don't want you to run anything
 here. That defeats the purpose of this testing... Do we need to work through
 creating specialist:e2e?" Right instinct — a human standing in for the
 specialist mid-session (or worse, the same session that just fixed the agent
 definition also grading its own homework by running it) tells you nothing
 about whether the *pipeline* works. The only way this test means anything is
-if moving PROJ-70 to In Progress dispatches a real Agent SDK session against a
+if moving the E2E story to In Progress dispatches a real Agent SDK session against a
 real sandbox, same as backend/frontend/tests already do.
 
 Checked every dispatch touchpoint before assuming this was "just like
@@ -3281,7 +3289,7 @@ alone:
   current SHA via the GitHub API, zero type awareness.
 - `resolve-repo-base.ts` — parses `Repo base — <surface>: ...` for whatever
   surface string it's given; already proven working for `e2e` (used to
-  record PROJ-58's line, two entries up).
+  record the live epic's line, two entries up).
 - `workspace.ts` — clones exactly one target repo, zero type awareness.
 - `specialistFile` is built as `` `specialist-${specialistType}.md` `` —
   `specialist-e2e.md` resolves with no separate mapping.
@@ -3312,7 +3320,7 @@ entry above), there was no remaining mechanical difference between `e2e` and
   existing "rejects an unsupported type" tests repointed at a genuinely
   unsupported value (`design`) since `e2e` no longer is one.
 
-**What this does and doesn't unlock.** Moving PROJ-70 to In Progress now
+**What this does and doesn't unlock.** Moving the E2E story to In Progress now
 dispatches a real `specialist-e2e.md` run through the same Temporal
 workflow, ECS task, and Agent SDK session as any other story — no manual
 branch-cutting, no human (or this session) standing in as the specialist.
@@ -3324,7 +3332,7 @@ tests) before this entry was written, not assumed after.
 
 ### First real E2E dispatch: the self-verify fix held up, and a real image gap (2026-08-07)
 
-PROJ-70 actually ran through app-dispatch — the real validation this whole
+The E2E story actually ran through app-dispatch — the real validation this whole
 sandbox exercise exists to produce, not another simulated pass. Two things
 came back from it worth recording.
 
