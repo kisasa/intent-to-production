@@ -43,7 +43,7 @@ const SECRET_PARAMETER_NAMES: string[] = ["LINEAR_AGENT_API_KEY", "GITHUB_TOKEN"
  * key that has to be a real string at synth time — Terraform providers don't
  * support the ARN-indirection pattern the ECS container secrets elsewhere in
  * this project use. That value is read once, here, from its own out-of-band
- * SSM parameter (`/example/prod/temporal-admin/API_KEY`, decrypted), and is
+ * SSM parameter (`${parameter-prefix}temporal-admin/API_KEY`, decrypted), and is
  * therefore the one secret in this project that reaches Terraform state
  * (S3-backend-encrypted, same as everything else, but no longer merely an arn
  * reference). See README's Known gaps.
@@ -60,7 +60,7 @@ export class TemporalWorkersStack extends BaseStack {
     );
 
     const adminApiKeyParameter = new DataAwsSsmParameter(this, "ssm-temporal-admin-api-key", {
-      name: "/example/prod/temporal-admin/API_KEY",
+      name: `${this.parameterPrefix}temporal-admin/API_KEY`,
       withDecryption: true,
     });
 
