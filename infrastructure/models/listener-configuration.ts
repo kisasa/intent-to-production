@@ -2,7 +2,7 @@ import { type ContextNode, optionalString, requireNumber, requireString } from "
 
 /**
  * Everything that varies between environments for the webhook-listener service.
- * Mirrors the `example-payments-config` node in the reference project: one nested
+ * Mirrors the `listener-config` node in the reference project: one nested
  * object per deployable thing, with a `fromContext` factory that validates.
  *
  * `imageTag` is the value that changes on every deploy. It is pinned here

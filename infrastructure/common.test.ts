@@ -7,7 +7,7 @@ import { formatName, formatTerraformId, securityGroupDescription } from "./commo
 
 describe("formatName", () => {
   it("lowercases and replaces spaces", () => {
-    expect(formatName("Kisasa Webhook Listener")).toBe("example-webhook-listener");
+    expect(formatName("Example Webhook Listener")).toBe("example-webhook-listener");
   });
 
   it("leaves an already-conforming name alone", () => {

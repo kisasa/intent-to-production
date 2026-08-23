@@ -29,8 +29,8 @@ export interface TemporalNamespaceConfig {
 
 /**
  * A subset of `temporal-privatelink.ts`'s region table — only the regions this
- * connectivity rule has actually been wired up for, matching the Example Payments
- * reference project's own `RegionOverrides` table exactly rather than guessing
+ * connectivity rule has actually been wired up for, matching the reference
+ * CDKTF project's own `RegionOverrides` table exactly rather than guessing
  * entries for the other regions PrivateLink itself supports.
  */
 const CONNECTIVITY_REGION_OVERRIDES: Record<string, string> = {
@@ -42,12 +42,12 @@ const CONNECTIVITY_REGION_OVERRIDES: Record<string, string> = {
 /**
  * A Temporal Cloud namespace reachable only via PrivateLink, plus a
  * deployment-scoped service account and API key for the worker service to
- * authenticate with. Ported from the Example Payments reference project's
+ * authenticate with. Ported from the reference CDKTF project's
  * `NamespaceWithApikey` construct.
  *
  * `Namespace.id` (exposed here as `namespaceId`) is the fully-qualified name
  * Temporal assigns after creation — base name plus account-id suffix, e.g.
- * `{namespaceName}.abc12` — not the same as `namespaceName`. The per-namespace
+ * `{namespaceName}.<temporal-account-id>` — not the same as `namespaceName`. The per-namespace
  * CNAME below uses that fully-qualified id, because it's what Temporal Cloud
  * uses as the TLS SNI hostname to route to this namespace's backend.
  */

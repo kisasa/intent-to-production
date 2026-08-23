@@ -45,7 +45,7 @@ in-process shared state to split, so `desired_count` is a plain config value, no
 Namespace traffic reaches Temporal Cloud over **PrivateLink** (an Interface VPC Endpoint plus a private
 Route53 zone for `tmprl.cloud`), not Temporal Cloud's public endpoint — chosen because PrivateLink doesn't
 need a NAT gateway, so it layers onto the existing public-subnet-only `network` stack without reopening
-the no-NAT decision made there, at a modest fixed cost. The pattern is ported from the Example Payments reference
+the no-NAT decision made there, at a modest fixed cost. The pattern is ported from the reference CDKTF project
 project's `CloudPrivateLink`/`NamespaceWithApikey` constructs.
 
 **One deliberate exception to this project's secrets discipline lives here.** Everywhere else, Terraform
@@ -300,7 +300,7 @@ stacks/                  base-stack.ts (base) plus network.ts, listener.ts, spec
                          `npx cdktn get` after cloning, same as `npm install`
 ```
 
-The shape follows the C# reference project this was modelled on (`example-infra.CDKTF`):
+The shape follows the C# reference project this was modelled on (`a reference CDKTF project`):
 context as the single configuration source, a base stack owning the provider and backend, typed
 config records with validating factories, named state keys, and reusable constructs. Two things
 diverge deliberately.

@@ -6,7 +6,7 @@ import { ListenerStack } from "./listener.js";
 // test needs, since BaseStack reads every field via node.tryGetContext at
 // construction time rather than accepting injected config.
 const TEST_CONTEXT = {
-  aws: { region: "us-east-1", "account-number": "000000000000", profile: "example-org" },
+  aws: { region: "us-east-1", "account-number": "000000000000", profile: "example" },
   "state-bucket-name": "ki-webhook-listener-tfstate",
   "global-tags": { terraform: "true", project: "intent-to-production", environment: "test" },
   "domain-name": "example.com",
@@ -48,7 +48,7 @@ const TEST_CONTEXT = {
     memory: 1024,
     "desired-count": 1,
     "log-retention-days": 30,
-    "reviewer-email-to-github-login": { "test@example.com": "test-login" },
+    "reviewer-email-to-github-login": { "reviewer@example.com": "example-login" },
   },
 };
 

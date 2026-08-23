@@ -65,7 +65,7 @@ const PRIVATE_LINK_DNS_OVERRIDES: Record<string, string> = {
  * gateway — it layers onto the existing public-subnet-only `network` stack
  * without reopening the NAT decision made there, at a modest fixed cost.
  *
- * Ported from the Example Payments reference project's `CloudPrivateLink` construct.
+ * Ported from the reference CDKTF project's `CloudPrivateLink` construct.
  * The zone is deliberately named "tmprl.cloud" (not environment-scoped) —
  * anything narrower couldn't intercept queries for the region's PrivateLink DNS
  * override name, which would fall through to public DNS and bypass PrivateLink

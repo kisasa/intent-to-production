@@ -4,7 +4,7 @@ import { TemporalNamespace } from "./temporal-namespace.js";
 
 const baseConfig = {
   environmentName: "prod",
-  namespaceName: "kisasa-dispatch",
+  namespaceName: "example-dispatch",
   awsRegion: "us-east-1",
   vpcEndpointId: "vpce-0123456789abcdef0",
   privateHostedZoneId: "Z0123456789ABCDEFGHI",
