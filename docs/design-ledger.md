@@ -3379,3 +3379,85 @@ claim in its hand-back is inaccurate. Not fixed in this pass — flagged for
 the architect to either correct the conventions doc's tense (describe the workflow
 as planned, not running) or actually build it, since both the doc and the
 underlying CI piece point at the same gap.
+
+
+## Skills consolidate on `SKILL.md`, and the surface repo's own skills become invocable (2026-08-23)
+
+Two changes, from one question the architect asked while reviewing the Milestone 2 run:
+where does a per-surface skill get declared — CDKTerrain for `infrastructure`,
+and a client team's own maintained skill for its own repo.
+
+**The duplicate skill file is gone.** Every skill lived twice:
+`skills/<name>/<name>.md`, which the framework's two loaders read
+(`webhook-listener/src/skills.ts`, `specialist-runner/src/prompt.ts`), and
+`skills/<name>/SKILL.md`, the Claude Skills convention, kept in sync by hand and
+not derived. Confirmed byte-identical across all seven skills before removal, so
+nothing had diverged yet — but two hand-synced copies of the same instructions
+is a silent-divergence hazard, and the mechanism is about to carry surface-scoped
+skills as well. Both loaders now read `SKILL.md`; the duplicates are deleted.
+This supersedes the parallel-files arrangement noted in the 2026-08-07 outcome-
+labels entry ("`skills/story-contract/story-contract.md` and its `SKILL.md`
+duplicate (kept in sync by hand, not a symlink)"), which recorded the duplication
+as a maintenance cost without retiring it. `docs/development-tier-dispatch.md`'s
+human-dispatch kickoff paths and `check-dependencies.ts`'s doc reference updated
+to match. Lane configs are untouched: they declare skill *names*
+(`skills: ["epic-writing", "story-contract"]`) and never encoded the filename, so
+the change is confined to the two resolvers.
+
+**Surface-local skills are now discovered, and the split is mandatory vs
+discretionary.** `specialist-runner/src/run.ts` already passes
+`cwd: surfaceRepoPath` — the cloned surface repo is the working directory, so a
+`.claude/skills/` the client's own team maintains there is exactly where the CLI
+looks. Verified against the pinned SDK (`^0.3.222`): `settingSources` omitted
+means all sources load ("matches CLI defaults"), so the surface repo's `.claude/`
+and `CLAUDE.md` were already visible. What blocked it was `allowedTools`, a
+closed six-tool list with no `Skill` on it. Fixed with `skills: "all"`, which the
+SDK's own types describe as "the single place to turn skills on; you do not need
+to add `'Skill'` to `allowedTools` yourself when using this option." Paired with
+`managedSettings: { disableBundledSkills: true }` — a code specialist has no use
+for the pdf/docx/xlsx skills Claude Code ships with, and their listings are pure
+context cost against a turn budget that is a live failure mode (three live
+specialist runs each died on "Reached maximum number of turns"). Plugins and
+`.claude/skills/` are explicitly unaffected by that flag.
+
+**Why this is only half the answer.** Discovery is discretionary by
+construction: the model sees a name and a description and decides. That is the
+right shape for "here is a helper if you need it" and the wrong shape for
+"infrastructure work follows CDKTF best practices," because a discretionary load
+fails *silently* when the description does not trigger and leaves no trace in the
+hand-back. Same failure class as the optional conventions spec, reversed on
+2026-08-08 once `specialist.md` went generic about *how* to build. So a
+surface's **mandatory** skills stay on the eager path — read at dispatch and
+inlined into `systemPrompt`, per `prompt.ts`'s own rationale ("placed directly in
+systemPrompt, rather than told to Claude as paths to read itself — saves a turn
+and guarantees they're read").
+
+**Not done, and blocked on a decision, not on work:** `SKILL_NAMES` in
+`prompt.ts` is still a hardcoded flat list identical for every surface
+(`["story-contract", "epic-writing"]` — both framework-process skills, which is
+correct for them). Making it per-surface needs a machine-readable place to
+record "surface `infrastructure` requires `cdkterrain`," and no such place
+exists: the surface manifest is prose in an epic's comment thread. That is the
+surface-registry proposal, still undecided.
+
+**A placement argument recorded now so it is not re-derived:** a stack skill
+should *not* live in `intent-to-production/skills/`. That directory holds
+framework-*process* skills only — `story-contract`, `epic-writing`,
+`conventions-writing`, `api-map-writing`, `story-decomposition`,
+`tracker-writing`, `business-requirements-writing`. Adding `cdkterrain` there
+makes the framework carry stack knowledge again, which is precisely what the
+2026-08-08 surfaces collapse pushed *out* to each surface's conventions spec. A
+stack skill is the same category as a conventions file: it belongs with the
+surface. Resolver order, when the registry exists, should be surface repo first
+and framework catalog second, so a client can override.
+
+Verified before writing this entry, not assumed after: `tsc --noEmit` clean in
+all three packages, and unit tests green — 110 webhook-listener, 87
+dispatch-worker, 25 specialist-runner. Worth noting *where* they ran: the
+packages' `node_modules` on the architect's machine are Windows-native, so
+vitest cannot start under the desktop Linux VM (`Cannot find module
+'@rolldown/binding-wasm32-wasi'`). A clean Linux container with registry access
+ran `npm ci` and the full suites in seconds. That is a small direct data point
+for the round's largest open question — the specialist sandbox's inability to
+build or test the stacks it writes for is a provisioning problem, not an
+inherent one.

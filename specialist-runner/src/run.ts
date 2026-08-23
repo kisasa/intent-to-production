@@ -62,7 +62,39 @@ async function main(): Promise<void> {
 
       // No WebFetch/WebSearch, no wider tool surface — keeps the sandbox's
       // blast radius to reading/writing/testing the one cloned repo.
+      //
+      // `Skill` is deliberately absent here: per the SDK's own types, the
+      // `skills` option below "is the single place to turn skills on; you do
+      // not need to add 'Skill' to allowedTools yourself when using this
+      // option."
       allowedTools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob"],
+
+      // Discretionary, surface-local skills: `cwd` is the cloned surface repo,
+      // so a `.claude/skills/` the client's own team maintains there is
+      // discovered and invocable — added with no framework change and no
+      // registry edit on our side. Two tiers on purpose: the skills a surface
+      // *must* follow are read eagerly and inlined into systemPrompt (see
+      // prompt.ts), because discovery is discretionary — the model sees a name
+      // and a description and decides, which fails silently when the
+      // description doesn't trigger and leaves no trace in the hand-back.
+      // Discovery is for "here is a helper if you need it," never for "this
+      // surface's work must follow these practices."
+      //
+      // `settingSources` is left unset, which the SDK types define as loading
+      // all sources (matching CLI defaults) — that is what makes the surface
+      // repo's own `.claude/` and `CLAUDE.md` visible, and is wanted. Note it
+      // also means a client repo's `.claude/settings.json` is an unreviewed
+      // input to this run; if that becomes a concern, narrow it to
+      // `["project"]` rather than dropping it entirely, since `project` is
+      // what loads CLAUDE.md.
+      skills: "all",
+
+      // ...but not the skills Claude Code ships with. A code specialist has no
+      // use for pdf/docx/xlsx authoring, and their listings are pure context
+      // cost against a turn budget that is already a live failure mode —
+      // three live runs each died on "Reached maximum number of turns".
+      // Plugins and `.claude/skills/` are explicitly unaffected by this flag.
+      managedSettings: { disableBundledSkills: true },
 
       // Unattended container, no human to approve tool calls one at a time —
       // allowDangerouslySkipPermissions is the required pairing for this mode
