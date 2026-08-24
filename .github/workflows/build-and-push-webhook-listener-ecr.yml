@@ -2,16 +2,18 @@ name: Build and push webhook-listener image to ECR
 
 # Fires when a PR targeting main is merged, and can also be run manually
 # from the Actions tab (e.g. to rebuild/push without a fresh merge).
+# Publishes on a push to main, or on demand from the Actions tab.
+#
+# Was: a push to a `dev` branch that no longer exists, plus `pull_request` with
+# `types: [closed]`. That pair predates main being the only branch — a merge
+# into main is a push to main now, so the pull_request trigger is redundant,
+# and it fired on every PR close whether merged or not.
 on:
   push:
     paths:
       - "webhook-listener/**"
     branches:
-      - dev
-  pull_request:
-    types: [closed]
-    paths:
-      - "webhook-listener/**"
+      - main
   workflow_dispatch:
     inputs:
       ref:
@@ -31,20 +33,11 @@ concurrency:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    # `closed` fires on every PR close, merged or not — merged is the only
-    # one we want. pull_request (unlike pull_request_review) is already
-    # fork-isolated by GitHub itself: a PR from a fork runs with no access to
-    # this repo's secrets, so configure-aws-credentials below simply fails
-    # rather than silently running with real AWS access in that case. Merging
-    # into a protected main branch already requires write access on GitHub's
-    # side, so no extra author_association check is needed here.
-#    if: >
-#      github.event_name == 'workflow_dispatch' ||
-#      (
-#        github.event_name == 'pull_request' &&
-#        github.event.pull_request.merged == true &&
-#        github.event.pull_request.base.ref == 'main'
-#      )
+    # No merge guard needed: both triggers are already safe. A push to main has
+    # by definition been merged and required write access, and a manual
+    # dispatch is restricted to people who can run workflows. The guard this
+    # replaces was commented out, so the protection its comment described had
+    # not been running at all.
     env:
       ECR_REPOSITORY: intent-to-production
     steps:
