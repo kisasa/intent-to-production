@@ -31,5 +31,11 @@ jobs:
       # No dependencies: the check reads `git ls-files` and the working tree
       # with Node built-ins only, so it needs no install step and cannot be
       # broken by a lockfile change.
+      # The rules' own regression tests. node:test and node:assert are built
+      # into Node, so this stays a dependency-free job — which is what makes
+      # the check unskippable.
+      - name: Test the check's rules
+        run: node --test 'scripts/*.test.mjs'
+
       - name: Check for private references
         run: node scripts/check-no-private-references.mjs

@@ -28,11 +28,19 @@ import { dirname, join, resolve } from "node:path";
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /**
- * This file necessarily contains every pattern it searches for, so it is the
- * one exempt path. Nothing else is exempt — there is no "internal only"
- * directory in an open-source repository.
+ * The only exempt paths: this file, which necessarily contains every pattern it
+ * searches for, and its test file, which necessarily contains an example of
+ * each. Both are listed exactly, never as a directory glob — an exemption wide
+ * enough to hide a real leak behind is worse than no check. Nothing else is
+ * exempt; there is no "internal only" directory in an open-source repository.
+ *
+ * The test file had to be added here after it failed the check on its first
+ * run, which is the same self-reference the script has always had.
  */
-const SELF = "scripts/check-no-private-references.mjs";
+const EXEMPT = new Set([
+  "scripts/check-no-private-references.mjs",
+  "scripts/check-no-private-references.test.mjs",
+]);
 
 /** Machine-written files, exempt from the shape heuristic only. */
 const GENERATED = /(^|\/)package-lock\.json$/;
@@ -184,16 +192,54 @@ function trackedFiles() {
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,
   });
-  return out.split("\0").filter((path) => path.length > 0 && path !== SELF);
+  return out.split("\0").filter((path) => path.length > 0 && !EXEMPT.has(path));
 }
 
 function isProbablyBinary(contents) {
   return contents.includes("\u0000");
 }
 
+/**
+ * The pure half: given a path and its contents, what does each rule find? Split
+ * out from the filesystem walk so the rules can be tested against a string
+ * without a git checkout — see check-no-private-references.test.mjs, where
+ * every widening this check has needed is pinned as a regression test.
+ *
+ * `path` is not just a label: two rules opt out by path shape (a generated lock
+ * file, a markdown file), so the same line can be a finding in one file and
+ * allowed in another.
+ */
+export function findingsIn(path, contents) {
+  const found = [];
+  if (isProbablyBinary(contents)) return found;
+
+  const generated = GENERATED.test(path);
+  const markdown = path.endsWith(".md");
+  const lines = contents.split("\n");
+
+  for (const rule of RULES) {
+    if (rule.skipGenerated === true && generated) continue;
+    if (rule.skipMarkdown === true && markdown) continue;
+    lines.forEach((line, index) => {
+      const matches = line.match(rule.pattern);
+      if (matches === null) return;
+      const offending = rule.ignore === undefined ? matches : matches.filter((m) => !rule.ignore(m));
+      if (offending.length === 0) return;
+      found.push({
+        label: rule.label,
+        path: path,
+        line: index + 1,
+        text: line.trim().slice(0, 160),
+        tokens: [...new Set(offending)],
+      });
+    });
+  }
+
+  return found;
+}
+
 function findings() {
   const found = [];
-
   for (const path of trackedFiles()) {
     let contents;
     try {
@@ -201,56 +247,44 @@ function findings() {
     } catch {
       continue;
     }
-    if (isProbablyBinary(contents)) continue;
-
-    const generated = GENERATED.test(path);
-    const markdown = path.endsWith(".md");
-    const lines = contents.split("\n");
-    for (const rule of RULES) {
-      if (rule.skipGenerated === true && generated) continue;
-      if (rule.skipMarkdown === true && markdown) continue;
-      lines.forEach((line, index) => {
-        const matches = line.match(rule.pattern);
-        if (matches === null) return;
-        const offending = rule.ignore === undefined ? matches : matches.filter((m) => !rule.ignore(m));
-        if (offending.length === 0) return;
-        found.push({
-          label: rule.label,
-          path: path,
-          line: index + 1,
-          text: line.trim().slice(0, 160),
-          tokens: [...new Set(offending)],
-        });
-      });
-    }
+    found.push(...findingsIn(path, contents));
   }
-
   return found;
 }
 
-const found = findings();
+/**
+ * Only when run as a command. Importing this module — which the test suite
+ * does — must not scan a repository or exit the process.
+ */
+function main() {
+  const found = findings();
 
-if (found.length === 0) {
-  process.stdout.write("No private references found.\n");
-  process.exit(0);
-}
-
-const byLabel = new Map();
-for (const finding of found) {
-  const bucket = byLabel.get(finding.label) ?? [];
-  bucket.push(finding);
-  byLabel.set(finding.label, bucket);
-}
-
-for (const [label, bucket] of byLabel) {
-  process.stdout.write(`\n== ${label} — ${bucket.length} ==\n`);
-  for (const finding of bucket) {
-    process.stdout.write(`${finding.path}:${finding.line}: [${finding.tokens.join(", ")}] ${finding.text}\n`);
+  if (found.length === 0) {
+    process.stdout.write("No private references found.\n");
+    process.exit(0);
   }
+
+  const byLabel = new Map();
+  for (const finding of found) {
+    const bucket = byLabel.get(finding.label) ?? [];
+    bucket.push(finding);
+    byLabel.set(finding.label, bucket);
+  }
+
+  for (const [label, bucket] of byLabel) {
+    process.stdout.write(`\n== ${label} — ${bucket.length} ==\n`);
+    for (const finding of bucket) {
+      process.stdout.write(`${finding.path}:${finding.line}: [${finding.tokens.join(", ")}] ${finding.text}\n`);
+    }
+  }
+
+  process.stdout.write(
+    `\n${found.length} private reference(s) found. See CONTRIBUTING.md, "No Private References",\n` +
+      "for the approved placeholders. Keep the observation, drop the anchor.\n",
+  );
+  process.exit(1);
 }
 
-process.stdout.write(
-  `\n${found.length} private reference(s) found. See CONTRIBUTING.md, "No Private References",\n` +
-    "for the approved placeholders. Keep the observation, drop the anchor.\n",
-);
-process.exit(1);
+if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
+}
