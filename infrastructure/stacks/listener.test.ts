@@ -13,6 +13,7 @@ const TEST_CONTEXT = {
   "hosted-zone-id": "Z0000000000000000000",
   "vpc-cidr-block": "10.10.0.0/22",
   "parameter-prefix": "/example/test/",
+    "resource-name-prefix": "example",
   listener: {
     "environment-name": "test",
     subdomain: "intent",

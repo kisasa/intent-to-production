@@ -17,6 +17,10 @@ services:
 
   localstack-bootstrap:
     environment:
+      # The framework clone the specialist reads its agent and skill files
+      # from. docker-compose.yml ships a placeholder org; put yours here.
+      FRAMEWORK_REPO: ""
+      FRAMEWORK_REF: main
       # The specialist's own credentials — baked into the task definition
       # this script registers. See docker-compose.yml's own comment on this
       # service for why.

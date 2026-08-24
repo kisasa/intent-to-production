@@ -92,7 +92,7 @@ export class SpecialistSandboxStack extends BaseStack {
     });
 
     const cluster = new EcsCluster(this, "ecs-cluster", {
-      name: formatName(`example-specialist-${config.environmentName}`),
+      name: formatName(`${this.resourceNamePrefix}-specialist-${config.environmentName}`),
       tags: tags,
     });
 

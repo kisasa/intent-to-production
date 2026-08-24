@@ -80,7 +80,7 @@ export class ListenerStack extends BaseStack {
     });
 
     const cluster = new EcsCluster(this, "ecs-cluster", {
-      name: formatName(`kisasa-${environmentName}`),
+      name: formatName(`${this.resourceNamePrefix}-${environmentName}`),
       tags: tags,
     });
 
@@ -90,7 +90,7 @@ export class ListenerStack extends BaseStack {
     });
 
     const loadBalancer = new ApplicationLoadBalancer(this, "load-balancer", {
-      name: `kisasa-${environmentName}`,
+      name: `${this.resourceNamePrefix}-${environmentName}`,
       vpcId: network.vpcId,
       subnetIds: network.publicSubnetIds,
       certificateArn: certificate.validatedCertificateArn,

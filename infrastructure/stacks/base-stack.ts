@@ -33,6 +33,7 @@ export abstract class BaseStack extends TerraformStack {
     "vpc-cidr-block",
     "state-bucket-name",
     "parameter-prefix",
+    "resource-name-prefix",
   ];
 
   protected readonly aws: AwsConfiguration;
@@ -46,6 +47,16 @@ export abstract class BaseStack extends TerraformStack {
 
   /** Prefix under which every stack's SSM secrets live — one shared value, not one per stack. */
   protected readonly parameterPrefix: string;
+
+  /**
+   * Leading segment of every deployment-scoped resource name (ECS clusters and
+   * everything the constructs derive from them). Context rather than a literal
+   * because it names one deployment, and deployment identity does not belong in
+   * a repository anyone can clone — see CLAUDE.md, "No Private References".
+   * Changing its value renames resources, which for a cluster means replacing
+   * it, so it is set once per deployment and left alone.
+   */
+  protected readonly resourceNamePrefix: string;
 
   private readonly stateBucketName: string;
 
@@ -66,6 +77,7 @@ export abstract class BaseStack extends TerraformStack {
     this.vpcCidrBlock = requireString(context, "vpc-cidr-block", "context");
     this.stateBucketName = requireString(context, "state-bucket-name", "context");
     this.parameterPrefix = requireString(context, "parameter-prefix", "context");
+    this.resourceNamePrefix = requireString(context, "resource-name-prefix", "context");
 
     new AwsProvider(this, "aws", {
       region: this.aws.region,

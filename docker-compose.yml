@@ -117,8 +117,11 @@ services:
       ANTHROPIC_API_KEY: ""
       LINEAR_AGENT_API_KEY: ""
       GITHUB_TOKEN: ""
-      # dispatch-context.ts requires both — no fallback. Override with a
-      # feature branch when testing framework changes locally.
+      # dispatch-context.ts requires both — no fallback. Placeholder here on
+      # purpose: the framework clone's coordinates are yours, not this file's.
+      # Set the real org/name in docker-compose.override.yml, the same way
+      # every credential above is set, and point FRAMEWORK_REF at a feature
+      # branch when testing framework changes locally.
       FRAMEWORK_REPO: example-org/intent-to-production
       FRAMEWORK_REF: main
     volumes:

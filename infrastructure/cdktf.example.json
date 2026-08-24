@@ -3,7 +3,9 @@
   "app": "npx tsx main.ts",
   "output": "cdktf.out",
   "sendCrashReports": false,
-  "terraformProviders": ["temporalio/temporalcloud@~> 0"],
+  "terraformProviders": [
+    "temporalio/temporalcloud@~> 0"
+  ],
   "terraformModules": [],
   "targetVersions": {
     "terraform": ">=1.10.0",
@@ -25,6 +27,7 @@
     "hosted-zone-id": "Z0000000000000000000",
     "vpc-cidr-block": "10.9.0.0/22",
     "parameter-prefix": "/example/prod/",
+    "resource-name-prefix": "example",
     "listener": {
       "environment-name": "prod",
       "subdomain": "intent",

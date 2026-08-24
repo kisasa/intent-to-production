@@ -98,7 +98,7 @@ export class TemporalWorkersStack extends BaseStack {
     });
 
     const cluster = new EcsCluster(this, "ecs-cluster", {
-      name: formatName(`example-temporal-${config.environmentName}`),
+      name: formatName(`${this.resourceNamePrefix}-temporal-${config.environmentName}`),
       tags: tags,
     });
 

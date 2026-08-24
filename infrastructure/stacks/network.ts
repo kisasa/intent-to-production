@@ -17,7 +17,7 @@ export class NetworkStack extends BaseStack {
     const tags = { ...this.globalTags, stack: `network-${this.listener.environmentName}` };
 
     const network = new NetworkVpc(this, "vpc", {
-      name: `kisasa-${this.listener.environmentName}`,
+      name: `${this.resourceNamePrefix}-${this.listener.environmentName}`,
       cidrBlock: this.vpcCidrBlock,
       availabilityZoneCount: 2,
       globalTags: tags,

@@ -128,13 +128,14 @@ const RULES = [
   },
   {
     /**
-     * Any `kisasa-`-prefixed resource name, not just the two seen first. The
-     * narrow version of this rule missed `example-temporal-${env}` sitting four
-     * lines from a name it did catch — which is the argument for the broad
-     * shape over an enumeration.
+     * Any `kisasa-` prefix at all. This rule has now been widened twice: an
+     * enumeration of two names missed a third four lines away, and
+     * `kisasa-[a-z]+` then missed `kisasa-${environmentName}` because an
+     * interpolation is not a lowercase letter. Match the prefix and nothing
+     * else — every narrowing attempt has cost a leak.
      */
     label: "named deployed environments",
-    pattern: /kisasa-[a-z]+|abc12/g,
+    pattern: /kisasa-|abc12/g,
   },
   {
     /**
