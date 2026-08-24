@@ -6,16 +6,18 @@ name: Build and push dispatch-worker image to ECR
 # path filter — this package's build context is self-contained
 # (dispatch-worker/ only), so an unrelated webhook-listener/infra/
 # specialist-runner change should not rebuild this image.
+# Publishes on a push to main, or on demand from the Actions tab.
+#
+# Was: a push to a `dev` branch that no longer exists, plus `pull_request` with
+# `types: [closed]`. That pair predates main being the only branch — a merge
+# into main is a push to main now, so the pull_request trigger is redundant,
+# and it fired on every PR close whether merged or not.
 on:
   push:
     paths:
       - "dispatch-worker/**"
     branches:
-      - dev
-  pull_request:
-    types: [closed]
-    paths:
-      - "dispatch-worker/**"
+      - main
   workflow_dispatch:
     inputs:
       ref:
@@ -33,13 +35,11 @@ concurrency:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-#    if: >
-#      github.event_name == 'workflow_dispatch' ||
-#      (
-#        github.event_name == 'pull_request' &&
-#        github.event.pull_request.merged == true &&
-#        github.event.pull_request.base.ref == 'main'
-#      )
+    # No merge guard needed: both triggers are already safe. A push to main has
+    # by definition been merged and required write access, and a manual
+    # dispatch is restricted to people who can run workflows. The guard this
+    # replaces was commented out, so the protection its comment described had
+    # not been running at all.
     env:
       ECR_REPOSITORY: intent-to-production-temporal-worker
     steps:
