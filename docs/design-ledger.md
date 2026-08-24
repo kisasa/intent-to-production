@@ -3469,3 +3469,101 @@ ran `npm ci` and the full suites in seconds. That is a small direct data point
 for the round's largest open question — the specialist sandbox's inability to
 build or test the stacks it writes for is a provisioning problem, not an
 inherent one.
+
+
+## The repository stops referencing anything private (2026-08-24)
+
+The framework is open source. It was not written that way: a full sweep found
+roughly 155 tracker identifiers, 68 person references, client organization and
+repository names, three real email addresses, a tracker user id, an AWS account
+number, a hosted zone, a state bucket and several deployed resource names —
+spread across code, comments, test fixtures, agent definitions, skills, both
+READMEs and this ledger.
+
+**The rule, now in `CLAUDE.md`:** nothing in this repository may reference a
+private artifact — not a tracker team or issue key, not a client organization or
+repository, not a person, not a named deployed environment. No exemptions, no
+internal-only directory, because every file here ships.
+
+**Provenance survives it intact, which is the part worth stating.** This ledger's
+contract asks every entry to preserve the observation that forced a rule. That
+contract is unaffected: the observation was always the valuable half and the
+identifier never was. "Confirmed live (2026-08-20): an architect posted a
+corrected `e2e` line and it silently didn't parse" says exactly what the version
+with a ticket number said. Where entries refer to each other they now use roles —
+"the integration-test story", "the epic's E2E story" — which reads better than a
+key no reader could open. Attribution became the role that made the call, since
+which role decided is load-bearing and who decided rarely is. This supersedes the
+preamble's earlier carve-out, which explained the sandbox's identifiers rather
+than removing them; the standing instruction it contained — state the finding, do
+not cite an anchor a reader cannot open — is now the whole rule rather than one
+document's local practice.
+
+**Enforcement is a script because the rule failed as a convention immediately.**
+Within an hour of writing it down, this session added a code comment citing three
+issue keys. `scripts/check-no-private-references.mjs` scans every tracked file and
+runs in CI on pull requests and pushes.
+
+**The finding that generalizes, though, is about the check itself.** It missed
+something on every single widening, and always in the same shape — a rule precise
+enough to avoid false positives was precise enough to walk past the next
+instance:
+
+- It enumerated two of the organization-prefixed resource names, and missed a
+  third sitting four lines from one it caught.
+- Widened to that prefix plus lowercase letters, it then missed the same prefix
+  followed by an interpolated environment name, because `${...}` is not a
+  lowercase letter.
+- Widened to the bare prefix, it immediately found two more sites that were not
+  `formatName` calls and had therefore escaped a manual grep as well.
+- Its person rule matched full names and emails, and missed 68 bare first names —
+  attribution in prose is almost always first-name-only.
+- Its issue-key rule was uppercase-only and walked past thirteen test fixtures
+  carrying branch names built from real keys.
+
+Five widenings, five leaks caught. The rule in the script's own header is the
+durable output: when you find a leak, add a pattern rather than fixing the one
+instance quietly.
+
+**The structural lesson is stronger than the check.** `cdktf.json` alone held five
+identifying values no pattern matched — a capitalised AWS profile, a bare domain,
+a hosted zone id, an account number and a bucket name. An account number and a
+zone id are digits; any rule broad enough to catch them flags every unrelated
+number in the tree. So the file left the repository: gitignored, with
+`cdktf.example.json` committed beside it whose key set is kept identical, the same
+pattern already used for `docker-compose.override.yml`. **Deployment identity
+should be excluded, not pattern-matched** — that single decision cleared five of
+the eight references that had looked immovable, and it is why the check is now
+narrow enough to hold.
+
+**The last three were held by a real constraint, and it was removable.** Five
+stacks named resources with a literal organization prefix; renaming a cluster
+replaces it. Made a context value, `resource-name-prefix`, read in the base stack
+beside `parameter-prefix` and supplied by the now-untracked config — so the code
+carries no identity and the deployed names do not change. Verified by synthesizing
+before and after against the same config and diffing the whole output tree:
+byte-for-byte identical. The constraint was never "these names cannot move," it
+was "these names cannot change," and those are different.
+
+**Briefly disabled rather than left red.** Between the rule landing and the last
+three clearing, the CI gate ran on manual dispatch only. A required check that
+always fails is one everyone learns to scroll past, which is worse than no check;
+the disabling commit carried the full list of what was blocking and what would
+clear each item, so picking it up again did not mean rediscovering the problem.
+
+**History was rewritten (2026-08-24).** Scrubbing the working tree does not remove
+anything from earlier commits, and this repository had 91 of them. Every commit
+was rewritten with the same substitutions, and the result pushed to a new remote
+rather than force-pushed over the old one — a force-push leaves rewritten objects
+reachable by hash until the host garbage-collects them, while a fresh remote has
+no such tail. Checked first, and worth recording because it changed the response:
+history contained no credentials at all — no keys, no tokens, no state files; the
+one token-shaped string was a fabricated fixture in a redaction test. So this was
+a privacy cleanup with nothing to rotate, not an incident.
+
+The rewrite makes the artifacts disagree with this account: the commits now show a
+repository that was always clean, and the commits that did the scrubbing appear to
+change nothing. That is recorded here deliberately. A project whose thesis is
+honest documentation of its own failures should not let a history rewrite quietly
+edit the record — the ledger is the account, and the account says the references
+were there.
