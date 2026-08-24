@@ -40,7 +40,7 @@ const GENERATED = /(^|\/)package-lock\.json$/;
 /**
  * Token shapes that look like an issue key but are not: encodings, hash and
  * cipher sizes, standards references. Matched case-sensitively against the
- * whole token, so `UTF-8` passes and `PROJ-8` does not.
+ * whole token, so `UTF-8` passes and `LET-8` does not.
  */
 const NOT_TRACKER_KEYS = new Set([
   "UTF-8",
@@ -84,13 +84,13 @@ const RULES = [
   {
     /**
      * Case-insensitive on purpose: a branch name derived from an issue key
-     * (`proj-58`, `proj-101-refund-endpoint`) is the same leak in lower case,
+     * (`let-58`, `aip-101-refund-endpoint`) is the same leak in lower case,
      * and the uppercase-only version of this rule walked past thirteen of
      * them in test fixtures. The shape heuristic below stays uppercase-only —
      * lower case would match every `utf-8` and `node-22` in the tree.
      */
     label: "tracker issue keys (use PROJ-<n> instead)",
-    pattern: /\b(?:LET|PROJ|AIP|TARJAY|MGMT)-\d+/gi,
+    pattern: /\b(?:LET|STPDEV|AIP|TARJAY|MGMT)-\w+/gi,
   },
   {
     /**
@@ -108,12 +108,12 @@ const RULES = [
   {
     label: "client or engagement org / repo names",
     pattern:
-      /Streamline[- ]?Payments|example-org|example-app|example-app|(?:Le|Team)[ -]?Tar[gj]|Targét|Example Payments|example-payments|Management\.[Ww]eb|example-web|PayNow|VirtualTerminal|virtualterminal/g,
+      /\bSTPDEV\b|Streamline[- ]?Payments|le-tarjay|team-tarjay|team-target|(?:Le|Team)[ -]?Tar[gj]|Targét|StreamPay|streampay|Management\.[Ww]eb|Management-Angular|PayNow|VirtualTerminal|virtualterminal/g,
   },
   {
     label: "people — names, emails, GitHub logins, tracker user ids",
     pattern:
-      /example-login|example-login|example-login|Marroqu|the designer|V[aá]zquez|the developer|cvazquez|@kisasa\.io|00000000-0000-4000-8000-000000000001/g,
+      /Dieruf|ddieruf|daviddieruf|Marroqu|Rodriguez|V[aá]zquez|jmarroquin|cvazquez|@kisasa\.io|b13c0f8d-ac46-48ff-b1a2-1df7da3caa33/g,
   },
   {
     /**
@@ -124,7 +124,7 @@ const RULES = [
      * started life as a first name). Use the role, not the person.
      */
     label: "people — bare first names (use the role instead)",
-    pattern: /\b(?:the architect|the designer|Jes[uú]s|the developer|the developer)\b/g,
+    pattern: /\b(?:David|Julie|Jes[uú]s|Cristian|Michael)\b/g,
   },
   {
     /**
@@ -135,7 +135,7 @@ const RULES = [
      * else — every narrowing attempt has cost a leak.
      */
     label: "named deployed environments",
-    pattern: /kisasa-|abc12/g,
+    pattern: /kisasa-|ud8ke/g,
   },
   {
     /**
@@ -168,7 +168,7 @@ const RULES = [
   {
     /**
      * The org name baked into a code identifier or filename. Added after the
-     * first full sweep missed `BaseStack` and `stacks/base-stack.ts` — the
+     * first full sweep missed `KisasaStack` and `stacks/kisasa-stack.ts` — the
      * base class every infrastructure stack extends — because every other rule
      * looked for the word in a coordinate, an email or an ARN, never in
      * PascalCase or a kebab-case filename.
