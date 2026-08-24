@@ -3480,7 +3480,7 @@ number, a hosted zone, a state bucket and several deployed resource names —
 spread across code, comments, test fixtures, agent definitions, skills, both
 READMEs and this ledger.
 
-**The rule, now in `CLAUDE.md`:** nothing in this repository may reference a
+**The rule, now in `CONTRIBUTING.md`:** nothing in this repository may reference a
 private artifact — not a tracker team or issue key, not a client organization or
 repository, not a person, not a named deployed environment. No exemptions, no
 internal-only directory, because every file here ships.
