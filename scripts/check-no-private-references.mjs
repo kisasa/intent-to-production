@@ -143,7 +143,26 @@ const RULES = [
      * namespace built from the same word is not.
      */
     label: "kisasa used as a coordinate rather than as authorship",
-    pattern: /(?:github|gitlab)\/kisasa|kisasa\/[a-z]|["']kisasa["']/g,
+    pattern: /(?:github|gitlab)\/kisasa|kisasa\/[a-z]|["']kisasa["']/gi,
+  },
+  {
+    /**
+     * The bare domain as a configuration value. Skips markdown: authorship
+     * credit in `README.md` links to it deliberately, and that is allowed —
+     * a domain in a config value or in code is not.
+     *
+     * Added after `cdktf.json` turned out to hold five identifying values no
+     * rule here matched — a capitalised AWS profile, this domain, a hosted
+     * zone id, an account number and a state bucket. Two of those are now
+     * covered; an account number and a zone id are digits and a rule for them
+     * would flag every unrelated number in the tree. That gap is the argument
+     * for keeping deployment config out of the repository entirely rather
+     * than trying to pattern-match it, which is why `cdktf.json` is now
+     * gitignored with a committed template beside it.
+     */
+    label: "private domain used as a configuration value",
+    pattern: /kisasa\.io/g,
+    skipMarkdown: true,
   },
   {
     /**
@@ -184,9 +203,11 @@ function findings() {
     if (isProbablyBinary(contents)) continue;
 
     const generated = GENERATED.test(path);
+    const markdown = path.endsWith(".md");
     const lines = contents.split("\n");
     for (const rule of RULES) {
       if (rule.skipGenerated === true && generated) continue;
+      if (rule.skipMarkdown === true && markdown) continue;
       lines.forEach((line, index) => {
         const matches = line.match(rule.pattern);
         if (matches === null) return;

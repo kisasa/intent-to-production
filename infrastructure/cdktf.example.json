@@ -1,7 +1,7 @@
 {
   "language": "typescript",
   "app": "npx tsx main.ts",
-  "output": "prod-2.out",
+  "output": "cdktf.out",
   "sendCrashReports": false,
   "terraformProviders": ["temporalio/temporalcloud@~> 0"],
   "terraformModules": [],
@@ -19,14 +19,14 @@
     "global-tags": {
       "terraform": "true",
       "project": "intent-to-production",
-      "environment": "prod-2"
+      "environment": "prod"
     },
     "domain-name": "example.com",
     "hosted-zone-id": "Z0000000000000000000",
     "vpc-cidr-block": "10.9.0.0/22",
     "parameter-prefix": "/example/prod/",
     "listener": {
-      "environment-name": "prod-2",
+      "environment-name": "prod",
       "subdomain": "intent",
       "ecr-repository-name": "intent-to-production",
       "image-tag": "latest",
@@ -42,7 +42,7 @@
       "product-context-paths": null
     },
     "specialist-sandbox": {
-      "environment-name": "prod-2",
+      "environment-name": "prod",
       "ecr-repository-name": "intent-to-production-specialist",
       "image-tag": "latest",
       "cpu": 1024,
@@ -52,8 +52,8 @@
       "framework-ref": "dev"
     },
     "temporal": {
-      "environment-name": "prod-2",
-      "namespace-name": "intent-to-production-prod2",
+      "environment-name": "prod",
+      "namespace-name": "intent-to-production-prod",
       "ecr-repository-name": "intent-to-production-temporal-worker",
       "image-tag": "latest",
       "cpu": 512,
@@ -61,11 +61,9 @@
       "desired-count": 1,
       "log-retention-days": 14,
       "reviewer-email-to-github-login": {
-        "user@example.com": "example-login",
-        "contributor-a@example.com": "example-login-a",
-        "contributor-b@example.com": "example-login-b"
+        "user@example.com": "example-login"
       }
     }
   },
-  "projectId": "181a046c-3409-4a14-a5b9-f827800976cf"
+  "projectId": "00000000-0000-4000-8000-000000000001"
 }

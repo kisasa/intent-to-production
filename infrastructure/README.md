@@ -180,10 +180,24 @@ gitignored, same as `cdktn.out/` — regenerate it after a fresh clone, same as 
 
 ## Configuration
 
-Every setting comes from the `context` block of [`cdktf.json`](cdktf.json) — read once per stack in
-the base stack's constructor, validated by the factories in [`models/`](models). Nothing reads
+**`cdktf.json` is not in the repository.** It carries one deployment's identity — AWS account,
+state bucket, domain, hosted zone, SSM prefix, reviewer table — which is engagement-specific, not
+framework material, so it is gitignored. Start from the committed template:
+
+```bash
+cp infrastructure/cdktf.example.json infrastructure/cdktf.json
+```
+
+Then replace every placeholder value: the account number and profile, `state-bucket-name`,
+`domain-name` and `hosted-zone-id`, `parameter-prefix`, `framework-repo`, `output` if you want a
+different synth directory, and the `reviewer-email-to-github-login` table. Nothing synths until
+those are real. The template's key set is kept identical to a working config, so a missing key is a
+diff away rather than a runtime surprise.
+
+Every setting comes from the `context` block of that file — read once per stack in the base
+stack's constructor, validated by the factories in [`models/`](models). Nothing reads
 `process.env`, and there are no sensitive Terraform variables, so there is no `secrets.tfvars` to
-manage. Values marked `REPLACE_ME` in the committed file must be filled in before the first synth.
+manage. Values marked `REPLACE_ME` must be filled in before the first synth.
 
 | Key | Example | Notes |
 |---|---|---|
@@ -285,7 +299,8 @@ npm run test:unit && npm run typecheck
 ```
 main.ts                  Stack construction and dependency wiring
 common.ts                Name formatting and state keys
-cdktf.json               Project config; the context block is all the settings
+cdktf.json               Project config (gitignored); the context block is all the settings
+cdktf.example.json       Committed template; copy to cdktf.json and fill in
 models/                  Typed configuration and stack outputs, with fromContext factories
 constructs/              Reusable pieces: VPC, certificate, load balancer, single-instance service,
                          specialist task, Temporal PrivateLink/namespace/worker service. Every
