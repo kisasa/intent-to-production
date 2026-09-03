@@ -42,12 +42,34 @@ describe("loadDispatchContext", () => {
       epicId: "PROJ-10",
       surfaces: ["backend"],
       surfaceRepo: "example-org/example-api",
+      surfacePaths: ["/"],
+      surfaceSkills: [],
       storyBranch: "proj-101-refund-endpoint",
       epicBranch: "proj-10-refunds",
       frameworkRepo: "example-org/intent-to-production",
       frameworkRef: "main",
       maxTurns: 40,
     });
+  });
+
+  it("reads SURFACE_PATHS and SURFACE_SKILLS from the registry when the dispatcher sets them", () => {
+    stubAll({ SURFACES: "web,e2e" });
+    vi.stubEnv("SURFACE_PATHS", "/, e2e/");
+    vi.stubEnv("SURFACE_SKILLS", "playwright-house-style, cdkterrain");
+    const context = loadDispatchContext();
+    expect(context.surfacePaths).toEqual(["/", "e2e/"]);
+    expect(context.surfaceSkills).toEqual(["playwright-house-style", "cdkterrain"]);
+  });
+
+  it("defaults every surface path to the repo root when SURFACE_PATHS is unset", () => {
+    stubAll({ SURFACES: "web,e2e" });
+    expect(loadDispatchContext().surfacePaths).toEqual(["/", "/"]);
+  });
+
+  it("rejects SURFACE_PATHS that does not correspond one to one with SURFACES", () => {
+    stubAll({ SURFACES: "web,e2e" });
+    vi.stubEnv("SURFACE_PATHS", "/");
+    expect(() => loadDispatchContext()).toThrow(/one to one/);
   });
 
   it("parses more than one comma-separated surface", () => {

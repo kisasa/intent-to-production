@@ -34,7 +34,7 @@
 import { ApplicationFailure } from "@temporalio/activity";
 import { githubRequest, isClientError } from "../github-request.js";
 import type { WorkerConfig } from "../worker-config.js";
-import type { RepoBase } from "./resolve-repo-base.js";
+import type { RepoBase } from "./resolve-surfaces.js";
 
 export interface PullRequestReference {
   readonly number: number;
@@ -53,7 +53,7 @@ interface GitHubPullRequestListItem {
  * head+base pair, and the closed-list caller sorts newest-first). Pure and
  * tested directly, unlike the fetch call around it (same "parse/select is
  * pure and tested, the IO wrapper isn't" split as
- * `parseRepoBase`/`parseBlockingDependencyIds`).
+ * `resolveSurfaces`/`parseBlockingDependencyIds`).
  */
 export function pickPullRequest(candidates: GitHubPullRequestListItem[]): PullRequestReference | null {
   const first = candidates[0];

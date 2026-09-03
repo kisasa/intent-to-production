@@ -14,12 +14,12 @@ import type { DependencyCheckResult } from "./check-dependencies.js";
 import type { CreateStoryBranchInput } from "./create-story-branch.js";
 import type { DispatchSpecialistInput } from "./dispatch-specialist.js";
 import type { PullRequestReference } from "./find-pull-request.js";
-import type { RepoBase } from "./resolve-repo-base.js";
+import type { RepoBase, ResolvedTarget } from "./resolve-surfaces.js";
 import type { Surface, StoryMover } from "./types.js";
 
 export interface DispatchActivities {
   checkDependencies(storyId: string): Promise<DependencyCheckResult>;
-  resolveRepoBase(epicId: string, surfaces: Surface[]): Promise<RepoBase>;
+  resolveSurfaces(epicId: string, surfaces: Surface[]): Promise<ResolvedTarget>;
   createStoryBranch(input: CreateStoryBranchInput): Promise<void>;
   dispatchSpecialist(input: DispatchSpecialistInput): Promise<string>;
   postSpecialistStarted(storyId: string): Promise<string | null>;

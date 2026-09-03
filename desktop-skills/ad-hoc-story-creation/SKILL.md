@@ -70,9 +70,10 @@ A story needs, in this order:
    if there's something concrete to point at.
 
 Labels:
-- `surface:<name>` — **required**, must match a surface the epic has
-  already recorded a `Repo base — <surface>: ...` comment for. Never invent
-  a surface that isn't already recorded on the epic.
+- `surface:<name>` — **required**, must match a surface with an active
+  record in the surface registry: the project's `Surfaces` document, with
+  the epic's `Surfaces (override)` document layered on top. Never invent a
+  surface that isn't recorded.
 - `size:<small|medium|large>` and `tier:<small|mid|large>` — optional; if
   the developer doesn't know or care, say so and skip them rather than
   guessing.
@@ -82,14 +83,14 @@ Labels:
 1. **Which epic?** Ask for the epic's identifier or a link. Look it up
    (`get_issue`). Confirm the title back to the developer so they know
    you've got the right one.
-2. **Which surface?** Read the epic's comments (`list_comments`) for every
-   `Repo base — <surface>: ...` line — this is the authoritative source,
-   always prefer it over guessing from labels or memory. Present the
-   surfaces you found as the suggested answers — e.g. "This epic has repo
-   bases recorded for **surface:api** and **surface:web** — which one is
-   this?" If none exist, stop and tell the developer the epic itself is
-   missing this and needs it before any story under it can dispatch — don't
-   invent one yourself. Surfaces are engagement-specific and this skill
+2. **Which surface?** Read the surface registry: the project's `Surfaces`
+   document (`list_documents` with the project id, then `get_document`), and
+   the epic's `Surfaces (override)` document if it has one — the override
+   wins for the surfaces it names. Present the active surfaces you found as
+   the suggested answers — e.g. "The registry has **surface:api** and
+   **surface:web** — which one is this?" If there is no registry, stop and
+   tell the developer the project is missing it and needs it before any story
+   can dispatch — don't invent one yourself. Surfaces are engagement-specific and this skill
    carries no list of them; the epic's own comments are the only source. If
    an older sibling story carries a surface label the epic does not record,
    the epic's comments win.

@@ -153,6 +153,52 @@ export async function deleteComment(commentId: string, apiKey: string, baseUrl: 
   await graphql(apiKey, baseUrl, `mutation($id:String!){ commentDelete(id:$id){ success } }`, { id: commentId });
 }
 
+export interface TrackerDocument {
+  readonly title: string;
+  readonly content: string;
+}
+
+/**
+ * The documents attached to an issue, and the id of the project it belongs
+ * to — both needed to find a surface registry: the epic's own
+ * `Surfaces (override)` document, then the project's `Surfaces` document.
+ *
+ * VERIFY before relying on this in production (same category as the caveats
+ * above): the `documents` connection on Issue and Project, and `content` as
+ * the markdown body field on Document, are taken from Linear's public API
+ * docs and the Linear MCP connector's own `save_document` (which attaches a
+ * document to exactly one of project/issue/initiative/cycle/team), not
+ * confirmed against a live query from this code.
+ */
+export async function getIssueDocuments(
+  issueId: string,
+  apiKey: string,
+  baseUrl: string,
+): Promise<{ projectId: string | null; documents: TrackerDocument[] }> {
+  const data = await graphql<{
+    issue: { project: { id: string } | null; documents: { nodes: { title: string; content: string | null }[] } };
+  }>(
+    apiKey,
+    baseUrl,
+    `query($id:String!){ issue(id:$id){ project { id } documents { nodes { title content } } } }`,
+    { id: issueId },
+  );
+  return {
+    projectId: data.issue.project?.id ?? null,
+    documents: data.issue.documents.nodes.map((d) => ({ title: d.title, content: d.content ?? "" })),
+  };
+}
+
+export async function getProjectDocuments(projectId: string, apiKey: string, baseUrl: string): Promise<TrackerDocument[]> {
+  const data = await graphql<{ project: { documents: { nodes: { title: string; content: string | null }[] } } }>(
+    apiKey,
+    baseUrl,
+    `query($id:String!){ project(id:$id){ documents { nodes { title content } } } }`,
+    { id: projectId },
+  );
+  return data.project.documents.nodes.map((d) => ({ title: d.title, content: d.content ?? "" }));
+}
+
 export function linearApiUrl(): string {
   return envOr("LINEAR_API_URL", DEFAULT_LINEAR_API_URL);
 }

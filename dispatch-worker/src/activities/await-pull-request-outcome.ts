@@ -27,7 +27,7 @@ import { heartbeat, sleep } from "@temporalio/activity";
 import { githubRequest } from "../github-request.js";
 import { postComment, linearApiUrl } from "../tracker.js";
 import type { WorkerConfig } from "../worker-config.js";
-import type { RepoBase } from "./resolve-repo-base.js";
+import type { RepoBase } from "./resolve-surfaces.js";
 
 const DEFAULT_POLL_INTERVAL_MS = 120_000;
 

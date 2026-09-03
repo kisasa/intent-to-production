@@ -32,7 +32,7 @@ someone who knows it is theirs.
   resolves the design touchpoints in each epic's API map; signs off each
   completed epic against the running software. Adds cross-cutting rules to
   the project's design issue as areas reveal them.
-- **Architect** — records each surface's repo base; writes each surface's
+- **Architect** — confirms each surface's registry record; writes each surface's
   `CONVENTIONS.md` with the `conventions-writing` skill; resolves existence
   in each epic's API map; creates the BRD branch in each surface repo and
   each epic's branch off it; reviews and merges each epic's PR into the BRD
@@ -80,11 +80,16 @@ surface the engagement will touch:
 - **A `surface:<name>` label** on the team. Names are the engagement's own.
   Keep them short and stable; renaming a surface mid-engagement cost the
   first engagement roughly fifty written stories.
-- **A repo base** the architect can state as
-  `Repo base — <surface>: <host>/<org>/<repo>/<ref>`. Specification asks for
-  it on the first epic that touches the surface and records it on the epic;
-  later epics reuse it. Only `github` is a supported host today. Know the
-  answers before the first epic so the question is answered in one reply.
+- **A record in the surface registry.** The registry is a project document
+  titled `Surfaces`, one per engagement, holding a record per surface: repo,
+  ref, the directory within the repo, the conventions file, any mandatory
+  skills, and status. An epic can carry a `Surfaces (override)` document for
+  differences that hold only for that epic. The agents write both — the
+  Specification Agent proposes a record from what it can read when a surface
+  has none, the architect confirms in the thread, the agent writes it. The
+  architect never types the format; only `github` is a supported host today.
+  Know where every surface lives before the first epic so each proposal is
+  confirmed in one reply.
 - **Real code at that ref**, readable enough that Specification can state
   the runtime and framework as a fact and see at least one representative
   pattern. A greenfield surface needs a starter solution before the
@@ -208,9 +213,10 @@ what this engagement actually needs at the end, not in advance.
   decisions — so review before closing a PR unmerged and re-dispatching.
 - **A story that cannot proceed goes back to Todo with a comment.** Read
   the comment; the pipeline does not retry on its own.
-- **Formats the pipeline parses are strict.** The `Repo base —` line, the
-  `## References` footer, the blocking-dependency bullets. The agents write
-  them; when a human writes one, copy the shape exactly.
+- **Formats the pipeline parses are strict.** The surface registry's
+  `surfaces` block, the `## References` footer, the blocking-dependency
+  bullets. The agents write them; a human should not need to, and a
+  malformed registry record is reported as a bug rather than worked around.
 - **Nothing here references this engagement by name.** `CONTRIBUTING.md`
   explains why; the check runs in CI. Engagement-specific configuration
   belongs in environment variables and untracked files, not in this

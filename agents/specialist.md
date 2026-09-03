@@ -21,12 +21,13 @@ Reference documents:
 
 A **surface** is a place work happens: a repo, or a project inside one. `web`,
 `api`, `mobile`, `e2e` are surfaces. So is a dedicated integration-test
-project. Your story carries a `surface:<name>` label, and the epic records
-where that surface lives:
-
-```
-Repo base — <surface>: <host>/<org>/<repo>/<ref>
-```
+project. Your story carries a `surface:<name>` label, and the **surface
+registry** records where that surface lives: the project's document titled
+`Surfaces`, with the epic's `Surfaces (override)` document layered on top when
+it has one. Each record names the repo, the ref, the directory within the repo
+the surface occupies, and where its conventions spec is. Your assignment
+message tells you the directories your surfaces occupy; the registry is where
+that came from.
 
 Your story may carry more than one `surface:` label. When it does they all
 resolve to the same repo and ref. Decomposition enforces that. So they are all
@@ -39,8 +40,8 @@ still on your branch. You may repair there. You do not build new work there. The
 labels say what this story delivers. The shared branch says what you can fix.
 
 Everything else is a sibling surface: readable, runnable, never writable, and
-never the target of a pull request. To tell which is which, compare `Repo base`
-lines.
+never the target of a pull request. To tell which is which, compare the
+registry's records: same repo and ref means the same branch.
 
 Your branch chain lives in your surface's repo. When a surface has its own repo,
 it has its own BRD and epic branches, carrying the same names the tracker

@@ -24,8 +24,8 @@ specialist knows what it may write in, rather than which file to load.
 `tests` and `e2e` both needed no new infrastructure to register for
 app-dispatch (2026-08-07): `workspace.ts` already clones exactly one target
 surface repo per dispatch, resolved by `dispatch-worker`'s
-`resolveRepoBase(epicId, surfaces)` from `Repo base — <surface>: ...`
-comments the architect records on the epic — the same mechanism backend and
+`resolveSurfaces(epicId, surfaces)` from the surface registry (the project's
+`Surfaces` document, overridable per epic) — the same mechanism backend and
 frontend already used. `e2e`'s registration was blocked slightly longer than
 `tests`'s, but not by anything in this package — `specialist-e2e.md` (now
 folded into the one generic file) used to require the specialist to stand up
@@ -94,6 +94,8 @@ per story:
 | `EPIC_ID` | yes | Parent epic | `dispatch-specialist.ts` (`RunTask` override) |
 | `SURFACES` | yes | Comma-separated `surface:<name>` label(s) the story carries, e.g. `backend` or `web,e2e` | `dispatch-specialist.ts` (`RunTask` override) |
 | `SURFACE_REPO` | yes | `org/name` on GitHub — the one repo this run writes to | `dispatch-specialist.ts` (`RunTask` override) |
+| `SURFACE_PATHS` | no | Comma-separated directory per surface, same order as `SURFACES` (`/` for the root), from the surface registry. Defaults to `/` for each | `dispatch-specialist.ts` (`RunTask` override) |
+| `SURFACE_SKILLS` | no | Comma-separated mandatory skills from the registry; resolved surface-repo `.claude/skills/` first, then the framework catalog, and inlined into the system prompt. A name that resolves nowhere fails the run before it starts | `dispatch-specialist.ts` (`RunTask` override) |
 | `STORY_BRANCH`, `EPIC_BRANCH` | yes | Branch names the tracker already assigned | `dispatch-specialist.ts` (`RunTask` override) |
 | `MAX_TURNS` | yes | Hard cap on Agent SDK turns — the ledger is explicit a session doesn't time out on its own | `dispatch-specialist.ts` (`RunTask` override) |
 | `FRAMEWORK_REPO` | yes | `org/name` on GitHub for the framework (agents/skills) repo | `specialist-sandbox.ts` (task definition) |

@@ -6,7 +6,7 @@
  * happened. Silence is the one unacceptable outcome."
  *
  * Before this, individual activities each decided for themselves whether to
- * post a comment on failure — resolve-repo-base.ts and find-pull-request.ts
+ * post a comment on failure — the surface resolver and find-pull-request.ts
  * did, for the one failure mode each anticipated; createStoryBranch,
  * dispatchSpecialist, and everything else didn't. Confirmed live
  * (2026-08-06): a real dispatch failed on a GitHub 404 nobody had written a

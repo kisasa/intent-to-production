@@ -25,9 +25,11 @@ dispatch are merged and closed-without-merging.
    Linear. Not ready → posts a comment naming which blocker isn't done,
    workflow returns `{ outcome: "not-ready" }`. No `dispatch:blocked` label
    yet — see Known gaps.
-2. **Resolve the repo base** — finds the target surface's `Repo base — …`
-   line in the epic's comments (tightened format, see below), parses
-   host/org/repo/ref.
+2. **Resolve the surfaces** — reads the surface registry (the project's
+   `Surfaces` document, with the epic's `Surfaces (override)` document
+   layered on top), finds each of the story's surfaces, and requires them to
+   share one repo and ref. Also yields each surface's directory and
+   mandatory skills for the specialist.
 3. **Create the story branch** — mechanical: reads the epic branch's current
    commit sha via the GitHub API, creates the story branch ref from it.
    Idempotent (a retried attempt against an already-created branch is not an
@@ -69,11 +71,14 @@ with an example format but nothing enforced:
   identifier as the first token (`- PROJ-42 — <title>`), so
   `activities/check-dependencies.ts` can extract it without depending on any
   particular wording after it.
-- **Repo base** (`agents/specification-agent.md`): recording a base now
-  requires one fixed-form line per surface, `Repo base — <surface>:
-  <host>/<org>/<repo>/<ref>`, in whatever comment the architect posts it in —
-  `activities/resolve-repo-base.ts` searches the epic's comments for the
-  matching line.
+- **Surface registry** (`agents/specification-agent.md`, step 1): where each
+  surface lives is recorded as a fenced `surfaces` block in a Linear document
+  — the project's `Surfaces`, optionally overridden per epic by
+  `Surfaces (override)` — written by the agents, never typed by a human.
+  `activities/surface-registry.ts` parses and merges it;
+  `activities/resolve-surfaces.ts` reads the documents and resolves a
+  story's surfaces. This replaced the per-epic `Repo base — …` comment line
+  and its four defensive patches on 2026-09-02.
 
 Neither edit relocates where the data lives (still a story description
 section; still an epic thread comment) — just the format, so a mechanical

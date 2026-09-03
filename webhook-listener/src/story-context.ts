@@ -14,7 +14,7 @@
  * more than one `surface:` label; this module only extracts the set of
  * names — whether they're all recognized by the epic (and, when there's more
  * than one, whether they all resolve to the same repo and ref) is
- * `dispatch-worker`'s `resolveRepoBase` to check, since that's the first
+ * `dispatch-worker`'s `resolveSurfaces` to check, since that's the first
  * point in the pipeline that actually reads the epic's recorded repo bases.
  *
  * VERIFY before relying on this in production (same flagged-not-confirmed
@@ -137,7 +137,7 @@ interface StoryContextQueryResult {
  * actually has), so any `surface:*` label is presumptively valid at this
  * stage. Whether the epic actually recognizes a given surface — and, when
  * a story carries more than one, whether they all resolve to the same repo
- * and ref — is `resolveRepoBase` to catch downstream, since that is the
+ * and ref — is `resolveSurfaces` to catch downstream, since that is the
  * first point that reads the epic's recorded repo bases. Deduplicates a
  * repeated label and preserves the order labels were applied in, but places
  * no upper bound on count: a story may legitimately carry several surface

@@ -39,7 +39,8 @@ async function main(): Promise<void> {
   );
 
   runLog.trace("building system prompt from agent file + skills");
-  const systemPrompt = await buildSystemPrompt(frameworkPath, context);
+  const { systemPrompt, skills } = await buildSystemPrompt(frameworkPath, surfaceRepoPath, context);
+  runLog.info(`skills inlined: ${skills.map((s) => `${s.name} (${s.source})`).join(", ")}`);
   const userMessage = buildUserMessage(context);
 
   runLog.info(

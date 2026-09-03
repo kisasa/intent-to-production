@@ -18,7 +18,7 @@ import { createFindPullRequestActivity } from "./activities/find-pull-request.js
 import { createMoveStoryToTodoActivity } from "./activities/move-story-to-todo.js";
 import { createPostDispatchFailedActivity } from "./activities/post-dispatch-failed.js";
 import { createRequestPullRequestReviewerActivity } from "./activities/request-pull-request-reviewer.js";
-import { createResolveRepoBaseActivity } from "./activities/resolve-repo-base.js";
+import { createResolveSurfacesActivity } from "./activities/resolve-surfaces.js";
 import { createPostSpecialistStartedActivity, createDeleteSpecialistProgressActivity } from "./activities/specialist-progress.js";
 import { createLogger } from "./logger.js";
 import { loadLocalEnvFile } from "./local-env-file.js";
@@ -64,7 +64,7 @@ async function main(): Promise<void> {
     ...source,
     activities: {
       checkDependencies: createCheckDependenciesActivity(config),
-      resolveRepoBase: createResolveRepoBaseActivity(config),
+      resolveSurfaces: createResolveSurfacesActivity(config),
       createStoryBranch: (input: Parameters<typeof createStoryBranch>[1]) => createStoryBranch(config.githubToken, input),
       dispatchSpecialist: createDispatchSpecialistActivity(config),
       postSpecialistStarted: createPostSpecialistStartedActivity(config),

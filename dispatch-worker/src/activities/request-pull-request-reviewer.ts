@@ -18,7 +18,7 @@
 import { log } from "@temporalio/activity";
 import { githubRequest } from "../github-request.js";
 import type { WorkerConfig } from "../worker-config.js";
-import type { RepoBase } from "./resolve-repo-base.js";
+import type { RepoBase } from "./resolve-surfaces.js";
 import type { StoryMover } from "./types.js";
 
 /**

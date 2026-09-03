@@ -8,7 +8,7 @@
  * is `completed`.
  *
  * Not a `dispatch:blocked` label yet — see the class comment in
- * `resolve-repo-base.ts` for why label application is out of scope here
+ * `resolve-surfaces.ts` for why label application is out of scope here
  * (`save_issue`-style label writes replace the whole label set, so applying
  * one correctly needs the issue's current labels first; a comment carries
  * the same information for now). Named gap, not silently dropped.

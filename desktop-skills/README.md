@@ -25,7 +25,7 @@ a well-formed story/epic contains, and summarize that contract rather than
 re-defining it — if the two ever disagree, the `skills/` file wins.
 
 **Nothing here is enforced by the pipeline's own code.** What is
-code-enforced (the `surface:<name>` label, the epic's `Repo base` comment,
+code-enforced (the `surface:<name>` label, the surface registry documents,
 the `Blocking dependencies` heading, the epic branch's real git ancestry) is
 called out explicitly inside each skill, sourced from the actual dispatch
 code, not restated from memory — if that code changes, these skills need a

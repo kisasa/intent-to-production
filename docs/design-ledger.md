@@ -3528,7 +3528,9 @@ and guarantees they're read").
 correct for them). Making it per-surface needs a machine-readable place to
 record "surface `infrastructure` requires `cdkterrain`," and no such place
 exists: the surface manifest is prose in an epic's comment thread. That is the
-surface-registry proposal, still undecided.
+surface-registry proposal, still undecided. (Decided 2026-09-02: the registry
+lives in the project and is overridable in the epic — see the entry of that
+date at the end of this file.)
 
 **A placement argument recorded now so it is not re-derived:** a stack skill
 should *not* live in `intent-to-production/skills/`. That directory holds
@@ -4363,3 +4365,147 @@ per epic; decide both together, against the next engagement's end.
   first Intake, Specification, and Decompose runs of the next engagement for
   behavior the rewrite changed unintentionally; the diffs are large and
   reviewed by reading, not by running.
+
+### The surface registry lives in the project and is overridable in the epic (2026-09-02)
+
+**Decision (the architect):** the surface registry — the machine-read record of
+each surface's repo, ref, path, conventions file, mandatory skills, and status
+— lives at the **project** level, one per engagement, and an **epic may
+override it** for itself. Resolution order at dispatch becomes: the story's
+`surface:` labels name the surfaces → the epic's override supplies any record
+it carries for those surfaces → the project registry supplies the rest → a
+surface found in neither is a hard, visible failure. The epic thread stops
+being the source of truth for repo coordinates and becomes the place a delta
+is *requested*; the delta is then written into the epic's override record,
+not left in prose.
+
+**What forced it.** Recorded in the 2026-08-23 entry and its source review:
+across every epic of the first engagement the first human answer to the
+repo-base question was non-conforming, the conforming lines arrived only after
+dispatch failures forced them, and four separate defensive patches in
+`resolve-repo-base.ts` were each treating the same root cause — the pipeline's
+only machine-read configuration stored as free prose in a mutable, per-epic
+comment thread. "A project inside a repo" was unrepresentable; the same-repo
+gate fired after decomposition instead of before; adding a surface mid-flight
+had no onboarding path; and cross-epic reuse was instructed in the agent
+definition and unimplemented in the resolver.
+
+**What it supersedes.** The early ruling, under "Repo coordinates captured at
+the Specification tier," that a target registry was over-engineered and that
+the per-epic `Repo base — <surface>: …` line would do. That line was right for
+a sandbox with one repo; it did not survive an engagement with six surfaces.
+The Specification Agent still establishes coordinates as its first step — that
+part stands — but it reads and writes the registry rather than a comment
+format a human has to reproduce by hand.
+
+**Why project-with-override rather than either alone.** Project-only cannot
+express the two real cases an epic has: a surface worked on a different ref
+(an epic's own branch chain in a repo the project otherwise reads from `main`)
+and a surface that exists only for one epic (a one-off test project). Epic-only
+is what exists today, and it re-asks the same question every epic and lets
+answers drift. Project as the default with an epic override for the exceptions
+records each fact once, at the scope it is true at.
+
+**Three details, proposed and then accepted the same day** (the architect
+asked to finish the build rather than reopen them): an epic's record for a
+surface replaces the project's record wholesale and an epic may add a surface;
+the Specification Agent proposes the first record from what it can read and
+the architect confirms in the thread, so the human never types the format; the
+physical form is a Linear project document titled `Surfaces`, with the epic
+override a document on the epic titled `Surfaces (override)`, because the
+resolver already talks to Linear and the document sits next to the people who
+confirm it. The build is the next entry.
+
+### The surface registry, built (2026-09-02)
+
+What exists now.
+
+**Format.** A registry is a Linear document carrying one fenced block tagged
+`surfaces`, one record per surface: `surface`, `repo` (host/org/name), `ref`
+required; `path` (directory within the repo, `/` for the root), `conventions`
+(path to the conventions spec), `skills` (comma-separated mandatory skills),
+and `status` (`active`, `none`, `deprecated`) optional with defaults. The
+project's document is titled `Surfaces`; an epic's is `Surfaces (override)`.
+A record in the override replaces the project's record for that surface
+wholesale and may add a surface. The parser
+(`dispatch-worker/src/activities/surface-registry.ts`) is strict: an unknown
+key, a placeholder, a missing ref, a duplicate surface, or a bad status is an
+error that names the surface and the field. That is the opposite posture from
+the retired comment line, and deliberately so — the registry is written by an
+agent from a confirmed answer, so a malformed record is a bug to report, never
+a typo to tolerate. There is one canonical rendering (`renderSurfacesBlock`)
+so regeneration is stable, and a round-trip test proves render-then-parse is
+the identity.
+
+**Resolution.** `resolve-surfaces.ts` replaces `resolve-repo-base.ts`. It reads
+the epic's documents and its project's documents, layers the override on the
+registry, and requires every surface a story carries to be an active record
+sharing one repo and ref. Paths may differ — that is what lets two surfaces
+share a repo legitimately, the case the old four-segment line could not
+express. The four defensive patches (`isTemplateLine`, the backtick
+exclusion, `findMalformedCandidateLine`, `findShadowedCorrection`) are gone
+with the format that needed them. Every failure is `nonRetryable` with a
+message that lists what *is* recorded, so the comment on the story says what
+to add rather than what went wrong.
+
+**What flows downstream, new.** The resolver hands the workflow each surface's
+`path` and `skills` as well as the repo base. `dispatch-specialist.ts` passes
+them to the sandbox as `SURFACE_PATHS` and `SURFACE_SKILLS` — both optional in
+the runner's env contract, so an older dispatcher still works. The runner's
+prompt builder inlines every mandatory skill into the system prompt, resolving
+each from the surface repo's `.claude/skills/<name>/SKILL.md` first and the
+framework's `skills/<name>/SKILL.md` second, per the 2026-08-23 placement
+argument (surface first so a client can override). A mandatory skill that
+resolves nowhere fails the run before the session starts: "mandatory" means
+guaranteed read, and a silent skip is exactly the failure discretionary
+discovery already has. The resolved list is logged. `SKILL_NAMES` is no longer
+a hardcoded list identical for every surface — the item the 2026-08-23 entry
+recorded as "blocked on a decision, not on work" is closed. The assignment
+message also tells the specialist which directories its surfaces occupy when
+any is not the repo root.
+
+**Who writes it.** `specification-agent.md` step 1 is rewritten: read the
+registry, and when a surface this epic touches has no record or a wrong one,
+*propose* it from what the connector can read — repos, conventions files, the
+sub-projects they name — and ask the architect to confirm or correct in
+ordinary words, then write the record into the project document (engagement-
+wide) or the epic's override (this epic only), regenerating in place, never
+deleting, marking a retired surface `deprecated`. `decompose-agent.md`'s
+surface-manifest gate reads the same registry and follows the same
+propose-confirm-write discipline for the test surfaces it is first to know
+about; its same-repo check for multi-label stories now runs against the
+registry before a story exists, instead of dispatch refusing it after. Both
+desktop skills look surfaces up in the registry and write new records through
+it. `specialist.md` explains the registry and the directory scoping.
+
+**Verified for real:** typecheck and unit tests in `dispatch-worker` (100,
+including 30 new registry tests) and `specialist-runner` (31, including the
+skill-resolution and path-scoping cases), `webhook-listener` unchanged (110),
+the private-references check clean, PDFs regenerated. **Not verified, flagged
+in code:** the Linear GraphQL shape for documents on an issue and a project
+(`documents { nodes { title content } }`) is taken from the public API and the
+connector's own `save_document` (which attaches to exactly one parent), not
+from a live query — the same "VERIFY before relying on this" category as
+`tracker.ts`'s other assumptions. The first live dispatch under the registry
+is the test; if the field names differ the failure will be a GraphQL error on
+`resolveSurfaces`, posted to the story by the workflow's catch-all.
+
+**What this does not do.** It does not migrate anything: the sandbox
+engagement's epics carry `Repo base —` lines that nothing reads any more, and
+a dispatch against them will fail with "no surface registry found" until a
+`Surfaces` document exists on that project. That is the right failure — loud,
+naming the document to create — and the next engagement starts clean. It does
+not add an engagement-setup skill for the architect to author the registry
+directly; the first Specification run proposes it instead, per the accepted
+default. If that proves slow in practice, the skill is the fallback.
+
+**Open items added:**
+
+- **VERIFY: the Linear document queries** in `dispatch-worker/src/tracker.ts`
+  (`getIssueDocuments`, `getProjectDocuments`) against a live workspace before
+  the first dispatch of the next engagement.
+- **OPEN: the specialist does not yet enforce its directory scope.** The
+  assignment message tells it which directories its surfaces occupy; nothing
+  checks the PR's diff against them. A mandatory-review flag on a PR that
+  writes outside its surfaces is the natural next step, in the same family as
+  the 2026-08-04 rule about diffs touching test files or environment config.
