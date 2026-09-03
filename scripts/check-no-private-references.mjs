@@ -186,8 +186,14 @@ const RULES = [
   },
 ];
 
+/**
+ * Tracked files plus untracked files that are not ignored. Untracked matters:
+ * a new file written but not yet `git add`ed is exactly what a pre-commit run
+ * of this check is for, and the tracked-only version passed locally on a file
+ * that then failed in CI once it was committed (2026-09-02).
+ */
 function trackedFiles() {
-  const out = execFileSync("git", ["ls-files", "-z"], {
+  const out = execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], {
     cwd: REPO_ROOT,
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,

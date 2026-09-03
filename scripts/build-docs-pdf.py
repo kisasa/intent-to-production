@@ -287,7 +287,7 @@ def render(src: Path):
     doc = SimpleDocTemplate(str(out), pagesize=letter,
                             leftMargin=0.9 * inch, rightMargin=0.9 * inch,
                             topMargin=0.85 * inch, bottomMargin=0.85 * inch,
-                            title=title, author="Kisasa")
+                            title=title)
     avail = letter[0] - doc.leftMargin - doc.rightMargin
     doc.build(build(src, avail), onFirstPage=footer, onLaterPages=footer)
     print(f"wrote {out.relative_to(ROOT).as_posix()}")
