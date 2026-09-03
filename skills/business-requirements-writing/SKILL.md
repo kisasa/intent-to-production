@@ -174,6 +174,23 @@ A directional statement of complete — not acceptance criteria (story-level),
 but clear enough that slicing has a stopping condition. Stated as capabilities
 delivered, not implementation completed.
 
+### Design order of work — optional, recorded only when the designer is present
+The designer works one area at a time and designs the next area while the
+previous one is built. If the designer is in this session, record the order
+the designer intends to work in: a short ordered list of areas, each naming
+the capability rows it covers, in the designer's own words. An area is a
+part of the experience the designer can produce a self-contained asset for —
+a screen or a set of related screens, a flow, a settings surface.
+
+This is sequencing, not technical content, and it is the designer's decision
+the way scope is the PM's. Do not propose an order yourself; do not ask the
+PM to supply one on the designer's behalf. If the designer is not present,
+leave the section out entirely — the Intake Agent proposes an order from the
+dependency graph and asks the designer to confirm it at the slice checkpoint.
+The Intake Agent uses whatever is recorded here as its starting point and
+checks it against the order the pipeline can build in; it does not treat it as
+final.
+
 ## Scope band
 
 *(Variant: default value is a placeholder until production data sets it.)*
@@ -259,50 +276,46 @@ creation the same way a placeholder does:
    The test for every artifact is *reachability*: could a fresh downstream
    activation, with only tracker access, open this? If not, it is not placed.
 
-4b. **Create a design issue** in the project — a dedicated issue that is the
-   home for design intent, parallel to (and separate from) the evidence issue.
-   It plays three roles the sliced artifacts cannot: it holds the design
-   assets in whatever form the designer produced (screens, a clickable build,
-   a findings doc, a PDF, a folder of HTML — design output is form-agnostic,
-   never assume a repo); it is the one place **cross-cutting experience rules**
-   can live — behavioral intent that spans multiple epics and therefore
-   belongs to no single slice (e.g. "a global configuration percolates to
-   every merchant that has it enabled"); and it is the designer's own surface,
-   theirs to edit and extend over time.
+4b. **Create a design issue** in the project — a dedicated issue, parallel to
+   (and separate from) the evidence issue, with one job: it is the home for
+   **cross-cutting experience rules** — behavioral intent that spans several
+   epics and therefore belongs to no single slice (for example, "a global
+   configuration percolates to every merchant that has it enabled"). It is the
+   designer's own surface, theirs to edit and extend for the life of the
+   project.
 
-   **Seed it, do not leave it blank.** The description follows a loose
-   structure: one area per design-relevant surface or experience the BRD
-   touches, each **pre-filled with your best inference of the specifics**,
-   marked as assumptions for the designer to confirm or correct. The goal is
-   not an empty form the designer must author — it is a draft they react to.
-   Infer everything the evidence supports and mark its source and confidence:
+   **Create it thin. Do not seed it with design specifics.** Record only the
+   cross-cutting rules the evidence already states, each citing its source.
+   Do not infer form fields, defaults, dropdown contents, sort orders, empty
+   states, or any other per-area specific — not as assumptions, not as a
+   draft for the designer to react to. Those belong to the area they appear
+   in, and they arrive later: the designer produces an asset for each area
+   when the designer works it (screens, additions to a prototype, a findings
+   doc, a review transcript — design output is form-agnostic, never assume a
+   repo), and that asset is attached to the *epic* for that area, where the
+   Specification Agent reads it. A design issue that holds only a few rules,
+   or none yet, is the expected state at this point, and the legend below
+   says so; the designer adds rules as areas reveal them.
 
-   - For a **view with a form**: the fields present, which appear required,
-     which are dropdowns and what they contain, what is defaulted. ("Address
-     form — inferred required: street, city, ZIP. State appears to be a
-     dropdown; values not visible in the screenshot — please confirm. Country
-     defaulted to US.")
-   - For a **list/table view**: default sort, available filters, empty state,
-     any aggregate/count columns.
-   - For a **cross-cutting rule**: the behavioral dependency and which
-     surfaces it spans, stated once here rather than copied into each epic.
-   - For anything **inferred from a screen or build**: cite the source; where
-     the evidence is silent, say so and guess explicitly ("not visible —
-     assumed X").
+   Any design asset that already exists at this point and covers the whole
+   body of work (a full prototype, an overall findings doc) is evidence: place
+   it in step 4 like any other artifact and link it from the Evidence
+   inventory. Do not copy its contents into the design issue.
 
    Mark the design issue with the label `design:asset` (or the team's
-   equivalent) so the Specification Agent and the designer can find it. The
-   designer owns it from here: they confirm, correct, and add.
+   equivalent) so the Specification Agent and the designer can find it.
 5. Report the project URL and the document link.
 
 In the project description, alongside the summary and BRD link, and a link
 to the design issue, include an **"Attached documents & evidence" legend**: one entry per placed artifact —
 what it is, its link (document, evidence issue, or external URL), and one line
 on its role and authority (current-state evidence, target reference, "original
-is authoritative, markdown is a convenience copy," etc.). This is where a
-human or a downstream agent first looks; the legend tells them what each
-artifact is and which to trust without opening all of them. Do not make the
-PM ask for it — it is part of a well-formed project.
+is authoritative, markdown is a convenience copy," etc.). The design issue's
+entry says what it is for and that per-area design arrives on each epic, so
+nobody reads a thin design issue as a gap. This is where a human or a
+downstream agent first looks; the legend tells them what each artifact is and
+which to trust without opening all of them. Do not make the PM ask for it — it
+is part of a well-formed project.
 6. Do **not** apply the `ready for intake` label, and say so: applying it is
    the PM's act — the spend decision that wakes the Intake Agent.
 
@@ -334,6 +347,9 @@ slicing that already happened is a regeneration candidate.
 - Never include technical content: no endpoints, data models, or judgments
   about backend work. If evidence contains technical detail, translate it to
   the capability it enables; do not carry it into the document.
+- Never seed the design issue with inferred design specifics, and never
+  propose a design order of work yourself. Both are the designer's; record
+  them only when the designer supplies them.
 - Never apply the intake label.
 - Stop on placeholders and unconfirmed decisions: neither enters the pipeline.
 - The document's downstream consumers are agents; write for semantic
