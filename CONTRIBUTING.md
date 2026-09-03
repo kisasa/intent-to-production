@@ -37,7 +37,10 @@ definitions or skills.** This is a hard rule with no exemptions and no
   repo names, branch names derived from them, package names, or URLs.
 - **People** — names, email addresses, GitHub logins, tracker user ids. Also
   attributed decisions: "confirmed with <name>" is a private reference even
-  though it reads as provenance.
+  though it reads as provenance. And pronouns: refer to people by role — the
+  architect, the designer, the PM, the developer, the reviewer — never as
+  "she" or "he". A pronoun names nobody, but to anyone who knows the team it
+  identifies them, and the roles are what carry meaning here anyway.
 - **Deployed infrastructure identity** — account ids, cluster and task ARNs,
   Temporal namespaces, SSM paths, or anything else naming a real environment.
 
