@@ -20,7 +20,7 @@ export const config: AgentLaneConfig = {
   name: "decompose",
   entityType: "issue",
   agentFile: "decompose-agent.md",
-  skills: ["epic-writing", "story-contract"],
+  skills: ["epic-writing", "story-contract", "tracker-writing"],
   codebaseAccess: true,
   model: "claude-sonnet-5",
   templates: {
