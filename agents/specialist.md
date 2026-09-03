@@ -79,11 +79,16 @@ through the tracker:
 - **The parent epic** — follow the story's parent link. The business problem,
   the affected users, the desired outcome, the system context, the scope
   boundary. This is why your story exists.
-- **The resolved API map** — attached to the epic. It is the technical ground
-  truth for what already exists and what is new.
-- **The design issue** (`design:asset`) — the user-visible behavior, including
-  empty and error states. For work with a user-facing surface this is the
-  specification, not background reading.
+- **The resolved API map** — attached to the epic. Its technical section is
+  the ground truth for what already exists and what is new; its design
+  section is the designer-confirmed behavior for this area — fields, defaults,
+  link behavior, empty and error states. For work with a user-facing surface
+  the design section is the specification, not background reading, and the
+  epic's attached design evidence (the designer's own assets) is what it was
+  read from — open that when a row needs more than words.
+- **The design issue** (`design:asset`) — the cross-cutting experience rules
+  that span epics. Thin by design; read it for any rule that bears on your
+  story.
 - **The story's comment thread** — read all of it. While the story waited, a
   developer may have asked the architect questions and gotten answers. Those
   answers are part of the story and carry the same weight as the description.

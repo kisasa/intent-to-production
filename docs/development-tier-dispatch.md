@@ -139,8 +139,9 @@ you need to confirm what a dependency actually implements rather than what the
 story claims it does. Do not modify them and do not open a PR against them.
 
 Using the Linear connector, read <STORY_ID>'s description and its full comment
-thread, then walk up to <EPIC_ID> for the parent epic, its resolved API map,
-and the linked design issue. The comment thread on <STORY_ID> carries a
+thread, then walk up to <EPIC_ID> for the parent epic, its resolved API map
+(both sections), its attached design evidence, and the project's design issue
+for cross-cutting rules. The comment thread on <STORY_ID> carries a
 question-and-answer exchange between me and the architect from before you were
 engaged — read it as part of the story, not as commentary on it.
 

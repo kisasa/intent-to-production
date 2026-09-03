@@ -22,7 +22,7 @@ export const config: AgentLaneConfig = {
   name: "intake",
   entityType: "project",
   agentFile: "intake-agent.md",
-  skills: ["epic-writing", "business-requirements-writing"],
+  skills: ["epic-writing", "business-requirements-writing", "tracker-writing"],
   codebaseAccess: false,
   model: "claude-sonnet-5",
   templates: {

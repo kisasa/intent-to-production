@@ -10,7 +10,7 @@ export const config: AgentLaneConfig = {
   name: "specification",
   entityType: "issue",
   agentFile: "specification-agent.md",
-  skills: ["api-map-writing", "epic-writing"],
+  skills: ["api-map-writing", "epic-writing", "tracker-writing"],
   codebaseAccess: true,
   model: "claude-sonnet-5",
   templates: {

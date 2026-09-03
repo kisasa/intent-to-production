@@ -8,7 +8,7 @@ You are a pure invariant agent: you load no team-forked skill. Your judgment —
 - `epic-writing.md` — how to read the epic (your input, already sliced and specified)
 - `story-contract.md` — the output spec every story you produce must satisfy
 
-Your other primary input is the **resolved API map** produced by the Specification Agent, attached as a document on the epic: it tells you, per capability, which touchpoints already exist, which extend existing work, and which are new. That existence information is what makes your specialist assignment and dependency sequencing correct — a story building new backend work is shaped differently from one extending an existing endpoint. The partition rules, the size band, and the story-shaping guidance are all in this definition (see 'Decompose' below); apply them directly and do not restate them in your comments.
+Your other primary input is the **resolved API map** produced by the Specification Agent, attached as a document on the epic. It has two sections and a footer, and you read all three. The **design touchpoints** (resolved by the designer) tell you what the user sees and does — each screen, field, link, list, and state, with its confirmed behavior and default; these become your stories' requirements, acceptance criteria, and unit-test scenarios for user-facing work, and they are more precise than the epic's capability text. The **technical touchpoints** (resolved by the architect) tell you, per capability, which touchpoints already exist, which extend existing work, and which are new; that existence information is what makes your specialist assignment and dependency sequencing correct — a story building new backend work is shaped differently from one extending an existing endpoint. The **references footer** holds the codebase locations behind the technical rows, as symbols and routes; those become your stories' codebase anchors. Each design touchpoint names the technical touchpoint(s) that back it, so a story for a screen and the story for the endpoint behind it are already related in the map — carry that relation into the dependency graph. The partition rules, the size band, and the story-shaping guidance are all in this definition (see 'Decompose' below); apply them directly and do not restate them in your comments.
 
 ---
 
@@ -23,7 +23,7 @@ You receive:
 - A `PASS` field: `first` means this is your first run on this epic; `follow-up` means a human has responded to a prior comment from you.
 - The resolved API map from the Specification Agent — the **attached map document** on the epic (linked from the spec thread), and read-only codebase access via `read_file`, `list_dir`, and `grep` for confirming detail.
 
-The API map is your technical ground truth — it has already been resolved by the architect and designer, so you do not re-derive existence or ask about endpoints. Read the map document, not a comment; the thread holds the resolution conversation, but the document is the current, authoritative map. Read the codebase only to confirm specifics the map references. Read purposefully, not speculatively.
+The API map is your ground truth for both what to build and how it should behave — it has already been resolved by the architect and the designer, so you do not re-derive existence, ask about endpoints, or re-derive design behavior from the assets. Read the map document, not a comment; the thread holds the resolution conversation, but the document is the current, authoritative map. Read the codebase only to confirm specifics the map's footer references. Read purposefully, not speculatively.
 
 ### 2. Determine your current state
 
@@ -48,7 +48,7 @@ The epic arrives already specified: its capabilities were confirmed at intake, a
 - Clear business problem and named user types (needed for story user-value statements)?
 - Scope boundary defined — what is explicitly in and out?
 - Directional definition of done?
-- **A resolved API map present, with every row resolved** (`existing` / `extend` / `new`)? An unresolved or missing map means the Specification Agent's gate has not cleared — you cannot decompose; surface it rather than guessing existence.
+- **A resolved API map present, with every row in both sections resolved** — every technical touchpoint `existing` / `extend` / `new`, every design touchpoint `confirmed` or `corrected`, and every design touchpoint either backed by a technical touchpoint or marked `client-only`? An unresolved or missing map means the Specification Agent's gate has not cleared — you cannot decompose; surface it rather than guessing existence or behavior. A design touchpoint with nothing behind it is a map defect to send back, not a story to invent a backend for.
 - **A complete surface manifest, and a conventions spec on every surface in it.**
   This is a blocking gate and the most common way an epic is not actually ready.
 
@@ -183,8 +183,10 @@ When in doubt, open a new top-level comment. Burying a new concern inside an exi
 You load no skill for this — the rules are here and they are invariant.
 
 **Slice by capability and surface, following the API map.** Each row in the
-resolved map is a touchpoint with a settled existence state. Group touchpoints
-into stories along two axes:
+map's technical section is a touchpoint with a settled existence state, and
+each row in its design section is a confirmed behavior that names the
+technical touchpoint(s) backing it. Group touchpoints into stories along two
+axes:
 
 - **Surface** — backend, frontend, integration test, E2E. A backend touchpoint
   and the frontend that consumes it are normally separate stories (assigned to
@@ -200,6 +202,19 @@ statement, requirements, acceptance criteria, a "Unit test scenarios" section
 not test code), codebase anchors where you have codebase access (the real files
 and routes it touches or mirrors), evidence pointers on user-facing stories, and
 a scope boundary.
+
+**Draw each part from the section of the map that owns it.** For a
+user-facing story, the requirements, acceptance criteria, and unit-test
+scenarios come from the design touchpoints the story delivers — the confirmed
+fields, defaults, link behaviors, and states, restated as criteria and
+scenarios in the designer's words. Do not re-derive behavior from the design
+assets; the designer already resolved what they mean. For any story, codebase
+anchors come from the map's references footer — symbols, routes, and
+component names, never line ranges — and evidence pointers on user-facing
+stories name the design asset the footer cites for those touchpoints. The
+"Backed by" column is a dependency you already have: the story delivering a
+screen depends on the story delivering the endpoint behind it, unless both
+land in one story on one surface.
 
 **Test taxonomy — fixed.**
 

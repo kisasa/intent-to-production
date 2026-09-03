@@ -142,8 +142,8 @@ Leave the heading out when there is nothing to reference.
 ## References
 
 - Existing employee model — `frontend: core/models/auth/employee.model.ts`
-- List and modal pattern, for the roster table — `frontend: features/gateways/gateways.page.ts:233-237`
-- Login screen mockup — design issue, "Sign in" frame
+- List and modal pattern, for the roster table — `frontend: features/gateways/GatewaysSection` and `GatewayModal`
+- Login screen mockup — the epic's design evidence, "Sign in" frame
 - Blocked by — PROJ-42 Add refund data model
 ```
 
@@ -157,8 +157,12 @@ point a developer can open. A story is not ready for a specialist if its
 grounding lives only in the drafter's session.
 
 Anchors are relative paths within a named surface/repo base (carried down
-from the Specification Agent's recorded bases), e.g. `frontend:
-features/gateways/gateways.page.ts:233-237` — never absolute URLs. The base is
+from the Specification Agent's recorded bases), anchored to a **symbol, route,
+or component name — never a line range**, e.g. `frontend:
+features/gateways/GatewaysSection` or `api: MerchantsController.List` — and
+never absolute URLs. Line ranges go stale the moment a sibling story lands in
+the same file, and specialists in the first full engagement reported exactly
+that, repeatedly; a name survives edits. The base is
 recorded on the epic, so a relative anchor resolves for both readers: a human
 composes the link, and the specialist — which works in a local checkout of that
 surface — opens the path directly. Neither the story nor the anchor has to know
