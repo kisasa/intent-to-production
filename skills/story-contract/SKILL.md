@@ -9,16 +9,17 @@ Defines what a well-formed story looks like in this pipeline. The Evaluation
 Agent produces stories against this contract when decomposing an epic.
 Stories that do not meet this contract are not ready for a Specialist.
 
-This is a team-forked template: adapt examples and thresholds to your domain;
-keep the structure.
+This is a team-forked template. Adapt examples and thresholds to your domain.
+Keep the structure.
 
 ---
 
 ## What a story is responsible for
 
 A story is the smallest unit of work a Specialist can complete independently.
-It is not a task list. It is a scoped, testable slice of behavior with enough
-context that a Specialist can write a failing test before touching any code.
+It is a scoped, testable slice of behavior. It is not a task list. It carries
+enough context that a Specialist can write a failing test before touching any
+code.
 
 ---
 
@@ -26,16 +27,17 @@ context that a Specialist can write a failing test before touching any code.
 
 **Title**
 Prefixed `Story: `, then a verb phrase naming the change being made. Epics are
-noun phrases naming an area; stories are verbs naming work. The grammar alone
+noun phrases naming an area. Stories are verbs naming work. The grammar alone
 tells a reader which one they are looking at.
 
 The prefix carries the hierarchy into the places the tracker's own display does
-not reach — a flat search, a filtered list, a Slack unfurl, a notification.
+not reach. Those places are a flat search, a filtered list, a Slack unfurl, and
+a notification.
 
 **Sibling stories must be distinguishable by their first few words.** This is
 the rule that matters most in practice and the one most often broken.
 Decomposition produces stories that share a subject, so they come out sharing
-an opening: five titles that all begin "Add payment status…" are five identical
+an opening. Five titles that all begin "Add payment status…" are five identical
 rows in every truncated view. Front-load the word that separates this story
 from the ones next to it.
 
@@ -46,20 +48,20 @@ from the ones next to it.
 - Bad: "Story: Add employee roster data model and seed it with multiple records
   spanning all four tiers" — the body's job.
 - Bad: "Story: API: expose payment status" — one prefix only. The
-  `surface:*` label already says which surface this is, and the tracker
-  shows labels wherever it shows titles.
+  `surface:*` label already says which surface this is. The tracker shows
+  labels wherever it shows titles.
 
 Do not repeat the epic's title in the story's. A reader arriving at the story
-can see its parent, and the words spent restating it are words not spent saying
+can see its parent. The words spent restating it are words not spent saying
 what makes this story different.
 
 Linear derives `gitBranchName` from the title, so the prefix appears in the
-branch name too. That is fine and mildly useful — it marks the branch's level
+branch name too. That is fine and mildly useful. It marks the branch's level
 in the chain.
 
 **User value statement**
 Identifies who the story serves, what they need to do, and why it matters.
-The user type must come from the epic — never a generic "user."
+The user type must come from the epic. Never use a generic "user."
 
 Format: As a [specific user type], I want [action or capability] so that
 [outcome or benefit].
@@ -71,13 +73,13 @@ Format: As a [specific user type], I want [action or capability] so that
 
 **Component breakdown**
 A defined list of what needs to be built or configured for the story to work.
-Not prose. Each requirement specific enough that a Specialist knows exactly
-what to build.
+Write it as a list rather than prose. Each requirement is specific enough that
+a Specialist knows exactly what to build.
 
 Includes two parts:
 - Requirements: the discrete things that must be built
-- Fringe cases: conditions outside the primary flow that must be handled —
-  missing data, failed dependencies, unexpected user actions, permission
+- Fringe cases: conditions outside the primary flow that must be handled, such
+  as missing data, failed dependencies, unexpected user actions, and permission
   boundaries
 
 If a requirement cannot be stated specifically, the story is not ready.
@@ -96,28 +98,31 @@ Minimum three criteria per story:
 A story with only a happy path criterion is not complete.
 
 **Unit tests — intrinsic, but the scenarios are enumerated in the story**
-Implementation stories include unit tests as part of done: the specialist
+Implementation stories include unit tests as part of done. The specialist
 writes the tests during development, where the context is richest. Unit tests
 are never separate requirements or separate stories.
 
-But the story must tell the specialist *what* to cover — do not leave scenario
+But the story must tell the specialist *what* to cover. Do not leave scenario
 selection to be re-derived at implementation time. Every implementation story
-(backend or frontend) carries a **"Unit test scenarios"** section: an
-enumerated list of the cases the unit tests must cover, one line each. This is
-not new judgment — it is the acceptance criteria and fringe cases restated as
-a coverage checklist. Each acceptance criterion is at least one scenario
-(happy path, error/failure, edge); each fringe case in the component breakdown
-is a scenario. State scenarios, never test code — "adding a tool with a
-duplicate name returns a validation error" is a scenario; writing the test is
-the specialist's job, with full implementation context.
+carries a **"Unit test scenarios"** section. This applies to backend and
+frontend stories alike. The section is an enumerated list of the cases the
+unit tests must cover, one line each. It is the acceptance criteria and fringe
+cases restated as a coverage checklist. Each acceptance criterion is at least
+one scenario, whether it covers the happy path, an error or failure state, or
+an edge case. Each fringe case in the component breakdown is a scenario. State
+scenarios, never test code. "Adding a tool with a duplicate name returns a
+validation error" is a scenario. Writing the test is the specialist's job,
+with full implementation context.
 
-The point is reviewability: a reader can see what will and will not be tested
-before any code exists, and the specialist implements against an explicit list
+The point is reviewability. A reader can see what will and will not be tested
+before any code exists. The specialist implements against an explicit list
 rather than guessing at coverage. A story missing this section is not ready
 for an implementation specialist.
 
-Dedicated test stories still exist only for integration tests (Tests
-Specialist) and E2E flows (E2E Specialist), which verify across stories and
+Dedicated test stories exist only when the coverage needs more than one
+story's work merged: cross-story integration tests and E2E flows. Each carries
+the `surface:` label of the test project it is written in and is dispatched to
+the specialist like any other story. These stories verify across stories and
 carry dependencies on the development they verify.
 
 **Scope boundary**
@@ -131,10 +136,10 @@ a `## References` heading, and nowhere else. Paths, identifiers, and design
 assets do not appear in the middle of a requirement.
 
 This is a readability rule with a real cost attached, and the trade is
-deliberate: a requirement and its anchor are no longer in the same sentence, so
-the anchor entry has to say which requirement it serves. That is a small price
-for prose a person can read straight through. See `tracker-writing.md` for the
-house standard this follows.
+deliberate. A requirement and its anchor are no longer in the same sentence.
+So the anchor entry has to say which requirement it serves. That is a small
+price for prose a person can read straight through. See `tracker-writing.md`
+for the house standard this follows.
 
 Leave the heading out when there is nothing to reference.
 
@@ -151,81 +156,80 @@ Leave the heading out when there is nothing to reference.
 Required whenever the story was drafted with codebase access. Requirements
 that say "follow the existing pattern" must name the pattern: the file
 paths, component names, endpoint routes, or modules the work touches or
-mirrors. "Following the existing list+modal pattern" is abstract; "following
+mirrors. "Following the existing list+modal pattern" is abstract. "Following
 the list+modal pattern in \`GatewaysSection\`/\`GatewayModal\`" is a starting
 point a developer can open. A story is not ready for a specialist if its
 grounding lives only in the drafter's session.
 
-Anchors are relative paths within a named surface/repo base (carried down
-from the Specification Agent's recorded bases), anchored to a **symbol, route,
-or component name — never a line range**, e.g. `frontend:
-features/gateways/GatewaysSection` or `api: MerchantsController.List` — and
-never absolute URLs. Line ranges go stale the moment a sibling story lands in
-the same file, and specialists in the first full engagement reported exactly
-that, repeatedly; a name survives edits. The base is
-recorded on the epic, so a relative anchor resolves for both readers: a human
-composes the link, and the specialist — which works in a local checkout of that
-surface — opens the path directly. Neither the story nor the anchor has to know
-the repo's absolute location.
+Anchors are relative paths within a named surface/repo base. The base is
+carried down from the Specification Agent's recorded bases. Each anchor points
+to a **symbol, route, or component name**. It is **never a line range**.
+Examples are `frontend: features/gateways/GatewaysSection` and `api:
+MerchantsController.List`. Anchors are never absolute URLs. Line ranges go
+stale the moment a sibling story lands in the same file. Specialists in the
+first full engagement reported exactly that, repeatedly. A name survives
+edits. The base is recorded on the epic, so a relative anchor resolves for both
+readers. A human composes the link. The specialist works in a local checkout
+of that surface and opens the path directly. Neither the story nor the anchor
+has to know the repo's absolute location.
 
 **Evidence pointers**
-Expected for any story with a user-facing surface; optional elsewhere. Names
-the specific artifacts from the project's evidence that anchor this story —
-screenshot filenames with what each shows, quoted lines from source notes.
-For UI work the design asset is the spec: prose describes it,
+Expected for any story with a user-facing surface. Optional elsewhere. Names
+the specific artifacts from the project's evidence that anchor this story.
+Those are screenshot filenames with what each shows, and quoted lines from
+source notes. For UI work the design asset is the spec. Prose describes it and
 the image resolves it. A pointer must be specific enough that the specialist
-can retrieve the artifact itself through the tracker — nothing is pre-resolved
-and handed to it.
+can retrieve the artifact itself through the tracker connector.
 
 **Blocking dependencies**
-Lists the sibling stories that must be complete before this story can begin
-— each entry carrying the blocker's issue identifier and title (the tracker
-auto-links identifiers, so every entry is one click from the blocker) — or
-"No blocking dependencies." This section has one author: the Decompose Agent
-renders it from its own dependency graph, in dependency order so identifiers
-exist at render time. The specialist honors it, and looks each entry's state up
-itself through the tracker — completion status is never handed to it.
+Lists the sibling stories that must be complete before this story can begin,
+or says "No blocking dependencies." Each entry carries the blocker's issue
+identifier and title. The tracker auto-links identifiers, so every entry is
+one click from the blocker. This section has one author. The Decompose Agent
+renders it from its own dependency graph. It renders in dependency order so
+identifiers exist at render time. The specialist honors it and looks each
+entry's state up itself through the tracker.
 
-Format, one requirement added for mechanical readability: each entry is its
-own bullet line, and the blocker's bare issue identifier is the first token
-on that line — e.g. `- PROJ-42 — Add refund data model`. Whatever prose
-follows the identifier is free; the identifier's position is the only fixed
-part, and it's what lets a pre-dispatch check confirm every blocker is Done
+The format has one requirement, added for mechanical readability. Each entry
+is its own bullet line. The blocker's bare issue identifier is the first token
+on that line, e.g. `- PROJ-42 — Add refund data model`. Whatever prose
+follows the identifier is free. The identifier's position is the only fixed
+part. It is what lets a pre-dispatch check confirm every blocker is Done
 without depending on any particular wording after it.
 
 **Assignment metadata**
 Every story carries three assignment fields, applied as labels at
 decomposition time:
 
-- `surface` — one or more, applied as `surface:<name>` (e.g. `surface:web`).
-  Each names a place work happens — a repo, or a project inside one — recorded
-  on the epic as `Repo base — <name>`. The prefix is fixed, because the
-  dispatch trigger reads it mechanically to route a story. The vocabulary is
-  not: a surface is whatever this engagement actually has, so `web`, `mobile`,
-  `api`, and `e2e` are equally valid, and nothing is gained by forcing a mobile
-  app to be labelled "frontend."
+- `surface` — one or more, applied as `surface:<name>`, e.g. `surface:web`.
+  Each names a place work happens: a repo, or a project inside one. It is
+  recorded on the epic as `Repo base — <name>`. The prefix is fixed, because
+  the dispatch trigger reads it mechanically to route a story. The vocabulary
+  is not fixed. A surface is whatever this engagement actually has, so `web`,
+  `mobile`, `api`, and `e2e` are equally valid. Nothing is gained by forcing a
+  mobile app to be labelled "frontend."
 
   A story may carry several surface labels **only when they all resolve to the
   same repo and ref**. Then it is one branch, one pull request, one reviewer,
-  one atomic merge, and the labels simply widen what the specialist may write —
-  a feature and the flow test proving it, together. Labels resolving to
-  different repos would mean pull requests that must land in step across
-  repositories, which nothing coordinates; that is two stories.
+  and one atomic merge. The labels simply widen what the specialist may write.
+  A feature and the flow test proving it can ship together this way. Labels
+  resolving to different repos would mean pull requests that must land in step
+  across repositories. Nothing coordinates that. That is two stories.
 
-  (There is no outcome label — removed 2026-08-07; the specialist's own comment
-  is the only record of what happened on a run.)
+  There is no outcome label. It was removed 2026-08-07. The specialist's own
+  comment is the only record of what happened on a run.
 - `size` — small, medium, or large: relative effort within this epic. A story
   dramatically larger than its siblings fails the decomposition size band even
   when the count passes. Also feeds the specialist's turn budget mechanically
-  now — see `tier`, below.
-- `tier` — small, mid, or large: which execution tier (model class) runs the
-  specialist for this story. This is cost control applied per story — routine
-  stories run on cheaper tiers; stories with architectural surface run on
-  stronger ones. Model-class selection itself is not yet automated from it, so
-  the tier still only informs that choice today — but dispatch is app-driven
-  (`webhook-listener`'s specialist-dispatch lane), and `tier` and `size`
-  together already size the specialist's turn budget mechanically
-  (`dispatch-trigger.ts`'s `resolveMaxTurns`): each independently multiplies a
-  base turn count, since the two are genuinely different axes — tier is
-  architectural weight, size is volume of work, and a story can be light on
-  one and heavy on the other.
+  now. See `tier`, below.
+- `tier` — small, mid, or large: which execution tier runs the specialist for
+  this story. A tier is a model class. This is cost control applied per story.
+  Routine stories run on cheaper tiers. Stories with architectural surface run
+  on stronger ones. Model-class selection itself is not yet automated from it,
+  so the tier still only informs that choice today. But dispatch is
+  app-driven, through `webhook-listener`'s specialist-dispatch lane. `tier`
+  and `size` together already size the specialist's turn budget mechanically,
+  in `dispatch-trigger.ts`'s `resolveMaxTurns`. Each independently multiplies
+  a base turn count. The two are genuinely different axes. Tier is
+  architectural weight and size is volume of work. A story can be light on one
+  and heavy on the other.

@@ -116,7 +116,7 @@ const RULES = [
   {
     label: "client or engagement org / repo names",
     pattern:
-      /\bSTPDEV\b|Streamline[- ]?Payments|le-tarjay|team-tarjay|team-target|(?:Le|Team)[ -]?Tar[gj]|Targét|StreamPay|streampay|Management\.[Ww]eb|Management-Angular|PayNow|VirtualTerminal|virtualterminal/g,
+      /\bSTPDEV\b|Streamline[- ]?Payments|le-tarjay|team-tarjay|team-target|(?:Le|Team)[ -]?Tar[gj]|Targét|StreamPay|streampay|Management\.[Ww]eb|Management-Angular|management-web|[Pp]ay[Nn]ow|vt-web|VirtualTerminal|virtualterminal/g,
   },
   {
     label: "people — names, emails, GitHub logins, tracker user ids",

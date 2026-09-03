@@ -6,24 +6,24 @@ description: Defines what a well-formed epic is in this pipeline. Use when writi
 # Skill: epic-writing
 
 Defines what a well-formed epic looks like in this pipeline. This document
-has two consumers: the **Intake Agent** drafts epics against it when slicing
-a requirements document, and the downstream **Specification and Decompose Agents** read epics against it when
-they enter Evaluation. Human PMs writing an epic directly use it the same
-way. One definition, one bar — machine-authored and human-authored epics are
-gated identically, which is why the Intake Agent's drafting quality never
-needs to be trusted.
+has two consumers. The **Intake Agent** drafts epics against it when slicing
+a requirements document. The downstream **Specification and Decompose Agents**
+read epics against it when they enter Evaluation. Human PMs writing an epic
+directly use it the same way. There is one definition and one bar.
+Machine-authored and human-authored epics are gated identically. That is why
+the Intake Agent's drafting quality never needs to be trusted.
 
-This is a team-forked template: adapt the criteria and examples to your
-domain; keep the structure and the readiness test.
+This is a team-forked template. Adapt the criteria and examples to your
+domain. Keep the structure and the readiness test.
 
 ---
 
 ## What an epic is responsible for
 
-An epic expresses a problem worth solving and the context needed to solve it
-— shaped well enough that stories can be produced from it without a discovery
-meeting. It does not contain acceptance criteria, implementation details, or
-a story breakdown; those are what the pipeline produces *from* it.
+An epic expresses a problem worth solving and the context needed to solve it.
+It is shaped well enough that stories can be produced from it without a
+discovery meeting. It does not contain acceptance criteria, implementation
+details, or a story breakdown. The pipeline produces those *from* it.
 
 ## Required components
 
@@ -31,13 +31,13 @@ a story breakdown; those are what the pipeline produces *from* it.
 Prefixed `Epic: `, then a noun phrase naming the capability area in the user's
 language.
 
-The prefix is there for the places the tracker's own hierarchy does not travel
-— a flat search result, a filtered list, a Slack unfurl, a notification. Inside
-Linear the parent/child relationship is already visible; outside it, nothing
-carries it.
+The prefix is there for the places the tracker's own hierarchy does not travel.
+Those places are a flat search result, a filtered list, a Slack unfurl, and a
+notification. Inside Linear the parent/child relationship is already visible.
+Outside it, nothing carries it.
 
 Keep the part after the prefix short. Titles get truncated in exactly the views
-where they matter most, so put the distinguishing words first and leave
+where they matter most. Put the distinguishing words first and leave
 qualifiers for the body.
 
 - Good: "Epic: Identity, role resolution, and navigation"
@@ -48,10 +48,10 @@ qualifiers for the body.
 - Bad: "Identity, role resolution, and navigation" — no prefix.
 
 Do not put an issue identifier, a team name, or a surface in the title. The
-tracker supplies the first two, and labels carry the third.
+tracker supplies the first two. Labels carry the third.
 
 **Business problem statement**
-What is broken, missing, or needed — and why it matters. Never opens with a
+What is broken, missing, or needed, and why it matters. Never opens with a
 solution.
 
 - Good: "Account managers cannot see payment status for invoices they own.
@@ -59,8 +59,9 @@ solution.
 - Bad: "Build a payment status dashboard."
 
 **Affected users**
-The specific roles or personas who experience the problem, specific enough to
-type stories correctly. Generic terms ("user", "customer") are defects.
+The specific roles or personas who experience the problem. They must be
+specific enough to type stories correctly. Generic terms such as "user" or
+"customer" are defects.
 
 **Desired outcome**
 A change in capability or state, stated in business terms. If the outcome can
@@ -90,19 +91,18 @@ might be assumed in scope should be called out.
 **Evidence pointers**
 The specific artifacts grounding this epic: screenshot filenames with what
 each shows, source-note references, thread decisions by date. Required when
-the epic is drafted by the Intake Agent (carried from the slice map);
-recommended for human-authored epics. These flow downstream: the Evaluation
-Agent carries the relevant pointers into each story, and the app resolves
-them into specialist payloads.
+the epic is drafted by the Intake Agent, which carries them from the slice
+map. Recommended for human-authored epics. These flow downstream. The
+Evaluation Agent carries the relevant pointers into each story. The specialist
+resolves them itself, retrieving each artifact through the tracker connector.
 
 **Definition of done**
-A directional statement of when this epic is complete. Not testable
-acceptance criteria — that is story-level. A clear enough signal that a Story
-Writer can work toward it and the pipeline knows when to stop generating
-stories.
+A directional statement of when this epic is complete. Testable acceptance
+criteria are story-level. It is a clear enough signal that a Story Writer can
+work toward it and the pipeline knows when to stop generating stories.
 
 These completion criteria also anchor the Intake Agent's per-slice readiness
-test: a slice is viable only if this section can be written for it without
+test. A slice is viable only if this section can be written for it without
 inventing facts beyond the brief, its attachments, and the intake thread.
 
 - Good: "All named roles can view the payment data appropriate to their
@@ -128,8 +128,8 @@ inventing facts beyond the brief, its attachments, and the intake thread.
 ## Readiness test
 
 Could a Story Writer read this epic cold and produce a first draft of stories
-— with correct user types, grounded requirements, and behavioral conditions —
-without asking a clarifying question?
+without asking a clarifying question? The draft would need correct user types,
+grounded requirements, and behavioral conditions.
 
 If yes: the epic is ready.
 If no: identify which required component is missing or insufficient and
@@ -143,13 +143,13 @@ Check each required component against the criteria above. If any are missing
 or insufficient:
 
 1. Identify the specific defect using the defect table
-2. Ask one targeted question to resolve it — do not ask multiple questions
+2. Ask one targeted question to resolve it. Do not ask multiple questions
    at once
 3. Continue until all components pass, then proceed to checkpoint
 
 ## For the Intake Agent
 
-Draft each slice epic with all required components populated from evidence —
-the brief, its attachments, and the intake thread. Where any component would
-require an invented fact, the slice is not ready; the gap is your next
-question in the thread.
+Draft each slice epic with all required components populated from evidence.
+The evidence is the brief, its attachments, and the intake thread. Where any
+component would require an invented fact, the slice is not ready. The gap is
+your next question in the thread.

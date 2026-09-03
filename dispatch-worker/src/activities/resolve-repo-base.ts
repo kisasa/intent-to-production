@@ -101,7 +101,7 @@ export function parseRepoBase(comments: string[], surface: string): RepoBase | n
  * (just "repo base" and the surface name, both normalized), since the whole
  * point is to catch typos in the part `parseRepoBase` is strict about (the
  * colon, the dash character, the segment count). Confirmed live: an
- * architect posted `Repo base — management-web — github/org/repo/main` (em
+ * architect posted `Repo base — web — github/org/repo/main` (em
  * dash where the format wants a colon) and the resulting failure comment
  * gave no hint that a line existed at all, let alone what was wrong with it.
  * Returns the raw line so the failure message can quote it back verbatim —

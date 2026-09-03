@@ -3,7 +3,7 @@
  * skills it declares) and its initial user message (assignment: which story,
  * which surface(s), which branches — everything else the agent fetches itself
  * via MCP, per its own definition). Adapts "The prompt" template from
- * docs/development-tier-dispatch.md — generated programmatically here rather
+ * docs/development-tier-dispatch.pdf — generated programmatically here rather
  * than filling `<PLACEHOLDER>` tokens in a static file, since there is exactly
  * one shape of specialist prompt to produce, not one per lane the way the
  * shaping tier's templates are (see prompt-assembly.ts in webhook-listener).

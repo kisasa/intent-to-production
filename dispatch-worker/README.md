@@ -208,8 +208,10 @@ it as a trace of how long the run ran" rule tracker-notifier.ts follows.
   built for the marginal gain over a comment.
 - Only `github` is a supported repo-base host — see
   `activities/create-story-branch.ts`.
-- No BRD-closure orchestration (three-way sign-off, closing-epic E2E) — this
-  is the per-story loop only.
+- No epic-completion or BRD-closure orchestration (per-epic three-way
+  sign-off, E2E execution, closing-epic E2E) — this is the per-story loop
+  only. Epic completion is a human procedure for now; see
+  `docs/engagement-readiness.pdf`.
 
 ## Production bundling — `workflowBundle`, not `workflowsPath`
 
@@ -298,4 +300,4 @@ activities. A real (if local) end-to-end run — this worker, a local
 Temporal server, and a real `ecs:RunTask` call against LocalStack that
 actually launches a `specialist-runner` container — is possible via the
 repo-root `docker-compose.yml`; see
-[`docs/local-development.md`](../docs/local-development.md).
+[`docs/local-development.pdf`](../docs/local-development.pdf).

@@ -15,8 +15,8 @@ dictating instead of an agent deciding.
 exists.** That's a different situation — tell the developer to use the
 `ad-hoc-story-creation` skill instead, and stop here.
 
-**Team: assume Example Delivery (PROJ) unless told
-otherwise.** Don't ask.
+**Team:** use the team the developer's other work is in. If it is not
+obvious from the conversation, ask once and remember the answer.
 
 ## Ground rules for the conversation
 
@@ -58,35 +58,31 @@ An epic needs, in this order:
 
 No parent, no Project — this epic isn't part of any BRD.
 
-## Known PROJ surfaces and repos
+## Finding the team's surfaces and repos
 
-Confirmed live against the tracker as of 2026-08-13 (an epic's API map, in
-which "all six bases are now settled," and the team's current label set). Treat this
-as a fast default, not gospel — if a developer names a surface not listed
-here, or you have live Linear access and want to double-check, look it up
-fresh (`list_issue_labels` for the team, or search documents titled "API
-Map" — several exist per epic) rather than assuming this
-table is still complete.
+Surfaces are engagement-specific and this skill carries no table of them.
+Look them up live, in this order, and present what you find as suggested
+answers:
 
-| Surface label | Repo | What it is |
-|---|---|---|
-| `surface:management-web` | `github/example-org/example-web` (Angular) | admin frontend |
-| `surface:vt-web` | `github/example-org/example-vt-web` | merchant-facing secondary web app |
-| `surface:paynow-web` | `github/example-org/example-paynow-web` | merchant-facing Pay Now |
-| `surface:services` | `github/example-org/example-api` (.NET, modular: Merchants, Transactions, Users, Invoices, Payers, Identity...) | backend — **use this one, not the older `surface:backend`** |
-| `surface:e2e`, `surface:tests` | cross-cutting, no single repo | only when the epic genuinely needs a dedicated test/E2E story |
+1. `list_issue_labels` for the team, filtered to the `surface:` prefix — the
+   surfaces the team currently uses.
+2. The `Repo base — <surface>: <host>/<org>/<repo>/<ref>` lines on the
+   project's existing epics (`list_comments` on each) — which repo and ref
+   each surface resolves to. The most recent epic in the project is usually
+   the most complete.
+3. The surface's own `CONVENTIONS.md`, at the root of the repo on the
+   recorded ref, if you have codebase access — what the surface is for.
 
-**`example-erp`** (`github/example-org/example-erp`, the
-ERP/QuickBooks queue adapter) has no surface label yet as of this writing.
-If a story genuinely needs it, create one with `create_issue_label` —
-`surface:erp` fits the existing naming pattern — rather than forcing it
-under `surface:services`.
+If a developer names a surface with no `surface:` label yet, create the
+label with `create_issue_label` following the team's existing naming
+pattern rather than forcing the work under a surface it does not belong to.
+Test surfaces (`surface:e2e`, `surface:tests`) exist only when the epic
+genuinely needs a dedicated test or E2E story.
 
-Every real repo base recorded in Linear uses `main` as the ref, not a
-feature or release branch — that ref is what Specification reads code
-*from* to draft its map, a separate concern from which branch the epic's
-own git branch gets cut from (below). Use `main` unless a developer
-specifically tells you otherwise.
+Recorded repo bases normally use the branch Specification reads code from
+(commonly `main`), which is a separate concern from the branch the epic's
+own git branch gets cut from (below). Use what the project's other epics
+record unless a developer specifically tells you otherwise.
 
 ## The setup this epic needs before any story under it can dispatch
 
@@ -99,8 +95,8 @@ specifically tells you otherwise.
    specialist stop and refuse to work later, when it verifies the branch
    chain itself.
 2. **A `Repo base — <surface>: <host>/<org>/<repo>/<ref>` comment**, one
-   line per surface this epic's stories will need — use the table above,
-   `main` as `<ref>`. This is the only place downstream dispatch looks up
+   line per surface this epic's stories will need — use the surfaces and
+   refs you looked up above. This is the only place downstream dispatch looks up
    which repo a story's branch and PR belong in, and there's no fallback if
    it's missing or malformed:
    - No angle brackets around real values.
@@ -123,9 +119,9 @@ specifically tells you otherwise.
 6. **Any screenshots, notes, or threads this should point at?** Optional —
    don't push if there's nothing.
 7. **What does done look like?** Directional, not a test list.
-8. **Which surface(s) will this touch?** Offer the known table above as
-   suggestions. For each one, confirm the repo/ref against the table rather
-   than asking cold.
+8. **Which surface(s) will this touch?** Offer the surfaces you looked up as
+   suggestions. For each one, confirm the repo/ref against what the
+   project's other epics record rather than asking cold.
 9. **Do you know the current release branch?** If yes, note it for the
    setup reminder below; if no, tell them to check with the architect
    before this epic's branch gets cut.

@@ -15,8 +15,7 @@ lower the bar because a human is dictating instead of an agent deciding.
 epic.** That's a different situation — tell the developer to use the
 `ad-hoc-epic-creation` skill instead, and stop here.
 
-**Team: assume Example Delivery (PROJ) unless told
-otherwise.** Don't ask.
+**Team:** the epic's team. Read it from the epic; never ask.
 
 ## Ground rules for the conversation
 
@@ -87,18 +86,13 @@ Labels:
    `Repo base — <surface>: ...` line — this is the authoritative source,
    always prefer it over guessing from labels or memory. Present the
    surfaces you found as the suggested answers — e.g. "This epic has repo
-   bases recorded for **surface:services** and **surface:management-web**
-   — which one is this?" If none exist, stop and tell the developer the
-   epic itself is missing this and needs it before any story under it can
-   dispatch — don't invent one yourself, even if it looks like a case
-   covered in the table below.
-
-   For PROJ specifically, the surfaces normally recorded are
-   `surface:management-web`, `surface:vt-web`,
-   `surface:paynow-web`, and `surface:services` (the current label for the
-   example-api backend — not the older `surface:backend`, even if
-   you see it on older sibling stories). Use this only to sanity-check what
-   the epic's own comments say, never as a substitute for reading them.
+   bases recorded for **surface:api** and **surface:web** — which one is
+   this?" If none exist, stop and tell the developer the epic itself is
+   missing this and needs it before any story under it can dispatch — don't
+   invent one yourself. Surfaces are engagement-specific and this skill
+   carries no list of them; the epic's own comments are the only source. If
+   an older sibling story carries a surface label the epic does not record,
+   the epic's comments win.
 3. **What happened / what's needed?** Ask in plain language — "what did you
    run into, and what needs to exist instead?" Use this to draft the title
    and the user value statement. Offer 2–3 candidate titles rather than one,

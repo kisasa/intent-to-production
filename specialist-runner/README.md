@@ -5,7 +5,7 @@ Runs **the Specialist** — one generic developer definition
 story is labelled with, inside the `specialist-sandbox` ECS task
 [`infrastructure/`](../infrastructure) registers. The automated replacement
 for the human half of
-[`docs/development-tier-dispatch.md`](../docs/development-tier-dispatch.md) —
+[`docs/development-tier-dispatch.pdf`](../docs/development-tier-dispatch.pdf) —
 same specialist definition, same MCP-driven orientation and hand-back, just
 triggered by a `RunTask` call instead of a developer pasting a prompt into
 Claude Code.
@@ -36,14 +36,15 @@ requirement was dropped in favor of CI doing the actual execution, dispatch
 mechanics were already fully generic and `e2e` registered exactly like
 `tests` did.
 
-**This still doesn't execute the E2E suite it writes — only the GitHub
-Actions piece would.** The specialist writes tests and opens a PR; per the
-decided design, a GitHub Actions workflow triggered by the epic's own PR
-into the BRD branch is what's supposed to stand up docker-compose and run
-them. That workflow doesn't exist in any target repo yet (confirmed empty in
-`example-app`: no docker-compose file, no e2e/integration workflow, only
-per-surface `backend.yml`/`frontend.yml`) — a separate, unbuilt piece from
-what this package does.
+**This still doesn't execute the E2E suite it writes.** The specialist
+writes tests and opens a PR. The decided design has a GitHub Actions
+workflow, triggered by the epic's own PR into the BRD branch, stand up
+docker-compose and run them. That workflow has not been built in any target
+repository, and as of 2026-09-02 it is deliberately parked: for the next
+engagement, humans stand the BRD branch up after each epic's stories merge,
+run the suite by hand, and sign the epic off in its thread before it merges.
+See `docs/engagement-readiness.pdf` for the procedure and
+`docs/design-ledger.md` (2026-09-02) for the decision.
 
 Registering `tests` also only covers integration testing *within* one repo
 (this engagement's actual shape — `frontend/` and presumably `backend/` as
