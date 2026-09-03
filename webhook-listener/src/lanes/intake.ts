@@ -6,6 +6,7 @@
  */
 
 import type { AgentLaneConfig } from "../agent-lane.js";
+import { requireEnv } from "../env.js";
 
 // The two fixed activation-trigger strings from the design ledger. This is
 // reinforcement, not load-bearing — intake-agent.md's own decision-flow logic
@@ -24,7 +25,10 @@ export const config: AgentLaneConfig = {
   agentFile: "intake-agent.md",
   skills: ["epic-writing", "business-requirements-writing", "tracker-writing"],
   codebaseAccess: false,
-  model: "claude-sonnet-5",
+  // Infra-required per engagement, no code-level default — see
+  // infrastructure/models/listener-configuration.ts and CLAUDE_MODEL_INTAKE
+  // in webhook-listener/.env.example.
+  model: requireEnv("CLAUDE_MODEL_INTAKE"),
   templates: {
     first: "intake.md",
     followUp: "intake.md",

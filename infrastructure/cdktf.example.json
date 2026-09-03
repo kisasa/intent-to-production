@@ -42,7 +42,11 @@
       "linear-api-url": null,
       "linear-mcp-url": null,
       "github-mcp-url": null,
-      "product-context-paths": null
+      "product-context-paths": null,
+      "claude-model-intake": "claude-sonnet-5",
+      "claude-model-specification": "claude-sonnet-5",
+      "claude-model-decompose": "claude-sonnet-5",
+      "claude-effort": "high"
     },
     "specialist-sandbox": {
       "environment-name": "prod",
@@ -52,7 +56,9 @@
       "memory": 2048,
       "log-retention-days": 14,
       "framework-repo": "example-org/intent-to-production",
-      "framework-ref": "dev"
+      "framework-ref": "dev",
+      "claude-model": "claude-sonnet-5",
+      "claude-effort": "high"
     },
     "temporal": {
       "environment-name": "prod",

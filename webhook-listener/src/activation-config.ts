@@ -13,7 +13,24 @@
  * bounds how many times the runner resumes that paused loop before giving up.
  */
 
+import { requireEnv } from "./env.js";
+
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
+
+const EFFORT_LEVELS: Effort[] = ["low", "medium", "high", "xhigh", "max"];
+
+/**
+ * Infra-tunable per engagement — see infrastructure/models/listener-
+ * configuration.ts and CLAUDE_EFFORT in webhook-listener/.env.example.
+ * Required rather than defaulted: an unset or invalid value fails the
+ * container at startup rather than silently running some other effort.
+ * Mirrors specialist-runner/src/claude-config.ts's own validation.
+ */
+function loadEffort(): Effort {
+  const raw = requireEnv("CLAUDE_EFFORT");
+  if ((EFFORT_LEVELS as string[]).includes(raw)) return raw as Effort;
+  throw new Error(`CLAUDE_EFFORT="${raw}" is not a valid effort level. Supported: ${EFFORT_LEVELS.join(", ")}`);
+}
 
 export interface ActivationConfig {
   maxInputTokens: number;
@@ -58,10 +75,11 @@ export const activationConfig: ActivationConfig = {
   progressUpdateIntervalMs: 2 * 60_000,
 
   // Passed as output_config.effort on every activation call, uniformly across
-  // lanes — thinking/action depth, not per-lane identity. "high" balances
-  // quality against token spend; raise to "xhigh"/"max" if a lane's output is
-  // under-thought, lower to "medium"/"low" to cut cost on routine runs.
-  effort: "high",
+  // lanes — thinking/action depth, not per-lane identity. Read from
+  // CLAUDE_EFFORT (see loadEffort above) so an engagement can raise it to
+  // "xhigh"/"max" if a lane's output is under-thought, or lower it to
+  // "medium"/"low" to cut cost on routine runs, without a code change.
+  effort: loadEffort(),
 
   // How many times the runner resumes a run that paused mid-task because the
   // server's own MCP tool-call loop hit its internal round-trip cap. Each

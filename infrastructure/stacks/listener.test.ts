@@ -29,6 +29,10 @@ const TEST_CONTEXT = {
     "linear-mcp-url": null,
     "github-mcp-url": null,
     "product-context-paths": null,
+    "claude-model-intake": "claude-sonnet-5",
+    "claude-model-specification": "claude-sonnet-5",
+    "claude-model-decompose": "claude-sonnet-5",
+    "claude-effort": "high",
   },
   "specialist-sandbox": {
     "environment-name": "test",
@@ -39,6 +43,8 @@ const TEST_CONTEXT = {
     "log-retention-days": 30,
     "framework-repo": "example-org/intent-to-production",
     "framework-ref": "main",
+    "claude-model": "claude-sonnet-5",
+    "claude-effort": "high",
   },
   temporal: {
     "environment-name": "test",

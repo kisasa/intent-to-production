@@ -20,6 +20,17 @@ export interface SpecialistSandboxConfiguration {
 
   /** Git ref of the framework repo to clone. */
   readonly frameworkRef: string;
+
+  /**
+   * Required, with no code-level default in specialist-runner/src/claude-
+   * config.ts (see its own env.ts's requireEnv). Baked into the task
+   * definition's baseline container environment (CLAUDE_MODEL /
+   * CLAUDE_EFFORT) rather than a per-dispatch RunTask override, same posture
+   * as frameworkRepo/frameworkRef above — every specialist run in this
+   * deployment uses whichever model this engagement is currently tuned to.
+   */
+  readonly claudeModel: string;
+  readonly claudeEffort: string;
 }
 
 export function specialistSandboxConfigurationFromContext(node: ContextNode): SpecialistSandboxConfiguration {
@@ -34,5 +45,7 @@ export function specialistSandboxConfigurationFromContext(node: ContextNode): Sp
     logRetentionDays: requireNumber(node, "log-retention-days", path),
     frameworkRepo: requireString(node, "framework-repo", path),
     frameworkRef: requireString(node, "framework-ref", path),
+    claudeModel: requireString(node, "claude-model", path),
+    claudeEffort: requireString(node, "claude-effort", path),
   };
 }
