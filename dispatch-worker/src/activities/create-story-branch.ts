@@ -22,7 +22,7 @@
 
 import { ApplicationFailure } from "@temporalio/activity";
 import { githubRequest, isClientError } from "../github-request.js";
-import type { RepoBase } from "./resolve-repo-base.js";
+import type { RepoBase } from "./resolve-surfaces.js";
 
 interface GitHubRefResponse {
   object: { sha: string };

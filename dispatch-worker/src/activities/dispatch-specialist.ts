@@ -17,7 +17,7 @@
 
 import { ECSClient, RunTaskCommand } from "@aws-sdk/client-ecs";
 import type { WorkerConfig } from "../worker-config.js";
-import type { RepoBase } from "./resolve-repo-base.js";
+import type { RepoBase } from "./resolve-surfaces.js";
 import type { Surface } from "./types.js";
 
 export interface DispatchSpecialistInput {
@@ -26,6 +26,10 @@ export interface DispatchSpecialistInput {
   readonly epicId: string;
   readonly surfaces: Surface[];
   readonly repoBase: RepoBase;
+  /** Directory of each surface within the repo, from the registry, same order as `surfaces`. */
+  readonly surfacePaths: readonly string[];
+  /** Mandatory skills across the story's surfaces, from the registry; the runner inlines them. */
+  readonly surfaceSkills: readonly string[];
   readonly storyBranch: string;
   readonly epicBranch: string;
   readonly maxTurns: number;
@@ -47,6 +51,8 @@ export function buildContainerOverrides(input: DispatchSpecialistInput, logLevel
     { name: "EPIC_ID", value: input.epicId },
     { name: "SURFACES", value: input.surfaces.join(",") },
     { name: "SURFACE_REPO", value: `${input.repoBase.org}/${input.repoBase.repo}` },
+    { name: "SURFACE_PATHS", value: input.surfacePaths.join(",") },
+    { name: "SURFACE_SKILLS", value: input.surfaceSkills.join(",") },
     { name: "STORY_BRANCH", value: input.storyBranch },
     { name: "EPIC_BRANCH", value: input.epicBranch },
     { name: "MAX_TURNS", value: String(input.maxTurns) },

@@ -64,14 +64,18 @@ Surfaces are engagement-specific and this skill carries no table of them.
 Look them up live, in this order, and present what you find as suggested
 answers:
 
-1. `list_issue_labels` for the team, filtered to the `surface:` prefix — the
-   surfaces the team currently uses.
-2. The `Repo base — <surface>: <host>/<org>/<repo>/<ref>` lines on the
-   project's existing epics (`list_comments` on each) — which repo and ref
-   each surface resolves to. The most recent epic in the project is usually
-   the most complete.
-3. The surface's own `CONVENTIONS.md`, at the root of the repo on the
-   recorded ref, if you have codebase access — what the surface is for.
+1. The project's **surface registry**: the project document titled
+   `Surfaces` (`list_documents` with the project id, then `get_document`).
+   Its fenced `surfaces` block has one record per surface — repo, ref, the
+   directory within the repo, the conventions file, mandatory skills, and
+   status. This is the authoritative list. An epic may also carry a
+   `Surfaces (override)` document for differences that hold for that epic
+   only.
+2. `list_issue_labels` for the team, filtered to the `surface:` prefix — the
+   labels the team currently uses. A label with no registry record, or a
+   record with no label, is a gap to mention.
+3. The surface's own conventions file, at the path the record names, if you
+   have codebase access — what the surface is for.
 
 If a developer names a surface with no `surface:` label yet, create the
 label with `create_issue_label` following the team's existing naming
@@ -79,10 +83,10 @@ pattern rather than forcing the work under a surface it does not belong to.
 Test surfaces (`surface:e2e`, `surface:tests`) exist only when the epic
 genuinely needs a dedicated test or E2E story.
 
-Recorded repo bases normally use the branch Specification reads code from
+A registry record's `ref` is the branch Specification reads code from
 (commonly `main`), which is a separate concern from the branch the epic's
-own git branch gets cut from (below). Use what the project's other epics
-record unless a developer specifically tells you otherwise.
+own git branch gets cut from (below). Use what the registry records unless a
+developer specifically tells you otherwise.
 
 ## The setup this epic needs before any story under it can dispatch
 
@@ -94,15 +98,18 @@ record unless a developer specifically tells you otherwise.
    is a manual step someone still has to do, and skipping it will make the
    specialist stop and refuse to work later, when it verifies the branch
    chain itself.
-2. **A `Repo base — <surface>: <host>/<org>/<repo>/<ref>` comment**, one
-   line per surface this epic's stories will need — use the surfaces and
-   refs you looked up above. This is the only place downstream dispatch looks up
-   which repo a story's branch and PR belong in, and there's no fallback if
-   it's missing or malformed:
-   - No angle brackets around real values.
-   - Don't put the word "e.g." on the same line as a real answer — both
-     get read as unfilled placeholder text, not a real answer, by the
-     framework's own parsing.
+2. **A registry record for every surface this epic's stories will need.**
+   Dispatch reads the project's `Surfaces` document (with the epic's
+   `Surfaces (override)` layered on top) to learn which repo a story's branch
+   and PR belong in; there is no fallback if a surface has no record. If a
+   surface the developer names is already in the registry, nothing to do. If
+   it is not, propose the record from what you can read and, once the
+   developer confirms it, write it: into the project's `Surfaces` document
+   when it is true for the whole engagement (regenerate the document in
+   place, adding the record), or into a `Surfaces (override)` document on
+   this epic when it holds only here. Use the exact block format the
+   Specification Agent uses (`agents/specification-agent.md`, step 1) — you
+   write it, the developer never types it.
 
 ## The conversation, step by step
 
@@ -125,14 +132,15 @@ record unless a developer specifically tells you otherwise.
 9. **Do you know the current release branch?** If yes, note it for the
    setup reminder below; if no, tell them to check with the architect
    before this epic's branch gets cut.
-10. **Show the complete draft** — title, full body, and every `Repo base`
-    line — and ask for explicit confirmation.
+10. **Show the complete draft** — title, full body, and any registry record
+    you intend to add — and ask for explicit confirmation.
 11. **On confirmation**, create the epic with `save_issue` (no parent), then
-    post the `Repo base — <surface>: ...` comment(s) with `save_comment`.
+    write any new registry record with `save_document` (the project's
+    `Surfaces` document, or a `Surfaces (override)` document on the epic).
     Close by reminding the developer: cut the epic's git branch from the
     release branch (not `main`) before it goes into Evaluation, and moving
     it to Evaluation status is what starts Specification — there's no
     label to apply to skip ahead to Decompose; Specification runs first and
     hands off to Decompose itself once its own thread resolves. Since the
-    `Repo base` comment is already posted, Specification may not even need
-    to ask about it — but answer normally if it does.
+    registry already covers the surfaces, Specification may not even need
+    to ask about them — but answer normally if it does.

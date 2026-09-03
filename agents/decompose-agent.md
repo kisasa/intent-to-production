@@ -70,59 +70,80 @@ The epic arrives already specified. Its capabilities were confirmed at intake, a
   actually has. A story's `surface:<name>` label names one of them.
 
   Before decomposing, draft your surface assignments. You already estimate story
-  count from the map, so you can see the surfaces too. Then confirm the thread
-  records a line for **every surface this epic could need**, in the
-  Specification Agent's recording format:
+  count from the map, so you can see the surfaces too. Then read the **surface
+  registry**: the project's document titled `Surfaces`, with the epic's
+  `Surfaces (override)` document layered on top if it has one. Confirm it holds
+  a record for **every surface this epic could need**. The format is the
+  Specification Agent's; the same block, one record per surface:
 
-  ```
-  Repo base — <surface>: <host>/<org>/<repo>/<ref>
+  ```surfaces
+  surface: web
+  repo: github/example-org/example-web
+  ref: main
+  path: /
+  conventions: CONVENTIONS.md
+  skills:
+  status: active
+  
+  surface: e2e
+  repo: github/example-org/example-web
+  ref: main
+  path: e2e/
+  conventions: e2e/CONVENTIONS.md
+  skills:
+  status: active
   ```
 
   Three rules make this a manifest:
 
-  1. **Every surface gets a line, including the ones that do not exist.** A
-     surface with no repo is recorded as `Repo base — <surface>: none`. A
-     missing line means the question was never asked. `none` means it was asked
-     and answered. Those are different states. `none` tells you not to assign
-     stories there, and silence tells you to ask.
-  2. **The ref is the surface's own BRD branch.** Each surface carries its own
-     branch chain. A repo without a ref leaves the base implicit at exactly the
-     moment a specialist needs it explicit.
-  3. **Every surface with a repo must carry a conventions spec.** That is a
-     `CONVENTIONS.md` at the surface root on that ref. Some repos keep the same
-     material in `CONTRIBUTING.md`. Read the surface and confirm it is there.
-     **Its absence blocks decomposition.** The specialist definition is
-     deliberately generic about *how* to build, and the conventions spec is the
-     only place the answer lives. Dispatching into a surface without one
-     produces plausible code in nobody's house style. That is more expensive to
-     review than no code at all.
+  1. **Every surface gets a record, including the ones that do not exist.** A
+     surface that was asked about and has no repo is recorded with
+     `status: none`. A missing record means the question was never asked.
+     `none` means it was asked and answered. Those are different states. `none`
+     tells you not to assign stories there, and silence tells you to ask.
+  2. **Every record names a ref.** Each surface carries its own branch chain.
+     The registry's parser refuses a record without one, so this is a check you
+     will rarely need to make by hand; make it anyway when you read a record.
+  3. **Every active surface must carry a conventions spec.** The record names
+     where it is; read the surface at that path on that ref and confirm the
+     file is there. **Its absence blocks decomposition.** The specialist
+     definition is deliberately generic about *how* to build, and the
+     conventions spec is the only place the answer lives. Dispatching into a
+     surface without one produces plausible code in nobody's house style. That
+     is more expensive to review than no code at all.
 
-  The Specification Agent cannot have filled this in for you. It resolves repo
-  bases from the API map's own surfaces, before any story is assigned. A test
-  or e2e surface is therefore a gap it structurally cannot anticipate. A
-  surface that does not exist yet is one nobody notices until a story is
-  dispatched into it. Do not assume a missing surface shares another surface's
-  repo. A monorepo is common but not guaranteed.
+  A test or e2e surface is the one the registry most often lacks. The
+  Specification Agent records the surfaces the API map touches, before any
+  story is assigned; you are the first to know a dedicated test story will
+  exist. Do not assume a missing surface shares another surface's repo. A
+  monorepo is common but not guaranteed.
 
-  An unrecorded surface, a repo without a ref, or a surface without a
-  conventions spec is a readiness gap. `ask` for all of it in one question.
-  Name each surface and use the exact recording format, so nothing is left
-  implicit:
+  A surface with no record, or an active surface without a conventions spec,
+  is a readiness gap. Handle it the way Specification does: **propose, do not
+  ask the architect to type.** Read what you can reach, draft the record, and
+  ask the architect to confirm or correct it in ordinary words:
 
-  > "Before I decompose this epic I need its surfaces confirmed. Could you
-  > record a line for each, using `none` where a surface doesn't exist?
-  > `Repo base — web: <host>/<org>/<repo>/<ref>`,
-  > `Repo base — api: <host>/<org>/<repo>/<ref>`,
-  > `Repo base — e2e: <host>/<org>/<repo>/<ref>`.
-  > I also couldn't find a `CONVENTIONS.md` at the root of `e2e` — that one
-  > blocks decomposition, since it's the only place a specialist learns how you
-  > build there."
+  > "Before I decompose this epic I need one more surface confirmed. The E2E
+  > story needs somewhere to live. I read `example-web`'s `e2e/` folder as a
+  > Playwright project with its own `CONVENTIONS.md`, so I'd record an `e2e`
+  > surface there, on `main`. Is that right? If the project has no E2E
+  > project, tell me and I'll record `e2e` as `none` and fold the flow tests
+  > into the `web` story instead."
 
-  Honor what is already recorded. If the project thread or an earlier epic in
-  the same project already carries these lines, read them rather than
-  re-asking. Re-litigating a recorded decision is ceremony a real team will not
-  perform. Ask only for what is genuinely unrecorded, or for a surface this
-  epic needs that no earlier epic did.
+  When the architect confirms, write the record yourself: into the project's
+  `Surfaces` document when the surface is true for the whole engagement, into
+  the epic's `Surfaces (override)` document when it holds for this epic only.
+  Regenerate the document in place; never delete a record.
+
+  Multi-surface stories follow from the registry, not from a guess: a story
+  may carry several `surface:` labels only when their records share one repo
+  and ref. Check that here, before the story exists, rather than letting
+  dispatch refuse it later.
+
+  Honor what is already recorded. A surface in the registry is settled;
+  re-asking a recorded decision is ceremony a real team will not perform. Ask
+  only for what is genuinely unrecorded, or for a surface this epic needs
+  that no earlier epic did.
 
 **Logical correctness:**
 - Is the described approach consistent with the stated problem?

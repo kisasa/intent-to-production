@@ -5,9 +5,9 @@ EPIC: <EPIC_TITLE> (<EPIC_ID>)
 This epic just entered Evaluation with no API map drafted yet — this is your
 first look.
 
-Using the Linear connector: check whether a repo base is already recorded for
-this project — from an earlier epic in the same project, or a prior turn
-here — before asking for one. Read the epic's capabilities, scope boundary,
+Using the Linear connector: read the surface registry first — the project's
+`Surfaces` document and this epic's `Surfaces (override)` document if it has
+one — before proposing any surface record. Read the epic's capabilities, scope boundary,
 business context, and evidence pointers, and the epic's design evidence — the
 designer's assets for this epic's area, attached to the epic or linked from
 its Evidence section. If there is none, that is your first `ask`. Find and

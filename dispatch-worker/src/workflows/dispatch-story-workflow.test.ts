@@ -17,6 +17,20 @@ import { dispatchStoryWorkflow } from "./dispatch-story-workflow.js";
 
 const WORKFLOWS_PATH = fileURLToPath(new URL("./dispatch-story-workflow.ts", import.meta.url));
 
+const TARGET = {
+  repoBase: { host: "github", org: "example-org", repo: "example-api", ref: "main" },
+  surfaces: [
+    {
+      surface: "backend",
+      repoBase: { host: "github", org: "example-org", repo: "example-api", ref: "main" },
+      path: "/",
+      conventions: "CONVENTIONS.md",
+      skills: [],
+      status: "active" as const,
+    },
+  ],
+};
+
 const baseInput = {
   storyId: "PROJ-101",
   storyTitle: "Add refund endpoint",
@@ -56,7 +70,7 @@ describe("dispatchStoryWorkflow", () => {
       workflowsPath: WORKFLOWS_PATH,
       activities: {
         checkDependencies: async () => ({ ready: false, blockedBy: ["PROJ-42"] }),
-        resolveRepoBase: unexpectedCall("resolveRepoBase"),
+        resolveSurfaces: unexpectedCall("resolveSurfaces"),
         createStoryBranch: unexpectedCall("createStoryBranch"),
         dispatchSpecialist: unexpectedCall("dispatchSpecialist"),
         postSpecialistStarted: unexpectedCall("postSpecialistStarted"),
@@ -95,7 +109,7 @@ describe("dispatchStoryWorkflow", () => {
       workflowsPath: WORKFLOWS_PATH,
       activities: {
         checkDependencies: async () => ({ ready: true, blockedBy: [] }),
-        resolveRepoBase: async () => ({ host: "github", org: "example-org", repo: "example-api", ref: "main" }),
+        resolveSurfaces: async () => TARGET,
         createStoryBranch: async () => {},
         dispatchSpecialist: async () => "arn:aws:ecs:us-east-1:123:task/example-specialist-prod/abc123",
         postSpecialistStarted: async () => "comment-1",
@@ -137,9 +151,9 @@ describe("dispatchStoryWorkflow", () => {
           calls.push("checkDependencies");
           return { ready: true, blockedBy: [] };
         },
-        resolveRepoBase: async () => {
-          calls.push("resolveRepoBase");
-          return { host: "github", org: "example-org", repo: "example-api", ref: "main" };
+        resolveSurfaces: async () => {
+          calls.push("resolveSurfaces");
+          return TARGET;
         },
         createStoryBranch: async () => {
           calls.push("createStoryBranch");
@@ -188,7 +202,7 @@ describe("dispatchStoryWorkflow", () => {
 
     expect(calls).toEqual([
       "checkDependencies",
-      "resolveRepoBase",
+      "resolveSurfaces",
       "createStoryBranch",
       "dispatchSpecialist",
       "postSpecialistStarted",
@@ -212,7 +226,7 @@ describe("dispatchStoryWorkflow", () => {
       workflowsPath: WORKFLOWS_PATH,
       activities: {
         checkDependencies: async () => ({ ready: true, blockedBy: [] }),
-        resolveRepoBase: async () => ({ host: "github", org: "example-org", repo: "example-api", ref: "main" }),
+        resolveSurfaces: async () => TARGET,
         // No activity anticipates this failure with its own comment — the
         // exact shape of today's real createStoryBranch/GitHub-404 incident.
         createStoryBranch: async () => {

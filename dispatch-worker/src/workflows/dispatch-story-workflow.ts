@@ -35,11 +35,11 @@ import { describeFailure } from "./describe-failure.js";
 // APIs (Linear, GitHub, AWS ECS). A persistent failure after 3 attempts
 // should surface as a failed workflow rather than hammer those APIs for
 // the better part of a day. Permanent errors (an unsupported host, a
-// missing repo base) skip retries entirely — see each activity's own use of
+// missing surface record) skip retries entirely — see each activity's own use of
 // `ApplicationFailure.nonRetryable`.
 const {
   checkDependencies,
-  resolveRepoBase,
+  resolveSurfaces,
   createStoryBranch,
   dispatchSpecialist,
   postSpecialistStarted,
@@ -99,7 +99,8 @@ export async function dispatchStoryWorkflow(input: DispatchStoryWorkflowInput): 
       return { outcome: "not-ready", blockedBy: dependencyCheck.blockedBy };
     }
 
-    const repoBase = await resolveRepoBase(input.epicId, input.surfaces);
+    const target = await resolveSurfaces(input.epicId, input.surfaces);
+    const repoBase = target.repoBase;
 
     await createStoryBranch({
       repoBase: repoBase,
@@ -113,6 +114,8 @@ export async function dispatchStoryWorkflow(input: DispatchStoryWorkflowInput): 
       epicId: input.epicId,
       surfaces: input.surfaces,
       repoBase: repoBase,
+      surfacePaths: target.surfaces.map((s) => s.path),
+      surfaceSkills: [...new Set(target.surfaces.flatMap((s) => s.skills))],
       storyBranch: input.storyBranch,
       epicBranch: input.epicBranch,
       maxTurns: input.maxTurns,

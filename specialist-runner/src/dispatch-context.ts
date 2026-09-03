@@ -23,6 +23,20 @@ export interface DispatchContext {
 
   /** `org/name` on GitHub — the one repo this run writes to. */
   readonly surfaceRepo: string;
+  /**
+   * Directory of each surface within the repo (`/` for the root), same order
+   * as `surfaces`, from the surface registry. Optional in the env contract so
+   * a dispatcher predating the registry still works; defaults to `/` for each.
+   */
+  readonly surfacePaths: string[];
+  /**
+   * Mandatory skills for the story's surfaces, from the surface registry.
+   * Resolved at prompt-build time — the surface repo's own `.claude/skills/`
+   * first, the framework catalog second — and inlined into the system prompt,
+   * so a mandatory skill is guaranteed read rather than discretionarily
+   * discovered. Optional in the env contract; defaults to none.
+   */
+  readonly surfaceSkills: string[];
   readonly storyBranch: string;
   readonly epicBranch: string;
 
@@ -54,7 +68,7 @@ function requireEnv(name: string): string {
  * this same repo, so this runner still clones exactly one. No supported-list
  * check here: the surface vocabulary is open, and whether the epic actually
  * recognizes a given surface was already validated upstream, by
- * `dispatch-worker`'s `resolveRepoBase`, before this container was ever
+ * `dispatch-worker`'s `resolveSurfaces`, before this container was ever
  * launched.
  */
 function requireSurfaces(name: string): Surface[] {
@@ -69,6 +83,15 @@ function requireSurfaces(name: string): Surface[] {
   return surfaces;
 }
 
+function optionalList(name: string): string[] {
+  const raw = process.env[name];
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+}
+
 function requireMaxTurns(name: string): number {
   const raw = requireEnv(name);
   const value = Number(raw);
@@ -78,6 +101,14 @@ function requireMaxTurns(name: string): number {
   return value;
 }
 
+function surfacePathsFor(surfaces: Surface[], paths: string[]): string[] {
+  if (paths.length === 0) return surfaces.map(() => "/");
+  if (paths.length !== surfaces.length) {
+    throw new Error(`SURFACE_PATHS lists ${paths.length} path(s) for ${surfaces.length} surface(s); they must correspond one to one`);
+  }
+  return paths;
+}
+
 export function loadDispatchContext(): DispatchContext {
   return {
     storyId: requireEnv("STORY_ID"),
@@ -85,6 +116,8 @@ export function loadDispatchContext(): DispatchContext {
     epicId: requireEnv("EPIC_ID"),
     surfaces: requireSurfaces("SURFACES"),
     surfaceRepo: requireEnv("SURFACE_REPO"),
+    surfacePaths: surfacePathsFor(requireSurfaces("SURFACES"), optionalList("SURFACE_PATHS")),
+    surfaceSkills: optionalList("SURFACE_SKILLS"),
     storyBranch: requireEnv("STORY_BRANCH"),
     epicBranch: requireEnv("EPIC_BRANCH"),
     frameworkRepo: requireEnv("FRAMEWORK_REPO"),
