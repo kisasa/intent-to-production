@@ -82,7 +82,7 @@ balancer, with env vars sourced from SSM — see
 
 To run this service alongside `dispatch-worker`, a local Temporal server,
 and a LocalStack-emulated ECS — the whole dispatch loop, not just this one
-service — see [`docs/local-development.md`](../docs/local-development.md)
+service — see [`docs/local-development.pdf`](../docs/local-development.pdf)
 instead. What follows here is this service in isolation.
 
 ```bash

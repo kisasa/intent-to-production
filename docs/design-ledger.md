@@ -2469,11 +2469,10 @@ session" rather than here, because the file is append-only by date.
   resolve against the epic's recorded base, and the `tier` label is described as
   informing a human's model choice rather than driving app routing (because
   nothing routes it any more).
-- **OPEN: three shaping agents and two skills still carry the retired model.**
-  (2026-09-02: confirmed still present at all five locations named below,
-  unchanged since 2026-08-03. Folded into the plain-register rewrite item at
-  the end of this file — the same pass that changes how those sentences are
-  written is the one that should change what they say.) Found
+- **RESOLVED 2026-09-02: three shaping agents and two skills still carried the
+  retired model.** Closed by the plain-register rewrite (end of this file);
+  `story-decomposition.md`, the fifth location, was deleted outright as an
+  orphan whose content had been inlined on 2026-08-03. Original entry: found
   while verifying the specialist reconciliation, not fixed — the specialist tier
   was the session's scope and these are one tier up. `decompose-agent.md:19`
   still opens "You receive:"; `intake-agent.md:27` has a "## Context payload"
@@ -2520,13 +2519,10 @@ session" rather than here, because the file is append-only by date.
   produces stories that share a subject, so they come out sharing an opening,
   and five titles beginning "Add payment status…" are five identical rows in
   every truncated view.
-- **OPEN: `docs/specialist-prompt.md` is an engagement artifact in a framework
-  directory, and it is stale.** (2026-09-02: still present. Now staler — it
-  instructs the reader to load `specialist-<NAME>.md`, a file that has not
-  existed since the 2026-08-08 collapse into one `specialist.md`, and names
-  "the frontend Specialist," a role the same collapse retired. The private
-  references were scrubbed on 2026-08-24; the staleness was not. Still the
-  architect's call whether it serves a purpose; if not, delete it.) Added in `b238e6f` as a working copy of the
+- **RESOLVED 2026-09-02: `docs/specialist-prompt.md` deleted** (the
+  architect's call, same day). It instructed the reader to load
+  `specialist-<NAME>.md`, a file that had not existed since the 2026-08-08
+  collapse, and named a role that collapse retired. Original entry follows. Added in `b238e6f` as a working copy of the
   dispatch prompt, specialized for a frontend story: it hardcodes
   `example-web` as the target surface and names "the frontend Specialist."
   Three problems, in ascending order of consequence.
@@ -4187,23 +4183,40 @@ written without flagging every ordinary sentence, to the check.
 
 ### Open items added by this session
 
-- **BUILD: E2E execution at the epic's PR into the BRD branch.** Designed
-  2026-08-04, trigger point corrected 2026-08-07, confirmed unbuilt in every
-  target repository through the first full engagement. The per-epic sign-off
-  rule above gates on its result, so it is now a precondition, not a
-  refinement. What has to exist: a GitHub Actions workflow in each engagement
-  (the cross-repo checkout policy from 2026-08-04 applies), a docker-compose or
-  equivalent that stands the BRD branch up, and the E2E suite running against
-  it with the result visible on the epic's PR.
+- **PARKED 2026-09-02 (same day, by decision): E2E execution at the epic's PR
+  into the BRD branch.** Designed 2026-08-04, trigger point corrected
+  2026-08-07, confirmed unbuilt in every target repository through the first
+  full engagement. The architect's decision: hold the automation until the
+  per-area flow has been seen working end to end; for the next engagement,
+  humans manage merging and testing as branches are built — the architect
+  stands the BRD branch up after each epic's stories merge, the E2E suite is
+  run by hand, and the three-way sign-off is three people saying so in the
+  epic's thread before the architect merges the epic branch. The per-epic
+  rule above stands unchanged; only the light is a person, not a check. This
+  is the file's standing practice applied to itself: build the mechanism after
+  a run has shown what it must do, not before. What has to exist when it is
+  built is unchanged: a GitHub Actions workflow in each engagement (the
+  cross-repo checkout policy from 2026-08-04 applies), a docker-compose or
+  equivalent that stands the BRD branch up, and the suite running against it
+  with the result visible on the epic's PR. Revisit after the first epic of the
+  next engagement has been signed off by hand.
 - **RESOLVED 2026-09-02 (same day): wire `tracker-writing`** into the Intake,
   Specification, and Decompose lane configs. Done; 110 listener tests pass.
   `CLAUDE.md`'s "loads none" claim corrected (that file is gitignored, so the
   correction is local to each clone). The rewrite of the definitions the skill
   depends on remains open below.
-- **REWRITE: agent definitions and skills in the plain register.**
-  `intake-agent.md`, `specification-agent.md`, `decompose-agent.md`,
-  `epic-writing`, `story-contract`, `api-map-writing`, `business-requirements-
-  writing`. Reasoning stays; the instruction sentences change shape.
+- **RESOLVED 2026-09-02 (same day): agent definitions and skills rewritten in
+  the plain register.** `intake-agent.md`, `specification-agent.md`,
+  `decompose-agent.md`, `specialist.md` (light), `epic-writing`,
+  `story-contract`, `api-map-writing`, `business-requirements-writing`.
+  Sentence shape only: every rule, example, and piece of reasoning kept in
+  place; one idea per sentence; asides made into sentences; correction
+  patterns reduced to the positive statement; retired-model phrasing
+  ("context payload", "You receive:", "the app resolves", "verdict") replaced
+  with what is true. The 2026-08-03 retired-model item is closed by the same
+  pass. Two judgment calls worth a reader's eye: negations that carried a
+  rule were kept as instructions ("Do not report merge conflicts as a
+  blocker"); negations that only denied an alternative were dropped.
 - **RESOLVED 2026-09-02 (same day): `business-requirements-writing` step 4b**
   — seed removed; the design issue is created thin, for cross-cutting rules
   only, and the legend says so. The designer's area order is an optional BRD
@@ -4240,11 +4253,14 @@ written without flagging every ordinary sentence, to the check.
   symbols and routes, never line ranges, and `specialist.md` and the manual
   dispatch runbook were updated to read the map's design section and the
   epic's design evidence instead of a seeded design issue.
-- **DESIGN: per-epic three-way sign-off** — `epic:awaiting-architect`,
-  `epic:awaiting-designer`, `epic:awaiting-pm`, the same independent-clear
-  shape as the closure gate; who applies them and what wakes when they clear;
-  what triggers the environment redeploy (the same "not pinned down" item the
-  closure entry left open, now needed per epic).
+- **DESIGN, deferred to observed practice (2026-09-02): per-epic three-way
+  sign-off** — `epic:awaiting-architect`, `epic:awaiting-designer`,
+  `epic:awaiting-pm`, the same independent-clear shape as the closure gate;
+  who applies them and what wakes when they clear; what triggers the
+  environment redeploy (the same "not pinned down" item the closure entry left
+  open, now needed per epic). Per the decision above, the next engagement runs
+  this by hand — three replies in the epic's thread — and the labels and any
+  automation are designed from what that shows. Nothing is built for it now.
 - **DECIDE: the closing epic's remaining job** under a cumulative environment
   — decide against the next run's actual closing-epic content.
 - **RESOLVED 2026-09-02 (same day): one document or two** — one document,
@@ -4272,3 +4288,78 @@ written without flagging every ordinary sentence, to the check.
   added to `CONTRIBUTING.md`'s People bullet. **OPEN:** whether the check can
   carry a pattern for it without flagging every ordinary sentence; not
   attempted.
+
+### Later the same day: readying for the next engagement (2026-09-02)
+
+The architect chose to skip a sandbox dry run and get the repository ready
+for the next engagement directly. Four things done, one thing found.
+
+**The plain-register rewrite landed** (resolved above). One caution for
+whoever reads the definitions next: they now say what they always meant in
+shorter sentences, but they have not run. The first live activation under the
+rewritten text is the test.
+
+**`README.md` rewritten.** Its "Start here" table linked to `shared/`,
+`for-pms/`, and `for-engineers/`, none of which exist and none of which ever
+existed in this repository's history. Replaced with an honest map of what is
+here, the pipeline in six steps, and where to start by role.
+
+**`docs/engagement-readiness.pdf` written.** The "frontier preconditions"
+list (2026-08-03) turned into the checklist it was always going to become.
+The architect's rule, added the same day and then generalized to every
+human-facing document in `docs/`: they ship as PDFs, because not everyone
+reads Markdown. The Markdown sources live in `docs/source/`, one script
+(`scripts/build-docs-pdf.py`) renders all of them, and a source and its output
+never share a basename in one folder. The two developer runbooks moved the
+same way. The ledger is the exception and stays Markdown in `docs/`: it is a
+working record read by people and agents alike and changes every session,
+and a rendered copy would be stale before it was opened. The checklist
+covers: roles
+and what each owns, tracker setup with the engagement-specific status literals
+named, per-surface requirements, the requirements session, the per-area
+rhythm, and the human procedure for epic completion while E2E automation is
+parked. Also states plainly what to expect: the sandbox cannot build most
+stacks, rebuilds are not idempotent, parsed formats are strict.
+
+**Two dead files deleted** (the architect's call): `docs/specialist-prompt.md`
+and `skills/story-decomposition/SKILL.md`, both stale past the point of
+usefulness and referenced by nothing.
+
+**Found: the desktop skills carried one engagement's surface names, and the
+check walked past them.** `ad-hoc-epic-creation` had a table of "known
+surfaces" — labels derived from the client's product names, with
+descriptions of what each product was and which modules its backend held —
+and `ad-hoc-story-creation` repeated the list. The 2026-08-24 sweep had
+replaced the repo names with placeholders and left the surface labels, which
+carry the same information in lower case. Fixed two ways. The skills are now
+engagement-agnostic: they look surfaces up live from the team's `surface:`
+labels and the project's recorded `Repo base` lines, and carry no table. And
+the check gained the leaked shapes (ninth widening, recorded in
+`CONTRIBUTING.md` per its own rule): the org rule matched a product name in
+one casing and missed the same name as a lower-case surface label. The
+repo-base parser's own comment and test fixtures used one of those names as
+the example surface; replaced with the `web` placeholder.
+
+**Found, and not fixed: the closing epic was never built either.** The
+2026-08-04 BRD-closure design — a fourth epic created by Intake at slice time,
+holding cross-epic E2E stories, signed off through `brd:awaiting-*` labels —
+appears nowhere in `intake-agent.md`, `epic-writing`, or any lane. It is the
+third decided-but-unbuilt item found today, and it was found only because the
+readiness checklist tried to tell an architect what Intake would create.
+Recorded honestly in that document (Intake does not create it; the architect
+may by hand) and listed below. Whether to build it at all is entangled with
+the open question of what the closing epic still owns once E2E is cumulative
+per epic; decide both together, against the next engagement's end.
+
+**Open items added:**
+
+- **DECIDE, then BUILD or RETIRE: the closing epic.** Designed 2026-08-04,
+  never implemented in Intake. Decide against the next engagement's actual
+  closing needs whether Intake should create it, whether the architect creates
+  it by hand, or whether cumulative per-epic E2E has made it unnecessary.
+  Until then `docs/engagement-readiness.md` says what is true: nothing
+  creates it.
+- **OPEN: the first live activation of the rewritten definitions.** Watch the
+  first Intake, Specification, and Decompose runs of the next engagement for
+  behavior the rewrite changed unintentionally; the diffs are large and
+  reviewed by reading, not by running.

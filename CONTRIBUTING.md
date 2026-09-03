@@ -16,6 +16,14 @@ Each package (`webhook-listener/`, `dispatch-worker/`, `specialist-runner/`,
 `infrastructure/`) has its own `npm run typecheck` and `npm run test:unit`. Run
 both for whatever you touched.
 
+Human-facing documents under `docs/` ship as PDFs; the Markdown they are
+rendered from lives in `docs/source/`. If you edit a source, re-run
+`python3 scripts/build-docs-pdf.py` (needs `pip install reportlab`) and commit
+the PDF with it. Never edit a PDF by hand, and never give a source and its
+output the same basename in the same folder. The design ledger is the one
+Markdown file that stays in `docs/` itself: it is a working record read by
+people and agents alike and changes every session.
+
 `infrastructure/` needs two extra steps on a fresh clone: copy
 `infrastructure/cdktf.example.json` to `cdktf.json` and fill in your own values,
 then run `npx cdktn get` with Terraform installed to generate the provider
@@ -95,12 +103,13 @@ CI (`.github/workflows/private-references.yml`). It is a pattern check, not a
 proof — it catches the shapes this repository has actually leaked, so **add a
 pattern when you find a new leak** rather than fixing the one instance quietly.
 
-That instruction is not boilerplate. The check has been widened eight times, and
+That instruction is not boilerplate. The check has been widened nine times, and
 every widening was prompted by something it had walked past: an enumeration that
 missed a third name four lines from one it caught, a rule that missed an
 interpolated variable because `${...}` is not a lowercase letter, a person rule
 that matched full names and missed sixty-eight bare first names, a key rule that
 was uppercase-only and missed thirteen branch names, another that required digits
-after the hyphen and missed a `-XXX` placeholder. A rule precise enough to avoid
-false positives has repeatedly been precise enough to miss the next instance.
-Assume yours will be too.
+after the hyphen and missed a `-XXX` placeholder, an org rule that caught a
+product name in one casing and missed the same name as a lower-case surface
+label. A rule precise enough to avoid false positives has repeatedly been
+precise enough to miss the next instance. Assume yours will be too.

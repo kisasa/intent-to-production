@@ -33,3 +33,4 @@ docker-compose.override.yml
 # framework material, and it is the file every private-reference sweep kept
 # tripping over.
 infrastructure/cdktf.json
+infrastructure/cdktf.*.json

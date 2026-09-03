@@ -116,7 +116,7 @@ const RULES = [
   {
     label: "client or engagement org / repo names",
     pattern:
-      /\bSTPDEV\b|Streamline[- ]?Payments|le-tarjay|team-tarjay|team-target|(?:Le|Team)[ -]?Tar[gj]|Targét|StreamPay|streampay|Management\.[Ww]eb|Management-Angular|PayNow|VirtualTerminal|virtualterminal/g,
+      /\bSTPDEV\b|Streamline[- ]?Payments|le-tarjay|team-tarjay|team-target|(?:Le|Team)[ -]?Tar[gj]|Targét|StreamPay|streampay|Management\.[Ww]eb|Management-Angular|management-web|[Pp]ay[Nn]ow|vt-web|VirtualTerminal|virtualterminal/g,
   },
   {
     label: "people — names, emails, GitHub logins, tracker user ids",
@@ -186,8 +186,14 @@ const RULES = [
   },
 ];
 
+/**
+ * Tracked files plus untracked files that are not ignored. Untracked matters:
+ * a new file written but not yet `git add`ed is exactly what a pre-commit run
+ * of this check is for, and the tracked-only version passed locally on a file
+ * that then failed in CI once it was committed (2026-09-02).
+ */
 function trackedFiles() {
-  const out = execFileSync("git", ["ls-files", "-z"], {
+  const out = execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], {
     cwd: REPO_ROOT,
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,

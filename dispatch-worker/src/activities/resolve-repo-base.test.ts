@@ -101,21 +101,21 @@ describe("resolveCommonRepoBase", () => {
   });
 
   it("quotes back a malformed line instead of reporting the surface as unrecorded (confirmed live: em dash where a colon was required)", () => {
-    const comments = ["Repo base — management-web — github/example-org/example-web/main"];
-    const result = resolveCommonRepoBase(comments, ["management-web"]);
+    const comments = ["Repo base — web — github/example-org/example-web/main"];
+    const result = resolveCommonRepoBase(comments, ["web"]);
     expect(result.ok).toBe(false);
     expect(!result.ok && result.reason).toContain(
-      "- management-web: found `Repo base — management-web — github/example-org/example-web/main`, " +
+      "- web: found `Repo base — web — github/example-org/example-web/main`, " +
         "which doesn't match the required format.",
     );
-    expect(!result.ok && result.reason).toContain("Expected `Repo base — management-web: <host>/<org>/<repo>/<ref>`");
+    expect(!result.ok && result.reason).toContain("Expected `Repo base — web: <host>/<org>/<repo>/<ref>`");
   });
 
   it("doesn't confuse one surface's malformed line for another's when both are missing", () => {
-    const comments = ["Repo base — management-web — github/example-org/example-web/main"];
-    const result = resolveCommonRepoBase(comments, ["management-web", "services"]);
+    const comments = ["Repo base — web — github/example-org/example-web/main"];
+    const result = resolveCommonRepoBase(comments, ["web", "services"]);
     expect(result.ok).toBe(false);
-    expect(!result.ok && result.reason).toContain("management-web: found `Repo base — management-web —");
+    expect(!result.ok && result.reason).toContain("web: found `Repo base — web —");
     expect(!result.ok && result.reason).toContain("- services: expected `Repo base — services:");
   });
 
@@ -133,14 +133,14 @@ describe("resolveCommonRepoBase", () => {
 
   it("flags a shadowed correction — a newer line for the mismatched surface that didn't parse (confirmed live)", () => {
     const comments = [
-      "Repo base — management-web: github/example-org/example-web/main\n\n" +
+      "Repo base — web: github/example-org/example-web/main\n\n" +
         "Repo base — e2e: github/example-org/example-web/playwright/main",
       // Posted later, intended as a fix, but the em dash didn't survive — this
       // uses a plain hyphen, so parseRepoBase's strict pattern never matches
       // it and the older "playwright/main" line above keeps winning.
       "Repo base - e2e: github/example-org/example-web/main",
     ];
-    const result = resolveCommonRepoBase(comments, ["management-web", "e2e"]);
+    const result = resolveCommonRepoBase(comments, ["web", "e2e"]);
     expect(result.ok).toBe(false);
     expect(!result.ok && result.reason).toContain(
       "e2e: github/example-org/example-web/playwright/main " +
