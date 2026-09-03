@@ -12,3 +12,15 @@ export function envOr(name: string, fallback: string): string {
   const value = process.env[name];
   return value ? value : fallback;
 }
+
+/**
+ * The required counterpart to envOr, for values with no code-level default —
+ * an infra-supplied setting (e.g. a per-lane model, or effort) where guessing
+ * a fallback would silently mask a missing deployment config. Same
+ * module-load-only convention as envOr.
+ */
+export function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} is not set`);
+  return value;
+}

@@ -6,13 +6,20 @@ describe("loadClaudeConfig", () => {
     vi.unstubAllEnvs();
   });
 
-  it("defaults to claude-sonnet-5 at high effort", () => {
+  it("throws when CLAUDE_MODEL is unset — no code-level default", () => {
     vi.stubEnv("CLAUDE_MODEL", undefined as unknown as string);
-    vi.stubEnv("CLAUDE_EFFORT", undefined as unknown as string);
+    vi.stubEnv("CLAUDE_EFFORT", "high");
     delete process.env.CLAUDE_MODEL;
+
+    expect(() => loadClaudeConfig()).toThrow("CLAUDE_MODEL is not set");
+  });
+
+  it("throws when CLAUDE_EFFORT is unset — no code-level default", () => {
+    vi.stubEnv("CLAUDE_MODEL", "claude-sonnet-5");
+    vi.stubEnv("CLAUDE_EFFORT", undefined as unknown as string);
     delete process.env.CLAUDE_EFFORT;
 
-    expect(loadClaudeConfig()).toEqual({ model: "claude-sonnet-5", effort: "high" });
+    expect(() => loadClaudeConfig()).toThrow("CLAUDE_EFFORT is not set");
   });
 
   it("respects an explicit model and effort", () => {
@@ -23,6 +30,7 @@ describe("loadClaudeConfig", () => {
   });
 
   it("rejects an unsupported effort level", () => {
+    vi.stubEnv("CLAUDE_MODEL", "claude-sonnet-5");
     vi.stubEnv("CLAUDE_EFFORT", "ludicrous");
     expect(() => loadClaudeConfig()).toThrow(/not a valid effort level/);
   });

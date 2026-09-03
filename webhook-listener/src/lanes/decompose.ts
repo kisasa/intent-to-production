@@ -6,6 +6,7 @@
  */
 
 import type { AgentLaneConfig } from "../agent-lane.js";
+import { requireEnv } from "../env.js";
 
 // A variable clause supplying what happened this activation, without naming
 // the outcome — decompose-agent.md's own decision-flow logic determines
@@ -22,7 +23,10 @@ export const config: AgentLaneConfig = {
   agentFile: "decompose-agent.md",
   skills: ["epic-writing", "story-contract", "tracker-writing"],
   codebaseAccess: true,
-  model: "claude-sonnet-5",
+  // Infra-required per engagement, no code-level default — see
+  // infrastructure/models/listener-configuration.ts and CLAUDE_MODEL_DECOMPOSE
+  // in webhook-listener/.env.example.
+  model: requireEnv("CLAUDE_MODEL_DECOMPOSE"),
   templates: {
     first: "decompose.md",
     followUp: "decompose.md",

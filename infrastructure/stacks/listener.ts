@@ -155,6 +155,14 @@ export class ListenerStack extends BaseStack {
       { name: "TEMPORAL_HOST", value: temporal.namespaceClusterAddress },
       { name: "TEMPORAL_NAMESPACE", value: temporal.namespaceId },
       { name: "TEMPORAL_TASK_QUEUE", value: temporal.taskQueueName },
+
+      // Required context keys, not optional overrides — webhook-listener's
+      // own lane configs and activation-config.ts have no fallback for these
+      // (see env.ts's requireEnv), so this deployment must supply them.
+      { name: "CLAUDE_MODEL_INTAKE", value: this.listener.claudeModelIntake },
+      { name: "CLAUDE_MODEL_SPECIFICATION", value: this.listener.claudeModelSpecification },
+      { name: "CLAUDE_MODEL_DECOMPOSE", value: this.listener.claudeModelDecompose },
+      { name: "CLAUDE_EFFORT", value: this.listener.claudeEffort },
     ];
 
     const optional: Record<string, string | undefined> = {

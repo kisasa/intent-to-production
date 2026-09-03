@@ -5,14 +5,17 @@
  * lives in each lane's own config; this module is only the knobs that apply
  * uniformly."
  *
- * Deliberately explicit rather than left to the Agent SDK's own default —
- * an unset `model`/`effort` would silently track whatever the CLI's default
- * happens to be on a given build, which drifts the specialist's behavior out
- * from under this codebase without a line changing here.
+ * Both are required, with no code-level default: an unset `model`/`effort`
+ * would otherwise either silently track whatever the CLI's default happens
+ * to be on a given build, or mask a missing deployment config behind a value
+ * this codebase invented. In production both are baked into the specialist-
+ * sandbox task definition's baseline environment by infrastructure/stacks/
+ * specialist-sandbox.ts (context keys `claude-model` / `claude-effort`) —
+ * tune them there, not here, to change every specialist run in a deployment.
  */
 
 import type { EffortLevel } from "@anthropic-ai/claude-agent-sdk";
-import { envOr } from "./env.js";
+import { requireEnv } from "./env.js";
 
 const EFFORT_LEVELS: EffortLevel[] = ["low", "medium", "high", "xhigh", "max"];
 
@@ -28,10 +31,7 @@ function loadEffort(raw: string): EffortLevel {
 
 export function loadClaudeConfig(): ClaudeConfig {
   return {
-    model: envOr("CLAUDE_MODEL", "claude-sonnet-5"),
-
-    // "high" mirrors activationConfig.effort's own uniform default in
-    // webhook-listener — real coding work, not a routine/cheap run.
-    effort: loadEffort(envOr("CLAUDE_EFFORT", "high")),
+    model: requireEnv("CLAUDE_MODEL"),
+    effort: loadEffort(requireEnv("CLAUDE_EFFORT")),
   };
 }

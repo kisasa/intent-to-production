@@ -220,6 +220,8 @@ manage. Values marked `REPLACE_ME` must be filled in before the first synth.
 | `listener.debounce-ms` | `15000` | Passed through as `DEBOUNCE_MS` |
 | `listener.log-level` | `info` | Passed through as `LOG_LEVEL` |
 | `listener.linear-api-url`, `.linear-mcp-url`, `.github-mcp-url`, `.product-context-paths` | `null` | Optional. `null` means the application's own default applies; the keys are spelled out to document that they exist |
+| `listener.claude-model-intake`, `.claude-model-specification`, `.claude-model-decompose` | `claude-sonnet-5` | Required — no code-level default. Per-lane model, passed through as `CLAUDE_MODEL_INTAKE`/`_SPECIFICATION`/`_DECOMPOSE`. Tune per engagement without a code change or redeploying the image — just this stack |
+| `listener.claude-effort` | `high` | Required — no code-level default. Uniform across every lane's activation call, passed through as `CLAUDE_EFFORT`. One of `low`/`medium`/`high`/`xhigh`/`max` |
 | `specialist-sandbox.environment-name` | `prod` | Validated independently of `listener.environment-name`, though today they're the same value |
 | `specialist-sandbox.ecr-repository-name` | `intent-to-production-specialist` | Doesn't exist yet — see Prerequisites |
 | `specialist-sandbox.image-tag` | `REPLACE_ME` | Placeholder until the specialist has a Dockerfile and a CI push target |
@@ -227,6 +229,7 @@ manage. Values marked `REPLACE_ME` must be filled in before the first synth.
 | `specialist-sandbox.log-retention-days` | `30` | |
 | `specialist-sandbox.framework-repo` | `example-org/intent-to-production` | `org/name` on GitHub — where the specialist clones its own `agents/`/`skills/` definitions from. Baked into the task definition's container environment as `FRAMEWORK_REPO`; not part of any per-dispatch `RunTask` override |
 | `specialist-sandbox.framework-ref` | `main` | Git ref of the framework repo to clone, as `FRAMEWORK_REF`. A pinned ref here controls what every specialist run in this deployment uses, independent of whatever ref this deployment's own listener/temporal-workers images were built from |
+| `specialist-sandbox.claude-model`, `.claude-effort` | `claude-sonnet-5` / `high` | Required — no code-level default. Baked into the task definition's baseline environment as `CLAUDE_MODEL`/`CLAUDE_EFFORT` — every specialist run in this deployment uses it, not just one dispatch |
 | `temporal.environment-name` | `prod` | Validated independently of the other stacks' `environment-name`, though today they're the same value |
 | `temporal.namespace-name` | `intent-to-production-prod` | Base name — Temporal Cloud appends an account-id suffix to form the fully-qualified namespace id |
 | `temporal.ecr-repository-name` | `intent-to-production-temporal-worker` | Doesn't exist yet — see Prerequisites |

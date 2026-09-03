@@ -5,6 +5,7 @@
  */
 
 import type { AgentLaneConfig } from "../agent-lane.js";
+import { requireEnv } from "../env.js";
 
 export const config: AgentLaneConfig = {
   name: "specification",
@@ -12,7 +13,10 @@ export const config: AgentLaneConfig = {
   agentFile: "specification-agent.md",
   skills: ["api-map-writing", "epic-writing", "tracker-writing"],
   codebaseAccess: true,
-  model: "claude-sonnet-5",
+  // Infra-required per engagement, no code-level default — see
+  // infrastructure/models/listener-configuration.ts and
+  // CLAUDE_MODEL_SPECIFICATION in webhook-listener/.env.example.
+  model: requireEnv("CLAUDE_MODEL_SPECIFICATION"),
   templates: {
     first: "specification-kickoff.md",
     followUp: "specification-reply.md",

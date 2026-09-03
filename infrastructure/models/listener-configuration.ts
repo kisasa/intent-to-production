@@ -27,6 +27,22 @@ export interface ListenerConfiguration {
   readonly linearMcpUrl: string | undefined;
   readonly githubMcpUrl: string | undefined;
   readonly productContextPaths: string | undefined;
+
+  /**
+   * Model and effort for every shaping-tier activation call — required, with
+   * no code-level default in webhook-listener (see env.ts's requireEnv):
+   * guessing a fallback here would silently mask a missing deployment
+   * config instead of failing synth with a clear key name. Kept one model
+   * key per lane, not a shared "claude-model" key, because
+   * AgentLaneConfig.model is per-lane identity, not a uniform knob — an
+   * engagement may want Decompose on a stronger model than Intake while
+   * leaving the rest alone. Effort, by contrast, genuinely is uniform (see
+   * activation-config.ts's own ActivationConfig.effort), so it's one key.
+   */
+  readonly claudeModelIntake: string;
+  readonly claudeModelSpecification: string;
+  readonly claudeModelDecompose: string;
+  readonly claudeEffort: string;
 }
 
 export function listenerConfigurationFromContext(node: ContextNode): ListenerConfiguration {
@@ -58,5 +74,9 @@ export function listenerConfigurationFromContext(node: ContextNode): ListenerCon
     linearMcpUrl: optionalString(node, "linear-mcp-url", path),
     githubMcpUrl: optionalString(node, "github-mcp-url", path),
     productContextPaths: optionalString(node, "product-context-paths", path),
+    claudeModelIntake: requireString(node, "claude-model-intake", path),
+    claudeModelSpecification: requireString(node, "claude-model-specification", path),
+    claudeModelDecompose: requireString(node, "claude-model-decompose", path),
+    claudeEffort: requireString(node, "claude-effort", path),
   };
 }

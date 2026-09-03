@@ -40,12 +40,22 @@ const SECRET_PARAMETER_NAMES: string[] = ["ANTHROPIC_API_KEY", "LINEAR_AGENT_API
  * `specialist-runner/src/dispatch-context.ts` requires both with no
  * fallback — if this task definition doesn't set them, the container fails
  * fast at startup naming whichever is missing.
+ *
+ * CLAUDE_MODEL/CLAUDE_EFFORT are required, same posture as FRAMEWORK_REPO/
+ * FRAMEWORK_REF: specialist-runner/src/claude-config.ts has no code-level
+ * default for either (see its own env.ts's requireEnv) — this deployment
+ * must supply both. Set here on the task definition's baseline environment,
+ * not as a dispatch-specialist.ts RunTask override, so tweaking either is a
+ * context edit and a redeploy of this stack alone — no dispatch-worker
+ * change needed.
  */
 function containerEnvironment(config: SpecialistSandboxConfiguration): ContainerEnvironmentVariable[] {
   return [
     { name: "NODE_ENV", value: "development" },
     { name: "FRAMEWORK_REPO", value: config.frameworkRepo },
     { name: "FRAMEWORK_REF", value: config.frameworkRef },
+    { name: "CLAUDE_MODEL", value: config.claudeModel },
+    { name: "CLAUDE_EFFORT", value: config.claudeEffort },
   ];
 }
 
