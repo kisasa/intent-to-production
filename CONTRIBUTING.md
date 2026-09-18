@@ -16,6 +16,17 @@ Each package (`webhook-listener/`, `dispatch-worker/`, `specialist-runner/`,
 `infrastructure/`) has its own `npm run typecheck` and `npm run test:unit`. Run
 both for whatever you touched.
 
+The repository-root `scripts/` are operator tools rather than application code,
+so they carry their own tests beside them. Run the one you touched:
+
+```bash
+node --test 'scripts/*.test.mjs'          # also gated in CI, with the private-references check
+python3 scripts/new-deployment.test.py    # local only
+```
+
+The Python suite covers its AWS calls with `botocore`'s `Stubber`; those cases
+skip without `boto3` installed and the rest run regardless.
+
 Human-facing documents under `docs/` ship as PDFs; the Markdown they are
 rendered from lives in `docs/source/`. If you edit a source, re-run
 `python3 scripts/build-docs-pdf.py` (needs `pip install reportlab`) and commit
@@ -28,7 +39,10 @@ people and agents alike and changes every session.
 `infrastructure/cdktf.example.json` to `cdktf.json` and fill in your own values,
 then run `npx cdktn get` with Terraform installed to generate the provider
 bindings. Neither the real config nor the generated bindings are in the
-repository, so the package will not typecheck until both exist.
+repository, so the package will not typecheck until both exist. Standing up a
+further deployment once one exists is `python3 scripts/new-deployment.py`
+rather than another copy of the template — see `infrastructure/README.md`,
+"Configuration".
 
 ## No Private References
 

@@ -51,8 +51,8 @@ project's `CloudPrivateLink`/`NamespaceWithApikey` constructs.
 **One deliberate exception to this project's secrets discipline lives here.** Everywhere else, Terraform
 only ever holds an SSM parameter's ARN — the value itself reaches a container at task start, never synth.
 The `temporalcloud` Terraform provider can't work that way: it authenticates with an admin API key that
-has to be a real string at synth time, so that one value (read from its own out-of-band SSM parameter,
-`/example/prod/temporal-admin/API_KEY`) does reach Terraform state. The namespace's own generated worker API
+has to be a real string at synth time, so that one value (read from this deployment's own out-of-band SSM
+parameter, `${parameter-prefix}temporal-admin/API_KEY`) does reach Terraform state. The namespace's own generated worker API
 key has the same shape: the `temporalcloud` provider hands back a token as a resource attribute, not
 something already living in SSM, so `temporal-workers.ts` writes it into a new SSM parameter itself before
 handing it to the worker service the normal ARN-based way. Both are recorded in Known gaps, not hidden.
@@ -93,7 +93,7 @@ process outside it.
 
 | Thing | Why it is not in a stack |
 |---|---|
-| S3 state bucket, versioned | Cannot live in the state it holds |
+| S3 state bucket, versioned | Cannot live in the state it holds. `scripts/new-deployment.py` offers to create it |
 | Route53 hosted zone for the domain | Usually predates the project; the certificate and DNS record attach to it |
 | ECR repository (listener) | The image must exist before a task can start from it, and CI pushes it independently of any Terraform run — see [`build-and-push-webhook-listener-ecr.yml`](../.github/workflows/build-and-push-webhook-listener-ecr.yml), which creates the repository idempotently. Read here as a data source. |
 | ECR repository (specialist sandbox) | Same posture as the listener's — the application code, Dockerfile, and CI workflow now exist ([`specialist-runner/`](../specialist-runner), [`build-and-push-specialist-ecr.yml`](../.github/workflows/build-and-push-specialist-ecr.yml)), so this repository gets created and populated the same idempotent way the listener's is. `specialist-sandbox` still won't apply until the first merge to `main` under `specialist-runner/` actually runs that workflow. |
@@ -101,7 +101,7 @@ process outside it.
 | The specialist sandbox's SSM parameters | Same mechanism, same shared `parameter-prefix` as every other stack — see below |
 | ECR repository (Temporal worker) | Same posture as the other two — the application code, Dockerfile, and CI workflow now exist ([`dispatch-worker/`](../dispatch-worker), [`build-and-push-dispatch-worker-ecr.yml`](../.github/workflows/build-and-push-dispatch-worker-ecr.yml)). `temporal-workers` still won't apply until the first merge to `main` under `dispatch-worker/` actually runs that workflow. |
 | The temporal-workers stack's SSM parameters | Same mechanism, same shared `parameter-prefix` |
-| A Temporal Cloud account, with an admin API key | Out-of-band, same category as the AWS account itself — the `temporalcloud` provider creates namespaces *within* an existing account, it doesn't create the account. The admin key goes in its own SSM parameter (`/example/prod/temporal-admin/API_KEY`), read directly (not by ARN) at synth — see the Temporal workers section above and Known gaps |
+| A Temporal Cloud account, and an admin API key per deployment | Out-of-band, same category as the AWS account itself — the `temporalcloud` provider creates namespaces *within* an existing account, it doesn't create the account. Each deployment's own admin key goes in an SSM parameter under that deployment's prefix (`/example/prod/temporal-admin/API_KEY`), read directly (not by ARN) at synth — see the Temporal workers section above and Known gaps |
 | The `temporalcloud` provider's generated bindings | No prebuilt `@cdktn/provider-temporalcloud` package exists — run `npx cdktn get` locally (needs Terraform on PATH) before this stack will typecheck or synth. See Known gaps |
 | An AWS profile named in `aws.profile` | |
 | Terraform or OpenTofu **>= 1.10** on PATH | Required for S3-native state locking (`use_lockfile`), which is why there is no DynamoDB lock table |
@@ -112,7 +112,12 @@ Terraform behaves best on Linux; WSL with Ubuntu works well on Windows. Keep lin
 
 Terraform reads only these parameters' ARNs and grants the task execution role permission to fetch
 them. No secret value ever enters the synthesized JSON or the state file. Create them once per
-environment, matching the deployment's shared `parameter-prefix`:
+environment, matching the deployment's shared `parameter-prefix`.
+
+Standing up a *further* deployment against the same credentials does not mean retyping these:
+`scripts/new-deployment.py` offers to copy everything under the previous deployment's prefix into
+the new one, skipping `TEMPORAL_API_KEY` (written per apply by the `temporal-workers` stack) and any
+name already set on the target. For the first deployment, or for a value that genuinely differs:
 
 ```bash
 PREFIX=/example/prod
@@ -149,10 +154,15 @@ listener now read the identical `ANTHROPIC_API_KEY` value, not distinct ones.
 ### Creating the Temporal admin API key parameter
 
 Read directly by the `temporalcloud` provider at synth, not by ARN — the one place in this project a
-secret value legitimately reaches Terraform state (see the Temporal workers section above). Deliberately
-**not** under the shared `parameter-prefix` — this is a single Temporal Cloud account-level admin
-credential, not one deployment's secret, so `temporal-workers.ts` reads it from a fixed path regardless
-of which deployment's context it's synthesizing:
+secret value legitimately reaches Terraform state (see the Temporal workers section above).
+
+It lives **under** the shared `parameter-prefix`, at `${parameter-prefix}temporal-admin/API_KEY`, and
+is issued fresh per deployment like any other credential here. This paragraph previously claimed the
+opposite — that it was one account-level key read from a fixed path regardless of which deployment was
+synthesizing — which `temporal-workers.ts` never did; it has always interpolated the prefix. The
+nesting is the only thing that distinguishes it from the flat names beside it, and that is a grouping,
+not a different lifetime. `scripts/new-deployment.py` treats it accordingly: it is one of the
+credentials the script asks you to type rather than copying across from the previous deployment.
 
 ```bash
 read -rsp "Temporal Cloud admin API key: " value; echo
@@ -188,6 +198,42 @@ framework material, so it is gitignored. Start from the committed template:
 cp infrastructure/cdktf.example.json infrastructure/cdktf.json
 ```
 
+### The second deployment onward
+
+Once one real deployment exists, the rest are derived from it rather than from the template:
+
+```bash
+python3 scripts/new-deployment.py PROJ     # tracker team id; prompted for when omitted
+```
+
+It asks which existing config to base on, the tracker team id if it was not given as the argument
+(the deployment name is that plus `MMDD`), and the VPC CIDR — defaulting to the next block above
+every one already in use, which is
+the choice most worth not making by hand, since two deployments on the same block only collide
+later when something tries to route between them. It then writes
+`infrastructure/cdktf.<NAME>.json`, and offers to create the state bucket and copy the previous
+deployment's SSM parameters into the new prefix. Everything else is inherited from the base config
+unchanged, deliberately — the base you pick is the shape you get.
+
+Writing the config needs nothing installed. The two AWS steps need `boto3` (`pip install boto3`),
+and use the profile and region from the config being created — never the default profile; without
+boto3 the script says so up front, writes the config anyway, and tells you what is left to do by
+hand. It talks to the AWS API directly rather than driving the `aws` CLI so that a copied secret
+exists only in memory between the read and the write — never in a file and never on a command line.
+
+Before either step it resolves the profile through `sts:GetCallerIdentity` and refuses if the
+account does not match the config's `aws.account-number`. That is the same guard the stacks get
+from Terraform's `allowed_account_ids`, applied to the two things that happen before Terraform
+runs: a bucket in the wrong account is recoverable, a parameter store in the wrong account seeded
+with this deployment's secrets is not.
+
+Each deployment's config is kept beside the others under its own name. `cdktn` only ever reads
+`cdktf.json`, so a run means standing one in under that name and moving it back after:
+
+```bash
+mv cdktf.PROJ0903.json cdktf.json && npm run synth && npm run deploy; mv cdktf.json cdktf.PROJ0903.json
+```
+
 Then replace every placeholder value: the account number and profile, `state-bucket-name`,
 `domain-name` and `hosted-zone-id`, `parameter-prefix`, `framework-repo`, `output` if you want a
 different synth directory, and the `reviewer-email-to-github-login` table. Nothing synths until
@@ -202,7 +248,7 @@ manage. Values marked `REPLACE_ME` must be filled in before the first synth.
 | Key | Example | Notes |
 |---|---|---|
 | `aws.region` | `us-east-1` | |
-| `aws.account-number` | `123456789012` | Also passed as `allowed_account_ids`, so a mis-set profile fails the plan rather than applying to the wrong account |
+| `aws.account-number` | `123456789012` | Also passed as `allowed_account_ids`, so a mis-set profile fails the plan rather than applying to the wrong account. `scripts/new-deployment.py` checks the profile against it the same way before creating anything |
 | `aws.profile` | `kisasa` | |
 | `state-bucket-name` | `example-terraform-state-001` | |
 | `global-tags` | `{ "terraform": "true", … }` | Applied to everything, plus a per-stack `stack` tag |
@@ -302,8 +348,11 @@ npm run test:unit && npm run typecheck
 ```
 main.ts                  Stack construction and dependency wiring
 common.ts                Name formatting and state keys
-cdktf.json               Project config (gitignored); the context block is all the settings
-cdktf.example.json       Committed template; copy to cdktf.json and fill in
+cdktf.json               Project config (gitignored); the context block is all the settings. The
+                         only name cdktn reads, so each deployment's own cdktf.<NAME>.json stands
+                         in under it for a run — see Configuration
+cdktf.example.json       Committed template; copy to cdktf.json and fill in. Later deployments are
+                         derived from an existing one by `scripts/new-deployment.py` instead
 models/                  Typed configuration and stack outputs, with fromContext factories
 constructs/              Reusable pieces: VPC, certificate, load balancer, single-instance service,
                          specialist task, Temporal PrivateLink/namespace/worker service. Every
@@ -353,9 +402,12 @@ Honest about what this does not do.
   application by HMAC signature verification, not by source address. An IP allowlist is available as
   a knob but would be a second thing to keep current, failing closed and silently when the tracker's
   ranges change.
-- **One environment.** Adding a second means a second context — either a `<env>.cdktf.json` copied
-  into place, following the reference project, or a second directory of stacks. Nothing in the code
-  assumes one environment; only `cdktf.json` does.
+- **One environment per run.** Nothing in the code assumes one environment; only `cdktf.json` does,
+  because that is the one filename `cdktn` reads. So each deployment keeps its own
+  `cdktf.<NAME>.json` and is renamed into place for the duration of a run —
+  `scripts/new-deployment.py` generates one and prints that dance, but does not perform it, and
+  forgetting to rename back leaves the next run reading the wrong deployment's context. A real fix
+  is a wrapper that renames, runs and restores under a trap, or a second directory of stacks.
 - **Specialist-sandbox egress is unrestricted, not allowlisted.** The design calls for locking egress to
   the Anthropic API, GitHub, Linear, and the gateway-processor test endpoints specifically — but none of
   those publish IP ranges stable enough for a security-group rule, unlike AWS's own services. Real
