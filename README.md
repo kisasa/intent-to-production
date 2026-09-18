@@ -19,10 +19,11 @@ them is visible.**
 The best lanes are mixed. The agent drafts the API map and says what it
 found; the architect resolves what exists. The agent reads the designer's
 assets and lists what the user will see; the designer confirms and corrects.
-The agent writes the code and opens the pull request; a developer decides
-whether it is any good. Which also means knowing when not to add an agent:
-there is no code-review agent here, because CI does the mechanical half of
-review already and the rest is judgment.
+The agent writes the code, opens the pull request, and traces every acceptance
+criterion to the code and the test that asserts it; a developer decides whether
+it is any good, and ticks off what they checked. Which also means knowing when
+not to add an agent: there is no code-review agent here, because CI does the
+mechanical half of review already and the rest is judgment.
 
 ## How the pipeline flows
 
@@ -39,13 +40,19 @@ review already and the rest is judgment.
    codebase and produces the API map: design touchpoints the designer
    resolves, technical touchpoints the architect resolves.
 4. **Decompose.** The Decompose Agent cuts the epic into dependency-ordered,
-   surface-assigned stories and checkpoints with the PM.
+   surface-assigned stories, each carrying a point estimate and a blocked-by
+   relation mirroring its dependency section; checkpoints with the PM, showing
+   the per-story points and the epic's total; and writes the epic's definition
+   of done onto the epic as an unticked coverage checklist naming the stories
+   behind each line.
 5. **Development.** A developer moves a story to In Progress. The app cuts
    the branch and dispatches a specialist into a sandbox; the specialist
-   opens a pull request; the developer who moved the story reviews it.
+   opens a pull request carrying its acceptance-criteria trace; the developer
+   who moved the story reviews it against that list.
 6. **Epic completion.** When an epic's stories have merged, humans stand the
-   branch up, run the E2E suite, and sign off — architect, designer, PM —
-   before it merges. Automating this is deliberately parked.
+   branch up, run the E2E suite, and sign off against that checklist —
+   architect, designer, PM — before it merges. Automating this is
+   deliberately parked.
 
 The reasoning behind every one of those steps, and the failures that shaped
 them, is in the design ledger.

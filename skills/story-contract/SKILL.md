@@ -97,6 +97,13 @@ Minimum three criteria per story:
 
 A story with only a happy path criterion is not complete.
 
+**Number them, and treat the numbering as fixed.** The specialist traces each
+criterion to an implementation site and an asserting test, carries that trace
+into the pull request as one checkbox per criterion, and the reviewer ticks
+them there. Renumbering after the fact breaks the link between a promise and
+the record that someone verified it. A criterion that turns out to be wrong is
+rewritten in place, keeping its number.
+
 **Unit tests — intrinsic, but the scenarios are enumerated in the story**
 Implementation stories include unit tests as part of done. The specialist
 writes the tests during development, where the context is richest. Unit tests
@@ -197,9 +204,16 @@ follows the identifier is free. The identifier's position is the only fixed
 part. It is what lets a pre-dispatch check confirm every blocker is Done
 without depending on any particular wording after it.
 
+The same graph is also written as the tracker's own **blocked-by relation**, on
+every blocker this section names. The two are views of one graph, written in
+the same pass so they cannot disagree: this section is what the pre-dispatch
+check parses, and the relation is what a reader scanning the board sees without
+opening anything. Setting a relation is append-only — nothing later removes a
+wrong one — so it is rendered from the graph rather than corrected afterwards.
+
 **Assignment metadata**
 Every story carries three assignment fields, applied as labels at
-decomposition time:
+decomposition time, plus a point estimate in a native field — see below:
 
 - `surface` — one or more, applied as `surface:<name>`, e.g. `surface:web`.
   Each names a place work happens: a repo, or a project inside one. It is
@@ -233,3 +247,34 @@ decomposition time:
   a base turn count. The two are genuinely different axes. Tier is
   architectural weight and size is volume of work. A story can be light on one
   and heavy on the other.
+
+**Estimate — a number, not a label**
+Every story also carries a point estimate in the tracker's own estimate field.
+Native field rather than a label, deliberately: the label set is not growing,
+and a number wants to be sortable and summable.
+
+Points are **relative effort within this epic**, on the scale 1, 2, 3, 5, 8.
+They are not hours and never convert to them. The scale is a default a team may
+tune. What is invariant is that a story's points agree with its `size` label,
+which is the coarse form of the same judgment:
+
+| `size` | points |
+|---|---|
+| small | 1 or 2 |
+| medium | 3 or 5 |
+| large | 8 |
+
+A story that wants more than 8 is not a large story. It is two stories.
+
+The estimate is a **best guess, offered for a human to correct.** Decompose
+derives it from what the story itself states: how many acceptance criteria,
+how many touchpoints and surfaces, whether the work extends something that
+already exists or builds something new, and how many unknowns the story still
+names. That reasoning is worth one clause in the checkpoint, so a PM can see
+what drove a number they disagree with.
+
+Nothing in the pipeline gates on points. No dispatch reads them, no check
+fails on them, and a wrong one costs nothing but a correction. They exist for
+the humans deciding how much to release and in what order — which is why they
+are proposed at the checkpoint rather than applied quietly, and why a number a
+human has changed is theirs and is never revised by an agent.

@@ -55,7 +55,11 @@ A story needs, in this order:
    Fringe cases (missing data, failed dependencies, unexpected actions,
    permission boundaries).
 4. **Acceptance criteria** — minimum three, if/when/then: one happy path,
-   one error/failure, one edge case drawn from the fringe cases.
+   one error/failure, one edge case drawn from the fringe cases. **Number
+   them.** The specialist traces each one to an implementation site and an
+   asserting test, and carries that trace into the pull request as one
+   checkbox per criterion for the reviewer to tick, so the numbering is the
+   link between a promise and the record that someone verified it.
 5. **Unit test scenarios** — one line per case the tests must cover, no
    test code. Every acceptance criterion is at least one scenario; every
    fringe case is one too.
@@ -65,11 +69,14 @@ A story needs, in this order:
    required even when there's nothing to list (write "No blocking
    dependencies." under it). A pre-dispatch check in this framework reads
    this heading literally and fails the whole dispatch if it's missing
-   entirely — this is the one section you must never omit.
+   entirely — this is the one section you must never omit. Whatever you
+   list here, also set as the story's **blocked-by relation**, so the
+   dependency shows on the board and not only inside the description. The
+   section is what the check parses; the relation is what a human sees.
 8. **References** (optional) — codebase anchors and evidence pointers, only
    if there's something concrete to point at.
 
-Labels:
+Labels and fields:
 - `surface:<name>` — **required**, must match a surface with an active
   record in the surface registry: the project's `Surfaces` document, with
   the epic's `Surfaces (override)` document layered on top. Never invent a
@@ -77,6 +84,11 @@ Labels:
 - `size:<small|medium|large>` and `tier:<small|mid|large>` — optional; if
   the developer doesn't know or care, say so and skip them rather than
   guessing.
+- **Point estimate** — optional, in the tracker's estimate field rather than
+  a label, on the 1/2/3/5/8 scale in `story-contract.md`. Offer a number and
+  let the developer correct it; skip it if they'd rather not have one. A bare
+  story has no sibling set to be relative to, so the guess is weaker here
+  than at decomposition — say so rather than implying precision.
 
 ## The conversation, step by step
 

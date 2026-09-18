@@ -54,7 +54,11 @@ An epic needs, in this order:
 7. **Evidence pointers** (optional but worth asking about) — screenshots,
    source notes, thread decisions by date.
 8. **Definition of done** — directional, not testable acceptance criteria
-   (that's story-level).
+   (that's story-level), and **enumerated, one completion fact per line**.
+   Decompose maps each line to the stories that satisfy it and refuses to
+   decompose a line with no story behind it, and the epic's signers tick the
+   lines one at a time at close. Two facts in one line hide a half-finished
+   epic behind one tick.
 
 No parent, no Project — this epic isn't part of any BRD.
 

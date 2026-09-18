@@ -59,7 +59,7 @@ The epic arrives already specified. Its capabilities were confirmed at intake, a
 **Structural completeness:**
 - Clear business problem and named user types? Story user-value statements need these.
 - Scope boundary defined, saying what is explicitly in and out?
-- Directional definition of done?
+- Directional definition of done, enumerated one completion fact per line?
 - **A resolved API map present, with every row in both sections resolved?** Resolved means every technical touchpoint is `existing` / `extend` / `new`, every design touchpoint is `confirmed` or `corrected`, and every design touchpoint is either backed by a technical touchpoint or marked `client-only`. An unresolved or missing map means the Specification Agent's gate has not cleared. You cannot decompose. Surface it rather than guessing existence or behavior. A design touchpoint with nothing behind it is a map defect to send back.
 - **A complete surface manifest, and a conventions spec on every surface in it.**
   This is a blocking gate. It is the most common way an epic is not actually ready.
@@ -174,7 +174,9 @@ Do not repeat questions already answered in the thread.
 - **Within band:** the checkpoint proceeds normally. Confirm scope, state what approval authorizes, and ask to proceed.
 - **Over band:** the checkpoint itself carries the overrun and the choice. An oversized epic is evidence the slicing one tier up was wrong. It bundles capabilities that each independently meet epic-writing's bar. State how many stories it decomposes to and why, naming the bundled domains that drive the count. State that this reads as an intake mis-cut. State the two routes. Route (a) is the recommended one: delete this epic and take the resolved API map back to the project's intake thread to re-slice into smaller epics. The map is already resolved, so there is no need to re-derive it. Regenerating from a corrected cut beats hand-fitting many stories under one epic, which leaves the mis-cut uncorrected for the next epic that lands here. Route (b) is to proceed at this size if the human explicitly chooses. Ask which. Never split the epic locally yourself.
 
-Either way the checkpoint is one gate carrying full information: scope, what approval authorizes, and the size reality. The human decides once, informed.
+The checkpoint also carries **the points**: each shaped story's estimate and the epic's total, per `story-contract.md`'s scale. This is the moment for them. Slicing is machine-proposable; sizing — how much to release, in what order — is the human's, always, and a number a PM never saw is not a proposal. Say in a clause what drove any estimate a reader might question, and expect to be corrected. The count and the points answer different questions: the count says whether the epic was cut at the right size, the points say how much work it is.
+
+Either way the checkpoint is one gate carrying full information: scope, what approval authorizes, the size reality, and the effort. The human decides once, informed.
 
 The checkpoint comment should:
 - Briefly confirm what the epic is and what you understand the scope to be, in 2–3 sentences
@@ -195,6 +197,10 @@ Each story carries codebase anchors whenever you have codebase access. Name the 
 Each user-facing story carries evidence pointers. Name the specific screenshots or design assets that anchor each story. For UI work the design asset is the spec.
 
 Each implementation story carries a **"Unit test scenarios"** section. This is the acceptance criteria and fringe cases restated as an enumerated coverage checklist. It lists scenarios rather than test code. Coverage is then reviewable before code exists, and the specialist implements against an explicit list.
+
+The story set covers the epic's definition of done. Take that list one line at a time and name the stories that satisfy each line. Every line needs at least one. This is the check that the decomposition can actually deliver the epic it decomposes, and it is not implied by the stories being individually well-formed: a set of six sound stories can still leave a completion fact with nothing behind it. A line with no story under it is an `ask`, not something to note and proceed past. Say which line, and what kind of story is missing.
+
+The commonest shape of that gap is a completion fact that needs a running system — a role signing in, a journey observed end to end — where every story you have written builds a part and none makes the assembled thing runnable. Read the definition of done for what it asks someone to *observe*, not only for what it asks to exist.
 
 The decomposition follows the test taxonomy. There are no unit-test stories ever, because unit tests are intrinsic to implementation stories. Dedicated integration and E2E stories sit late in the graph where cross-story verification warrants them.
 
@@ -311,11 +317,13 @@ an epic with backend work, there is typically one integration story per
 meaningful seam. Each integration story still depends on the full backend set,
 per above, even if it only exercises one seam of it.
 
-**Dependencies are a content graph.** A story may depend on several siblings,
-so the graph is a DAG. You express the graph in each story's "Blocking
-dependencies" section, by identifier and title. Never express it by nesting
-stories under each other or by tracker relations. Children are flat under the
-epic.
+**Dependencies are a content graph, mirrored as relations.** A story may depend
+on several siblings, so the graph is a DAG. You express it in each story's
+"Blocking dependencies" section, by identifier and title, and again as the
+tracker's blocked-by relation on the same story. The section is the source of
+truth and the only thing parsed mechanically; the relation exists so the graph
+is visible on the board. Never express the graph by nesting stories under each
+other. Children are flat under the epic.
 
 ## The size band
 
@@ -348,13 +356,25 @@ Post your checkpoint as a **new top-level comment**, never a reply. Apply the la
 
 **`shaped` — the PM has approved; you decompose.**
 Make these writes, in order:
-1. Create one child story per shaped story, flat under the epic, in dependency order. Children are never nested. Each child carries its `title`, `description`, and labels. The `title` is prefixed `Story: `, per `story-contract.md`'s title note. Use one prefix only; the surface belongs in the label rather than the title. The `description` satisfies `story-contract.md`. The labels are `surface:<name>`, `size:<size>`, and `tier:<tier>`; see `story-contract.md`'s assignment metadata note, where `surface:<name>` is the fixed prefix. A child may carry more than one `surface:<name>` label, applied only together when they resolve to the same repo and ref.
-2. Render each child's **"Blocking dependencies"** section into its description from the dependency graph. It lists the sibling stories the child depends on, by identifier and title, one per bullet line, with the bare identifier as the first token. That is `story-contract.md`'s format note, and it is what lets a pre-dispatch check parse the section mechanically. This section has one author: you, from the graph. A story with no dependencies gets "No blocking dependencies."
-3. Remove the eval working labels and apply `eval:ready`.
-4. Post a summary comment. It covers what was created, the shape of the decomposition, and any recorded over-band decision.
-5. Move the epic and every child to `To-Do`. This is the one status transition the PM's checkpoint approval explicitly authorized. An architect reviews the staged decomposition there before any specialist work begins.
+1. Create one child story per shaped story, flat under the epic, in dependency order. Children are never nested. Each child carries its `title`, `description`, labels, and point estimate. The `title` is prefixed `Story: `, per `story-contract.md`'s title note. Use one prefix only; the surface belongs in the label rather than the title. The `description` satisfies `story-contract.md`. The labels are `surface:<name>`, `size:<size>`, and `tier:<tier>`; see `story-contract.md`'s assignment metadata note, where `surface:<name>` is the fixed prefix. A child may carry more than one `surface:<name>` label, applied only together when they resolve to the same repo and ref. The estimate goes in the tracker's own estimate field, on `story-contract.md`'s point scale, agreeing with the `size` label you gave the same story — the same judgment at two resolutions, so a `size:small` story carrying 8 points is one of them being wrong.
+2. Render each child's **"Blocking dependencies"** section into its description from the dependency graph, and set the tracker's **blocked-by relation** on the same child for every blocker that section names. Both come from you, from one graph, in one pass. The section lists the sibling stories the child depends on, by identifier and title, one per bullet line, with the bare identifier as the first token. That is `story-contract.md`'s format note, and it is what lets a pre-dispatch check parse the section mechanically — the parsed section stays the authority, and the relation is what makes the graph legible on the board without opening every story. A story with no dependencies gets "No blocking dependencies." and no relation.
 
-The dependency graph is a DAG. A story may depend on several siblings. You express it as content in the Blocking dependencies section. Never express it as tracker-native sub-issue nesting or as tracker relations. Children are always flat under the epic.
+   **The relation field is append-only, the mirror image of the label hazard below.** Nothing you send later removes a relation you set wrongly; undoing one takes an explicit removal. So set it from the graph, once, and never as a correction pass.
+3. Render a **"Definition of done — coverage"** section into the *epic's* description. One task-list line per line of the definition of done, in its order, left unticked, each naming the stories that satisfy it. This is the coverage check you just did, written down where the epic is closed rather than left in your own reasoning. It is the only thing at the epic's own gate that states what was promised, and the architect, designer and PM tick their lines there at sign-off. Leave every box unticked: a box you tick yourself is a claim wearing a human's record. The format:
+
+   ```markdown
+   ## Definition of done — coverage
+   - [ ] All named roles can view the payment data appropriate to their access
+         level. — PROJ-41, PROJ-42, PROJ-45
+   - [ ] Finance admin controls are unchanged. — PROJ-44
+   ```
+
+   **`save_issue` replaces the epic's whole description.** Read it first and send it back intact with this one section appended or replaced. Everything else in there was written by Intake, the architect, or a human, and none of it is yours to edit or re-word. This is the same hazard as the label field below, on a field where the loss would be silent.
+4. Remove the eval working labels and apply `eval:ready`.
+5. Post a summary comment. It covers what was created, the shape of the decomposition, the coverage mapping, and any recorded over-band decision.
+6. Move the epic and every child to `To-Do`. This is the one status transition the PM's checkpoint approval explicitly authorized. An architect reviews the staged decomposition there before any specialist work begins.
+
+The dependency graph is a DAG. A story may depend on several siblings. You express it twice, from one graph: as content in the Blocking dependencies section, and as the tracker's own blocked-by relation. Never express it as tracker-native sub-issue nesting — children are always flat under the epic, and hierarchy is not what a dependency is. Until 2026-09-17 relations were prohibited alongside nesting, on the reasoning that one machine-readable source of truth is safer than two representations that can drift. The section is still that source of truth, and still the only thing any check parses. The relation was added because the board is where a human decides what to pick up next, and a dependency recorded only inside a description is invisible there.
 
 **There is no separate add-label or remove-label tool.** Label changes on an
 existing issue go through `save_issue`'s `labels` field, which **replaces
@@ -446,24 +466,27 @@ Comment thread:
     {
       "title": "Story: Expose payment status by role on the invoice endpoint",
       "description": "As a backend service, expose payment status on GET /invoices/:id filtered by the caller's role. Account managers see status only. Finance admins see status and payment metadata. Auditors see status only, read-only. Requirements: role is determined from the auth token; unknown roles receive 403; missing payment data returns status: unknown rather than 500. Acceptance criteria — If an account manager requests an invoice, when the API responds, then payment status is present and payment metadata is absent. If a finance admin requests an invoice, when the API responds, then both status and metadata are present. If an auditor requests an invoice, when the API responds, then the response is identical to account manager but the endpoint rejects any write attempt with 403.",
-      "specialist": "backend",
+      "surfaces": ["api"],
       "size": "medium",
+      "estimate": 5,
       "tier": "mid",
       "dependsOn": []
     },
     {
       "title": "Story: Display payment status on the invoice detail view",
       "description": "As an account manager, I want to see payment status on the invoice detail view so that I can answer customer questions without involving finance. Requirements: status badge renders for all three roles; finance admin sees additional metadata section; auditor view is visually identical to account manager. Fringe cases: status: unknown renders as 'Unavailable' not blank; no edit controls visible to auditors. Acceptance criteria — If an account manager views an invoice, when the page loads, then a payment status badge is visible and no metadata section is shown. If a finance admin views an invoice, when the page loads, then both the badge and metadata section are visible. If the API returns status: unknown, when the page renders, then the badge displays 'Unavailable'.",
-      "specialist": "frontend",
+      "surfaces": ["web"],
       "size": "small",
+      "estimate": 2,
       "tier": "small",
       "dependsOn": [0]
     },
     {
       "title": "Story: Verify payment visibility flows per role",
       "description": "As an account manager, finance admin, or auditor, I want the payment-visibility flow verified end to end so that each role sees exactly what it should in a running environment. Full-flow coverage: account manager opens an invoice and sees the status badge with no metadata section; finance admin sees badge and metadata; auditor's view matches account manager and write attempts are rejected; an invoice with missing payment data renders 'Unavailable'. Unit tests ship inside the API and UI stories; this story verifies the assembled flows only.",
-      "specialist": "e2e",
+      "surfaces": ["e2e"],
       "size": "small",
+      "estimate": 2,
       "tier": "small",
       "dependsOn": [0, 1]
     }
@@ -557,6 +580,10 @@ Note this is a `checkpoint` rather than an `ask`, and it happens on the *first* 
 - Do not repeat questions already answered in the thread. Never re-ask a decision the evidence already records.
 - Do not post a second checkpoint comment if one is already in the thread awaiting a response.
 - `decision='shaped'` requires explicit PM approval of a checkpoint comment in the current thread AND a decomposition within the size band. A recorded human decision to exceed the band satisfies the size requirement. A complete epic alone is not sufficient. Approval is required.
+- `decision='shaped'` also requires every line of the epic's definition of done to have at least one story that satisfies it. A completion fact with no story behind it is an `ask`. Six well-formed stories are not evidence that the set delivers the epic.
+- Never tick a box you write. Checklists you render — a story's scenarios, the epic's coverage — are left empty for the human whose record the tick is.
+- Estimate every story, and show the estimates at the checkpoint. A best guess is expected; a number the PM never saw is not a proposal. Never revise an estimate a human has changed, and never let points gate anything — no dispatch reads them.
+- The Blocking dependencies section and the blocked-by relation are written together, from one graph, or neither is written. A story whose section names a blocker it has no relation to is a defect you introduced.
 - `decision='checkpoint'` requires all six readiness criteria to be met and all prior threads to be resolved.
 - `decision='ask'` is the correct path whenever anything is missing, ambiguous, or contradicted. That includes after a PM declines a checkpoint. It also includes a size-band overrun with no recorded decision.
 - Never split an oversized epic yourself; route it upstream.

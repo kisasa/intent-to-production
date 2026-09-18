@@ -4509,3 +4509,200 @@ default. If that proves slow in practice, the skill is the fallback.
   checks the PR's diff against them. A mandatory-review flag on a PR that
   writes outside its surfaces is the natural next step, in the same family as
   the 2026-08-04 rule about diffs touching test files or environment config.
+
+## Acceptance criteria become checkable, at both tiers (2026-09-17)
+
+**The observation.** An epic ran from specification to its last story over nine
+days (2026-09-04 to 2026-09-13) and could not reach its definition of done. Its
+completion statement required four roles to sign in and reach an app reflecting
+their role; six stories were shaped against it, five merged clean, and the
+assembled result could not be started at all — no identity provider anywhere in
+the repository, no container-compose file, no route from browser to API, no CORS
+configuration.
+
+The gap was identified correctly on the first day and then seven times over: a
+runtime assumption the Specification Agent raised itself as a prose aside, two
+architect questions the same evening, and four specialist reports, each more
+explicit than the last, one of them under a heading that read "a defect below
+this story, for a human to route." No follow-up story was ever created. The
+final story was dispatched twice, four days apart, into identical conditions,
+and both specialists correctly refused to write a suite that could not pass.
+
+Three separate defects, at three tiers, all of the same kind: **something was
+promised, nothing checked whether the promise was kept, and the check that was
+missing was cheap in every case.**
+
+### Story tier: the specialist traces its criteria, the reviewer ticks them
+
+A story has carried numbered acceptance criteria and an enumerated unit-test
+scenario list since `story-contract.md` was written, both specifically so that
+coverage is reviewable before code exists. The completion report never walked
+them. Criteria appeared in exactly one place in that spec — under *Repairs*,
+"with the acceptance criterion each one restores" — cited only for work
+**outside** the story's scope. The one list authored to be checkable was the
+one thing nothing checked, and the reviewer's own surface, the PR diff, cannot
+answer whether a promise was kept.
+
+New step 7 in `agents/specialist.md`, placed after *Verify* so it is what
+decides done rather than a report about being done: every criterion is traced
+to an implementation site and an asserting test, **by reading**. The framing is
+deliberately `trace`, not `prove`. Asked to prove its own work an agent writes
+an argument, and an argument is persuasive by construction — a confident
+paragraph about why a criterion is probably handled is worth less than a blank
+row, because a blank row gets looked at. So the rule is a mapping, never a
+case: name where the criterion is satisfied, or name the gap.
+
+It is confined to what reading answers honestly. Existence is readable: is
+there code this criterion refers to, is there a test asserting *this*
+criterion. Sufficiency is not, and is not the specialist's to certify — that is
+what CI and the human reviewer are for. The same 2026-09-04 run is the evidence
+for that boundary: the Specification Agent asserted a runtime fact with the
+repository open, because reading steered by an assumption confirms the
+assumption.
+
+The trace carries into the PR body as a task list, one checkbox per criterion,
+**left unticked**. The tick belongs to the reviewer: the PR body, not the
+tracker comment, is the surface the developer is looking at when they decide to
+merge, and a tick there is a named human's record that they read the criterion
+and satisfied themselves it holds. A box the specialist ticks itself is a claim
+wearing a human's record. Nothing blocks on an unticked box — nothing in this
+repository has standing to block a merge, and the human judgment at this gate
+is wanted rather than tolerated. What changes is that merging with a gap
+becomes a choice instead of an oversight, and at epic close the merged PRs say
+which small things were carried deliberately.
+
+`story-contract.md` now fixes the criterion numbering, since the trace, the
+checkbox and the tick all key on it.
+
+### Epic tier: the definition of done becomes an enumerated, human-ticked list
+
+`epic-writing.md` asked for the definition of done as a directional
+*statement*. A paragraph cannot be checked off in parts, and the skill's own
+good example — all named roles can view the payment data appropriate to their
+access level, finance admin controls unchanged — was two completion facts
+behind one full stop. It is now an enumerated list, one fact per line, still
+directional: testable criteria remain story-level. Two facts joined by "and"
+hide a half-finished epic behind one tick.
+
+Decompose gains the check the run most obviously lacked: **every line of the
+definition of done needs at least one story behind it, and a line with nothing
+behind it is an `ask`.** Stated explicitly as not implied by the stories being
+individually well-formed, because in this run they were. The commonest shape of
+the gap is named directly — a completion fact that needs a *running* system,
+where every story builds a part and none makes the assembled thing runnable —
+with the instruction to read the definition of done for what it asks someone to
+*observe*, not only for what it asks to exist.
+
+That mapping is then written down, as a "Definition of done — coverage" task
+list in the **epic's description**. The description rather than a comment, so
+the checkboxes are interactive and cannot scroll away. The epic issue rather
+than the epic's pull request, for a concrete reason: epic sign-off is architect,
+designer and PM, and two of those three do not work in GitHub at all. A
+checklist in a PR body is one the designer will never tick. The step carries the
+`save_issue` hazard explicitly — that call replaces the whole description, which
+was written by Intake or a human and is not Decompose's to re-word.
+
+Carried gaps roll up at close without new machinery: story PR bodies become
+squash-merge commit messages on the epic branch, so every unticked row is
+already in `git log` when the epic's own PR is raised by hand.
+
+### Specification tier: two gates on the agent that started it
+
+**A conventions spec describes where a surface is going, not what runs there.**
+The gate in step 3 already refused to infer a runtime from a sibling surface,
+and then handed the conventions spec away in one sentence — "It is not your
+concern here" — which is the door the assumption walked through. Any claim that
+something already runs is now checked by reading the repository in the same run
+before it can become anything other than a question, and finding nothing is a
+row in the map addressed to the architect, never a non-touchpoint reasoned past.
+"It should already be there" is named as the sentence to distrust in one's own
+drafting.
+
+**An agent's own open question gates its own resolution label.** This one is
+mechanical rather than tidy, and the mechanism is the part worth preserving:
+applying `spec:resolved` is the same act as dropping the awaiting labels, and a
+reply to an epic holding no awaiting label wakes no lane. Resolving over an open
+question does not leave it open — it makes it permanently unanswerable, which is
+why the architect's two questions that evening have no agent reply anywhere.
+A question now lives in one of two places, a row of the map or an awaiting
+label, and prose outside both is not asked but mentioned. No new label was
+added: `spec:awaiting-answers` already exists for precisely this case, and the
+label set is deliberately not growing. "Tell me if that is wrong" is called out
+as a caveat wearing a question's clothes — it moves a checkable fact onto the
+reviewer and stops nothing if no one answers.
+
+This is the second occurrence of the class. `swim-lanes.ts` already records the
+first: a pre-draft question matched neither the first-pass trigger nor any
+awaiting label, and the fix then was to add `spec:awaiting-answers` for that one
+case. The rule above is the general form, enforced in the definition rather than
+by a third label.
+
+### What this settles, and what it leaves as it is
+
+Escalations still land in story comment threads, and story threads are still
+read at exactly one moment — dispatch, by the specialist working that story.
+Four correct specialist reports still had nowhere to become work. That is left
+alone deliberately rather than overlooked: an escalation wants a container, and
+the candidates (a seventh status, a label, an unscoped story parked in Backlog)
+are a Kanban design decision for the Claude Project, against a deliberate
+ceiling of six statuses and an explicit preference not to grow the label set.
+What this session does instead is make the same information visible at two
+gates a human already stands at, which is cheaper and spends no primitive.
+
+Merge stays ungated and human. The post-mortem that prompted this work named
+merge automation as the highest-leverage fix; there is no merge automation in
+this repository to change — `awaitPullRequestOutcome` only watches a PR until it
+merges or closes. A required check would have to live in the target repo, and it
+would need a machine-readable escalations field to gate on, which the trace
+above is deliberately not: it is written for a human reader.
+
+Re-dispatch into unchanged blocking conditions stays as it is too, with the
+cheap path recorded for whenever it is wanted: `dispatch-worker`'s `getIssue`
+already maps every comment body and nothing consumes it, so a prior-Blocked
+guard in `checkDependencies` needs no new tracker read.
+
+### Dependencies gain a relation, stories gain a number (2026-09-17, same session)
+
+Two additions on request, both at story creation.
+
+**The dependency graph is now written twice.** The `Blocking dependencies`
+section stays exactly as it was and stays the source of truth — it is the only
+representation anything parses, in `checkDependencies` — and the tracker's own
+blocked-by relation is set on the same story from the same graph in the same
+pass. This reverses half of a rule: relations were prohibited alongside
+sub-issue nesting, on the reasoning that one machine-readable representation is
+safer than two that can drift. The nesting half stands; children are flat and
+hierarchy is not what a dependency is. The relations half was wrong in one
+respect the original rule did not weigh: the board is where a human decides
+what to pick up next, and a dependency recorded only inside a description is
+invisible there. Drift is handled by provenance rather than by prohibition —
+one graph, one pass, both writes, and the parsed section wins if they ever
+disagree. The `blockedBy` field is append-only, which is the mirror image of
+the `labels` hazard already documented in the same file: a wrong relation is
+not cleaned up by a later save, so it is rendered from the graph rather than
+corrected afterwards.
+
+**Stories carry a point estimate**, in the tracker's native `estimate` field
+rather than a label — the label set is deliberately not growing, and a number
+wants to be sortable and summable. The scale is 1/2/3/5/8, a team-tunable
+default, and it must agree with the story's `size` label, which is the coarse
+form of the same judgment: small is 1–2, medium 3–5, large 8, and anything
+wanting more than 8 is two stories. `size` keeps its mechanical job of feeding
+`resolveMaxTurns`; points are for humans planning releases.
+
+The estimate is explicitly a best guess, derived from what the story itself
+states — criteria count, touchpoints, surfaces, extend-versus-new, named
+unknowns — and it is proposed at the checkpoint with the per-story numbers and
+the epic total. That placement is the point: slicing is machine-proposable,
+sizing is human always, and a number the PM never saw is not a proposal.
+Nothing gates on points, no dispatch reads them, and a number a human has
+changed is theirs and is never revised by an agent.
+
+Both are mirrored in `ad-hoc-story-creation` for hand-filed stories, where the
+estimate is offered rather than assumed — a bare story has no sibling set to be
+relative to, and the skill says so rather than implying precision.
+
+Noticed while editing the same example and fixed: the `shaped` example still
+carried a per-story `"specialist"` field, vocabulary retired 2026-08-08 when
+the four type-specific definitions collapsed into one keyed by `surface`. It
+now reads `"surfaces"`.

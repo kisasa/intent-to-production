@@ -179,7 +179,11 @@ might be assumed in scope is named and placed.
 ### Definition of done
 A directional statement of complete. Acceptance criteria belong at story
 level. This statement is clear enough that slicing has a stopping condition.
-State it as capabilities delivered rather than implementation completed.
+State it as capabilities delivered rather than implementation completed. This
+is the document's own directional statement; the slice epics cut from it carry
+their own definition of done, enumerated one completion fact per line, because
+each of those lines is mapped to stories and ticked separately at epic close —
+see `epic-writing`.
 
 ### Design order of work — optional, recorded only when the designer is present
 The designer works one area at a time and designs the next area while the
