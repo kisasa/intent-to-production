@@ -97,17 +97,29 @@ Evaluation Agent carries the relevant pointers into each story. The specialist
 resolves them itself, retrieving each artifact through the tracker connector.
 
 **Definition of done**
-A directional statement of when this epic is complete. Testable acceptance
-criteria are story-level. It is a clear enough signal that a Story Writer can
-work toward it and the pipeline knows when to stop generating stories.
+A directional statement of when this epic is complete, written as an enumerated
+list. Testable acceptance criteria are story-level. These stay directional:
+clear enough that a Story Writer can work toward them and the pipeline knows
+when to stop generating stories.
+
+**Enumerate them, one fact per line.** A prose paragraph cannot be checked off
+in parts, and this list is checked off in parts. Decompose maps each line to
+the stories meant to satisfy it, and at epic close the architect, designer and
+PM tick the lines they have verified. The line is the unit of that record, so
+each one states a single completion fact. Two facts joined by "and" hide a
+half-finished epic behind one tick.
 
 These completion criteria also anchor the Intake Agent's per-slice readiness
 test. A slice is viable only if this section can be written for it without
 inventing facts beyond the brief, its attachments, and the intake thread.
 
-- Good: "All named roles can view the payment data appropriate to their
-  access level. Finance admin controls are unchanged."
-- Bad: "The feature is working."
+- Good:
+  1. "All named roles can view the payment data appropriate to their access
+     level."
+  2. "Finance admin controls are unchanged."
+- Bad: "The feature is working." Nothing stated, nothing to tick.
+- Bad: "All roles see the right data and admin controls are unchanged." Two
+  facts, one tick — half of it can fail invisibly.
 
 ---
 
@@ -120,7 +132,8 @@ inventing facts beyond the brief, its attachments, and the intake thread.
 | Outcome stated technically | "Add a REST endpoint for payment status" | State what the user can do that they cannot do now |
 | Missing system context | No mention of current state or constraints | Describe what exists today and what affects the approach |
 | Unbounded scope | "Improve the payment experience" | Define which surfaces, roles, and behaviors are in scope |
-| No definition of done | Epic ends after problem description | Add a directional statement of what complete looks like |
+| No definition of done | Epic ends after problem description | Add an enumerated list of directional completion facts |
+| Definition of done as one paragraph | "Roles see the right data and admin controls are unchanged" | Split into one line per completion fact — each is ticked separately at close |
 | Contradictory requirements | Description says "admins only"; a comment says "all users" | Resolve before evaluation — contradictions block story-writing |
 
 ---

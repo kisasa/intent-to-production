@@ -184,6 +184,44 @@ project's diverge, and it is forbidden regardless of how reasonable it looks at
 the time. If a test is genuinely wrong, say why in your report and fix it as a
 stated change, not a quiet one.
 
+### 7. Trace the criteria
+
+You are not done when the tests pass. You are done when every acceptance
+criterion has a place in the code and a test that asserts it, and you have read
+both.
+
+Take the criteria one at a time. For each, name two things: the file and symbol
+that implements it, and the test that asserts it. That mapping is the trace.
+Build it by reading — the criterion, then the code, then the test.
+
+Ask only what reading can answer. Is there code this criterion refers to? Is
+there a test that asserts *this* criterion, rather than something adjacent to
+it? Existence is readable. Sufficiency is not, and it is not yours to certify:
+CI is the independent check on your own green, and the reviewer reads the diff.
+
+**A trace is a mapping, not a case.** Do not argue that a criterion is
+satisfied. Name where it is satisfied, or name the gap. A paragraph explaining
+why a criterion is probably handled is worth less than a blank row, because a
+blank row gets looked at.
+
+Three things the trace turns up, each with a different answer:
+
+- **A criterion with no asserting test, in code you own.** That is unfinished
+  work, not something to report. A criterion that demands an order against a
+  test that asserts only presence is a gap you close now, while the context is
+  still live.
+- **A criterion with no implementation site at all.** Re-read the scope
+  boundary. Either you missed it, or the story asked for something a sibling
+  story covers — which is a dependency the story graph missed.
+- **A criterion whose implementation site would have to live in another
+  surface.** You cannot close it. Report it and name the surface that would —
+  see "What you may repair" below. This is the one that otherwise reaches the
+  end of an epic undetected.
+
+Never call a criterion traced on the strength of a passing suite. A green suite
+proves the assertions you wrote. It says nothing about the promises the story
+made.
+
 ---
 
 ## What you may repair
@@ -230,6 +268,39 @@ list of them across an epic needs to tell at a glance which story each one is.
 The pull request is the deliverable. Another developer reviews and merges it.
 You never merge it yourself.
 
+**The pull request body.** The body carries the trace, as a task list: one
+checkbox per acceptance criterion, in the story's order. Under each, the
+implementation site and the test that asserts it. Where the trace broke, mark
+the row and say in one sentence what is missing and which surface would close
+it. The tracker comment is the record of the run; this is the surface the
+reviewer is actually looking at when they decide to merge.
+
+```markdown
+## Acceptance criteria
+
+- [ ] **A manager sees the Approvals section.**
+      `nav-sections.ts` → `sectionsForRoles`, asserted by
+      `nav-sections.test.ts` "includes Approvals for a manager", which checks
+      the section renders and where it sits.
+- [ ] **An unreadable role falls back to the signed-out shell.**
+      `nav-sections.ts` → `sectionsForRoles` early return, asserted by
+      `nav-sections.test.ts` "renders the signed-out shell when the role claim
+      is absent".
+- [ ] ⚠️ **Two roles merge, deduplicated, in the configured order.**
+      Deduplication is asserted. The order is not: configured order comes from
+      `nav-config.ts`, which carries no multi-role case today. This surface
+      cannot settle what that order should be.
+```
+
+**Leave every box unchecked.** The tick is not yours. It is the reviewer's
+record that a person read the criterion and satisfied themselves it holds, and
+at the end of an epic it is the only thing that says which small things were
+carried deliberately. A box you tick yourself destroys both.
+
+Keep the whole list even when every row traces. A list with no gaps is
+information too, and a reviewer cannot tell "no gaps" from "no list" unless you
+show them.
+
 CI runs on your PR. It is not redundant with your own verification. You
 iterating to green is a claim. CI is the independent check on it.
 
@@ -238,13 +309,16 @@ There is no label. The comment is the record.
 
 | Outcome | When |
 |---|---|
-| Complete | The work is done, tests pass, the PR is open. |
+| Complete | The work is done, every criterion traced or its gap reported, tests pass, the PR is open. |
 | Waiting | A blocking dependency is not merged. Nothing was written. |
 | Blocked | Something stopped you that you will not guess past — a missing conventions spec, a broken branch chain, a gap in the story, a defect below the epic branch. |
 
 **The completion report covers:**
 
 - **What was built** — the change, and any decisions worth knowing about.
+- **Acceptance criteria** — the trace: every criterion, its implementation site
+  and the test that asserts it, or its gap. The same list the PR body carries.
+  Anything the trace could not close names the surface that would close it.
 - **Tests** — what you wrote, and the result of running the surface's existing
   tests alongside them.
 - **Repairs** — anything you fixed outside your story's scope, with the
@@ -256,6 +330,8 @@ There is no label. The comment is the record.
   decided. This is feedback to the shaping tier. Surface it rather than burying
   it. If the comment thread already answered something for you, say so. That
   the clarification loop worked is worth knowing.
+  An assumption that bears on a criterion belongs beside that criterion in the
+  trace, not down here where it is separated from the promise it affects.
 
 ## References
 
@@ -287,6 +363,12 @@ for the reviewer to resolve at merge time.
 - Cite the acceptance criterion for any fix outside your story's scope.
 - Run the surface's existing tests, not only your own.
 - Never weaken a test to make it pass.
+- Trace every acceptance criterion to an implementation site and an asserting
+  test before you open the PR. A criterion you cannot trace is unfinished work
+  or a report, never a silent pass.
+- Never argue that a criterion is met. Name where it is met, or name the gap.
+- Carry the criteria into the PR body as a task list, and leave every box
+  unchecked. The tick belongs to the reviewer.
 - Never build against an assumed contract when you could read the real one.
 - Do not guess when blocked. Surface it. A blocker you name is a useful run. A
   blocker you paper over is a defect nobody can see.
