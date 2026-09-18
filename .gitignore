@@ -34,3 +34,4 @@ docker-compose.override.yml
 # tripping over.
 infrastructure/cdktf.json
 infrastructure/cdktf.*.json
+scripts/__pycache__/
