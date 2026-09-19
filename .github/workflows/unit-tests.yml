@@ -70,10 +70,11 @@ jobs:
         run: npm run typecheck
 
       # dispatch-worker's workflow tests start a real local Temporal test
-      # server, which downloads a dev-server binary on first run — a cold run
-      # is around a minute and a half against nine seconds warm. It is worth
-      # it: those tests execute the real workflow code against mocked
-      # activities, which is the only place the dispatch sequence is checked
-      # end to end.
+      # server, which downloads a dev-server binary on first run. That looked
+      # like the expensive job — a cold local run took around a minute and a
+      # half against nine seconds warm — but measured here it is 25s, against
+      # 18s and 12s for the other two. Cheap, and the only place the dispatch
+      # sequence is checked end to end: those tests execute the real workflow
+      # code against mocked activities.
       - name: Unit tests
         run: npm run test:unit
