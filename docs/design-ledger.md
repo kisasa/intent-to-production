@@ -4706,3 +4706,77 @@ Noticed while editing the same example and fixed: the `shaped` example still
 carried a per-story `"specialist"` field, vocabulary retired 2026-08-08 when
 the four type-specific definitions collapsed into one keyed by `surface`. It
 now reads `"surfaces"`.
+
+## The specialist sandbox gains Python and .NET, and restores are locked (2026-09-19)
+
+Prompted by reviewing a merged story whose acceptance-criteria checklist had
+been ticked eighteen minutes *after* the merge. The checklist itself worked —
+it named the two criteria nobody had verified, in the words the story used —
+but reading the run turned up a second thing underneath it.
+
+**The image was Node-only, which made one of the specialist's own rules
+unfollowable.** Its definition says "run the surface's existing tests, not only
+your own," and this ledger's isolation decision says "unit tests run in this
+same sandbox — mocked, no nested Docker needed." Neither held on a Python or
+.NET surface, because neither interpreter was in the image. Observed on a
+2026-09-18 run against a Python surface: the specialist wrote 22 new test
+cases, could not execute one of them, and said so — "CI was the first
+execution." The consequence is sharper than a missing convenience. On those
+surfaces, "CI is the independent check on your own green" was simply false,
+because there was no green for it to be independent of. The honesty of the
+report is what made it visible; a less candid agent would have produced the
+same gap silently.
+
+So the image now carries `python3` with Poetry and the .NET SDK alongside
+Node, with versions matched to the surfaces' own CI workflows and verified in
+the built image as the runtime user. Two build args (`POETRY_VERSION`,
+`DOTNET_CHANNEL`) let an engagement retarget versions without editing the
+Dockerfile. Python is deliberately not among them: it comes from the base
+image's Debian release, because an apt pin on top of that installs a second
+interpreter and leaves `python3` resolving to the wrong one.
+
+**Docker stays out, and that is not a gap this closed.** Fargate offers no
+privileged mode and no socket mount, which is why integration and E2E
+execution live in GitHub Actions. The two criteria that went unverified on the
+run above needed a live container, and no toolchain in this sandbox would have
+closed them — that is a CI check or a human at a terminal, and conflating the
+two problems would have bought the wrong fix.
+
+**Restores are locked to the committed manifest.** Weighed against the
+alternative of withholding toolchains to limit what the specialist can pull,
+and rejected on the evidence: the sandbox's egress is already `0.0.0.0/0` (a
+known gap, since the endpoints it needs publish no stable IP ranges), and
+`npm install` already uses that path with `NODE_ENV=development` set so
+devDependencies resolve. Withholding Python and .NET would not have narrowed
+that boundary by one address; it only kept two of four surfaces from running
+their own tests. The boundary that bites is the forward proxy, which remains
+where it was.
+
+What locking does buy is the difference between *restoring declared
+dependencies* and *choosing new ones*: `npm ci`, `poetry check --lock`, and
+`dotnet restore --locked-mode` all read a committed file, so adding a package
+becomes an edit to that file — visible in the diff, in front of the reviewer —
+rather than something that happens inside a container nobody watched.
+
+**The three ecosystems do not behave alike, and the .NET one is a trap.**
+Verified in the built image, all six cells:
+
+| | no lock file | lock present, drifted |
+|---|---|---|
+| `npm ci` | fails | fails |
+| `poetry check --lock` | fails | fails |
+| `dotnet restore --locked-mode` | silently passes | fails `NU1004` |
+
+With no `packages.lock.json`, `--locked-mode` restores normally and reports
+success. A solution carrying no lock file therefore gets a check that means
+nothing, which is worse than no check because the next reader believes it.
+The specialist's definition states this rather than hiding it behind the flag:
+a missing lock file is a finding it reports, not a fallback it takes.
+
+That the conventions layer already held this ground is worth recording. On the
+same 2026-09-18 run the specialist volunteered, unprompted, that "adding a
+Python package is an architect decision here" and that none was needed. The
+rule lived in that surface's conventions spec and was honoured. Locking makes
+the self-report unnecessary rather than load-bearing, which is the right
+direction for a control that currently depends on an agent choosing to
+mention it.

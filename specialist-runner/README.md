@@ -160,11 +160,64 @@ non-root `node` user, installed and launched `chromium-headless-shell`
 against a `data:` URL — no crash, where before the fix it failed
 immediately.
 
+## Toolchains
+
+The image carries `node`, `python3` + Poetry, and the .NET SDK, plus `git` and
+`curl`. Versions are matched to the reference CI workflows rather than chosen
+here, and verified in the built image as the runtime `node` user:
+
+| | version | how it is pinned |
+|---|---|---|
+| Node | 22 | the base image, `node:22-slim` |
+| Python | 3.11.2 | the base image's Debian release (bookworm), not an apt pin |
+| Poetry | 2.4.3 | `POETRY_VERSION` build arg, installed via `pipx` |
+| .NET SDK | 10.0.401 | `DOTNET_CHANNEL` build arg (`10.0`) |
+
+Python and .NET arrived 2026-09-19. Before that the image was Node-only, which
+made one of the specialist's own rules unfollowable — the definition says "run
+the surface's existing tests, not only your own," and the design ledger's
+isolation decision says "unit tests run in this same sandbox," and neither held
+on a Python or .NET surface. Observed on a 2026-09-18 run against a Python
+surface: the specialist wrote 22 new test cases, could not execute one of them,
+and reported that CI was the first execution. On those surfaces "CI is the
+independent check on your own green" was false, because there was no green for
+it to be independent of.
+
+The two build args exist so an engagement can retarget the image without
+editing the Dockerfile. Python is the deliberate exception: it comes from the
+base image's Debian release, because an apt pin on top of that installs a
+second interpreter and leaves `python3` meaning the wrong one. A surface
+needing a different minor is a base-image decision.
+
+### Locked-mode restore
+
+The specialist restores from committed lock files and never resolves fresh
+(`agents/specialist.md`, "Do the work"). The three ecosystems do not behave
+alike, and the difference is worth knowing before trusting any of them:
+
+| | no lock file | lock present, drifted |
+|---|---|---|
+| `npm ci` | fails | fails |
+| `poetry check --lock` | fails | fails |
+| `dotnet restore --locked-mode` | **silently passes** | fails `NU1004` |
+
+Verified in the built image, all six cells. The .NET cell is the trap: with no
+`packages.lock.json` the flag restores normally and reports success, so a
+solution that carries no lock file gets a check that means nothing. Enabling it
+for real needs `RestorePackagesWithLockFile` set in the target repo and the
+resulting lock files committed — a change in that repository, not this one.
+
 ## Known gaps
 
-- **Node-only target surfaces.** The image ships `node` + `git`, nothing else.
-  A non-Node surface needs a broader image or a per-dispatch toolchain step —
-  not built until an actual non-Node surface needs a specialist run.
+- **The toolchain set is engagement-shaped.** Node, Python and .NET are here
+  because the surfaces in front of this framework use them. A surface built on
+  anything else needs the image extended; the two build args cover a version
+  change, not a new ecosystem.
+- **No Docker, deliberately, and not coming.** Fargate offers no privileged
+  mode and no socket mount, which is why integration and E2E execution live in
+  GitHub Actions (design ledger, "Integration and E2E run in GitHub Actions").
+  A criterion that needs a running stack cannot be closed in this sandbox at
+  any toolchain level — it needs a CI check or a human at a terminal.
 - **No sibling-repo reads.** `workspace.ts` clones only `SURFACE_REPO`. A
   full-stack epic's frontend story confirming the real backend contract needs
   the app to know which sibling repos exist for a given epic — nothing does
@@ -181,6 +234,13 @@ npm run test:unit
 ```bash
 docker build -f Dockerfile .
 ```
+
+`./smoke-test.sh` builds the image and verifies it against the claims this
+file makes about it — the toolchain versions, the unprivileged runtime user,
+the continued absence of Docker, and all six locked-restore cells. Local only,
+deliberately not in CI: it needs a Docker daemon, and what it guards changes
+only when someone edits the Dockerfile. Run it then. `--image <tag>` skips the
+build and checks an image already built.
 
 No live run is possible from this repo alone — it needs real credentials and
 an actual story/epic/branch chain against a live target repo.
