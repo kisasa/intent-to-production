@@ -16,6 +16,12 @@ Each package (`webhook-listener/`, `dispatch-worker/`, `specialist-runner/`,
 `infrastructure/`) has its own `npm run typecheck` and `npm run test:unit`. Run
 both for whatever you touched.
 
+The first three also run on every pull request that touches them
+(`.github/workflows/unit-tests.yml`), so running them locally is for your own
+loop rather than for the gate. `infrastructure/` is not in that workflow yet —
+its typecheck needs generated provider bindings first — so that one is still
+yours to run.
+
 The repository-root `scripts/` are operator tools rather than application code,
 so they carry their own tests beside them. Run the one you touched:
 
