@@ -32,10 +32,10 @@ export function resolveReviewerLogin(mover: StoryMover | null, mapping: Map<stri
 }
 
 export function createRequestPullRequestReviewerActivity(config: WorkerConfig) {
-  return async function requestPullRequestReviewer(repoBase: RepoBase, prNumber: number, mover: StoryMover | null): Promise<void> {
+  return async function requestPullRequestReviewer(repoBase: RepoBase, prNumber: number, mover: StoryMover | null): Promise<string | null> {
     if (!mover) {
       log.debug("no story-mover identity on this dispatch — skipping reviewer-of-record request");
-      return;
+      return null;
     }
 
     const login = resolveReviewerLogin(mover, config.reviewerEmailToGithubLogin);
@@ -44,7 +44,7 @@ export function createRequestPullRequestReviewerActivity(config: WorkerConfig) {
         `no GitHub login mapped for reviewer-of-record "${mover.name}" <${mover.email}> — ` +
           `add it to REVIEWER_EMAIL_TO_GITHUB_LOGIN to request them automatically. Skipping.`,
       );
-      return;
+      return null;
     }
 
     const owner = repoBase.org;
@@ -61,11 +61,17 @@ export function createRequestPullRequestReviewerActivity(config: WorkerConfig) {
           `could not request "${login}" as reviewer on ${owner}/${repo}#${prNumber}: ` +
             `GitHub returned ${result.status} (${result.json.message ?? "no message"})`,
         );
-        return;
+      } else {
+        log.info(`requested "${login}" (reviewer-of-record, ${mover.email}) on ${owner}/${repo}#${prNumber}`);
       }
-      log.info(`requested "${login}" (reviewer-of-record, ${mover.email}) on ${owner}/${repo}#${prNumber}`);
     } catch (err) {
       log.warn(`reviewer-of-record request failed for ${owner}/${repo}#${prNumber}: ${err instanceof Error ? err.message : String(err)}`);
     }
+
+    // The login is returned even when the request itself failed: the review
+    // request is cosmetic, but matching this person's later reviews is not —
+    // revision rounds key on it, and a reviewer who was never formally
+    // requested can still submit one.
+    return login;
   };
 }

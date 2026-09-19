@@ -17,6 +17,7 @@ import { createDispatchSpecialistActivity } from "./activities/dispatch-speciali
 import { createFindPullRequestActivity } from "./activities/find-pull-request.js";
 import { createMoveStoryToTodoActivity } from "./activities/move-story-to-todo.js";
 import { createPostDispatchFailedActivity } from "./activities/post-dispatch-failed.js";
+import { createEditPullRequestNoticeActivity, createPostPullRequestNoticeActivity } from "./activities/pull-request-notice.js";
 import { createRequestPullRequestReviewerActivity } from "./activities/request-pull-request-reviewer.js";
 import { createResolveSurfacesActivity } from "./activities/resolve-surfaces.js";
 import { createPostSpecialistStartedActivity, createDeleteSpecialistProgressActivity } from "./activities/specialist-progress.js";
@@ -72,6 +73,8 @@ async function main(): Promise<void> {
       deleteSpecialistProgressComment: createDeleteSpecialistProgressActivity(config),
       findPullRequest: createFindPullRequestActivity(config),
       requestPullRequestReviewer: createRequestPullRequestReviewerActivity(config),
+      postPullRequestNotice: createPostPullRequestNoticeActivity(config),
+      editPullRequestNotice: createEditPullRequestNoticeActivity(config),
       awaitPullRequestOutcome: createAwaitPullRequestOutcomeActivity(config),
       postDispatchFailed: createPostDispatchFailedActivity(config),
       moveStoryToTodo: createMoveStoryToTodoActivity(config),

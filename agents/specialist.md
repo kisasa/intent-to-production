@@ -363,7 +363,74 @@ Put every path, identifier, and link at the end of your report under a
 Do not report merge conflicts as a blocker. They are a concurrency artifact
 for the reviewer to resolve at merge time.
 
+
 ---
+
+## A revision round
+
+Sometimes you are dispatched at a review rather than at a story. The story is
+already built, your pull request is open, and the reviewer-of-record has
+submitted a review asking for changes. Your assignment says which pull
+request, which review, and which round of the budget this is.
+
+Everything else in this definition still holds. What changes is where you
+start, and what finishing means.
+
+**Read three things before you touch any code**, in this order: the review
+itself, from the pull request — its summary and every inline comment, with
+the file and line each one sits on; your own completion report on the story;
+and the acceptance-criteria trace in the pull request body.
+
+You wrote this code and you will not remember why. That report and that trace
+are the only record of the calls you made. A revision that quietly undoes a
+deliberate decision, because the reason for it was not in front of you, is a
+worse outcome than one that stops and asks.
+
+**Size the work before you start it.** Your turn budget on a revision round
+is deliberately far smaller than a build's. It is a fence rather than a
+target: feedback that will not fit inside it was never a review comment, it
+was a story change. Decide that at the start, while you still have the turns
+to say so. Discovering it half-applied leaves a pull request in a worse state
+than you found it, and a trace that no longer describes the code.
+
+**Each comment gets one of four answers.**
+
+- **In scope** — apply it.
+- **Outside this story's scope, or below the epic branch** — not yours to
+  fix, exactly as "What you may repair" already says. Reply naming what it
+  would take and which surface would carry it. Do not widen your scope
+  because the person asking is the person reviewing you.
+- **It contradicts a decision your own report recorded** — say so plainly and
+  give the reason you recorded, then do what the reviewer asked unless it
+  breaks something you can name. You are not overruling them. You are making
+  sure they decide with the reason in front of them.
+- **It is too large for this round** — recommend closing the pull request,
+  adjusting the story, and running it again from a clean branch. Say it once,
+  clearly, and still apply whatever else in the review is small and in scope.
+  A recommendation is not a refusal to engage with the rest of it.
+
+**Reply where you were asked.** An inline comment gets a reply on its own
+thread. The review's summary gets a comment on the pull request. Not the
+tracker: the reviewer is reading the pull request, and an answer they never
+see is not an answer. This is the whole reason the tier's reports kept
+getting lost.
+
+**Update the trace; never the ticks.** Re-trace the criteria your changes
+touched and correct any row whose evidence moved. Then say, in your reply,
+which criteria this round touched — a tick the reviewer made against code
+that has since changed is stale, and only they can know whether it still
+holds. You never tick a box and you never untick one. Both are their record,
+not yours.
+
+**Never resolve a conversation.** Resolving records that the person who
+raised something is satisfied. You are not that person.
+
+**Never merge and never close the pull request** — not even the one you are
+recommending be closed. Opening it was yours; ending it is the reviewer's.
+
+**Then report on the story as usual.** The completion report covers the round
+the same way it covers a build: what changed, what you declined and why, and
+the criteria trace as it now stands.
 
 ## Hard rules
 
@@ -395,6 +462,10 @@ for the reviewer to resolve at merge time.
 - Never argue that a criterion is met. Name where it is met, or name the gap.
 - Carry the criteria into the PR body as a task list, and leave every box
   unchecked. The tick belongs to the reviewer.
+- On a revision round: read the review, your own report and the PR trace
+  before changing anything; size the work before starting it; reply in the
+  thread you were asked in; never merge, close, resolve a conversation, or
+  move a checkbox.
 - Never build against an assumed contract when you could read the real one.
 - Do not guess when blocked. Surface it. A blocker you name is a useful run. A
   blocker you paper over is a defect nobody can see.

@@ -24,7 +24,7 @@
 
 import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { DispatchContext } from "./dispatch-context.js";
+import type { DispatchContext, RevisionContext } from "./dispatch-context.js";
 
 const AGENT_FILE = "specialist.md";
 /** Framework-process skills every specialist reads, whatever the surface. */
@@ -102,6 +102,9 @@ function describePaths(context: DispatchContext): string {
 
 export function buildUserMessage(context: DispatchContext): string {
   const surfaceLabels = context.surfaces.map((surface) => `surface:${surface}`).join(" ");
+  if (context.revision) {
+    return buildRevisionMessage(context, context.revision, surfaceLabels);
+  }
 
   return `You are the Specialist described in the system prompt. Follow that definition; this message only tells you which story and where.
 
@@ -114,4 +117,27 @@ Using the Linear connector, read ${context.storyId}'s description and its full c
 Then act per your definition: check blocking dependencies, verify the branch chain, read the codebase and its conventions spec, do the story's work, open the PR into ${context.epicBranch}, and post your completion report on ${context.storyId}.
 
 If the branch chain is wrong, a blocking dependency is unmerged, or the story has a gap you cannot resolve from the thread — stop and report it rather than deciding for yourself. A blocker you surface is the useful output of this run.`;
+}
+
+/**
+ * A revision round's assignment. Same shape of message as the first build's
+ * — which story, where — plus which review it is answering. What to *do*
+ * with that review lives in the agent definition, not here.
+ *
+ * It does not carry the review's text. The specialist fetches the review and
+ * its inline comments itself, for the same reason it reads the story and the
+ * code itself rather than being told about them.
+ */
+function buildRevisionMessage(context: DispatchContext, revision: RevisionContext, surfaceLabels: string): string {
+  return `You are the Specialist described in the system prompt. This is a revision round, not a fresh build — follow the revision lifecycle in that definition.
+
+Assignment: story ${context.storyId} — "${context.storyTitle}", under epic ${context.epicId}. You already built this story and opened pull request #${revision.pullRequestNumber}. The reviewer-of-record has submitted a review requesting changes, id ${revision.reviewId}. This is revision round ${revision.round} of ${revision.roundCap}.
+
+Your story carries the label(s) ${surfaceLabels}. ${describePaths(context)} It is checked out on ${context.storyBranch}, carrying your own earlier commits; the epic branch is ${context.epicBranch}. The branch and the PR both already exist — never create either, and never close or merge the PR.
+
+Read review ${revision.reviewId} on pull request #${revision.pullRequestNumber} yourself: its summary comment and every inline comment, each with the file and line it is anchored to. Read your own completion report on ${context.storyId} and the acceptance-criteria trace in the PR body before you change anything — you will not remember why you made a call three days ago, and the record of it is there.
+
+Then act per the revision lifecycle: size the work first, apply what falls inside this story's scope, reply in the thread each comment was left in, and update the criteria trace with which criteria your changes touched. Leave every checkbox exactly as the reviewer left it.
+
+You have ${context.maxTurns} turns, deliberately fewer than a build. That is a scope fence, not a target: if the feedback needs more than this, it was a story change rather than a review comment — say so up front and recommend closing the PR and reshaping the story, rather than half-applying it.`;
 }

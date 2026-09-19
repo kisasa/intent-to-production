@@ -48,7 +48,10 @@ mechanical half of review already and the rest is judgment.
 5. **Development.** A developer moves a story to In Progress. The app cuts
    the branch and dispatches a specialist into a sandbox; the specialist
    opens a pull request carrying its acceptance-criteria trace; the developer
-   who moved the story reviews it against that list.
+   who moved the story reviews it against that list. A "request changes"
+   review sends the specialist back around on the same PR — up to three
+   rounds, on a tighter turn budget, replying in the thread it was asked in.
+   It never merges, closes, or ticks anything.
 6. **Epic completion.** When an epic's stories have merged, humans stand the
    branch up, run the E2E suite, and sign off against that checklist —
    architect, designer, PM — before it merges. Automating this is

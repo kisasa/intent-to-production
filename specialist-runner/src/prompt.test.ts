@@ -18,6 +18,7 @@ const context: DispatchContext = {
   frameworkRepo: "example-org/intent-to-production",
   frameworkRef: "main",
   maxTurns: 40,
+  revision: null,
 };
 
 describe("buildUserMessage", () => {
@@ -120,5 +121,52 @@ describe("buildSystemPrompt", () => {
     await expect(buildSystemPrompt(frameworkPath, surfaceRepoPath, { ...context, surfaceSkills: ["missing-skill"] })).rejects.toThrow(
       /Mandatory skill "missing-skill"/,
     );
+  });
+});
+
+describe("buildUserMessage — revision rounds", () => {
+  const revisionContext: DispatchContext = {
+    ...context,
+    maxTurns: 25,
+    revision: { round: 2, roundCap: 3, pullRequestNumber: 42, reviewId: 501 },
+  };
+
+  it("says which PR and which review it is answering, and where in the budget it sits", () => {
+    const message = buildUserMessage(revisionContext);
+    expect(message).toContain("#42");
+    expect(message).toContain("501");
+    expect(message).toContain("revision round 2 of 3");
+  });
+
+  it("sends it to read the review itself rather than handing it a copy", () => {
+    // Same reason it reads the story and the code itself: an agent given a
+    // pre-digested copy builds against the copy.
+    expect(buildUserMessage(revisionContext)).toMatch(/Read review 501 .* yourself/);
+  });
+
+  it("points it at its own prior report and the trace before it changes anything", () => {
+    const message = buildUserMessage(revisionContext);
+    expect(message).toContain("your own completion report");
+    expect(message).toContain("acceptance-criteria trace");
+    expect(message).toContain("before you change anything");
+  });
+
+  it("frames the smaller budget as a fence, with the recommendation to make when it does not fit", () => {
+    const message = buildUserMessage(revisionContext);
+    expect(message).toContain("25 turns");
+    expect(message).toContain("scope fence");
+    expect(message).toContain("closing the PR and reshaping the story");
+  });
+
+  it("forbids creating or ending anything, and leaves the checkboxes to the reviewer", () => {
+    const message = buildUserMessage(revisionContext);
+    expect(message).toContain("never close or merge the PR");
+    expect(message).toContain("Leave every checkbox exactly as the reviewer left it");
+  });
+
+  it("still leaves a first build's message untouched", () => {
+    const message = buildUserMessage(context);
+    expect(message).not.toContain("revision round");
+    expect(message).toContain("open the PR into");
   });
 });
