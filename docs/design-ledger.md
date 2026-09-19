@@ -4780,3 +4780,166 @@ rule lived in that surface's conventions spec and was honoured. Locking makes
 the self-report unnecessary rather than load-bearing, which is the right
 direction for a control that currently depends on an agent choosing to
 mention it.
+
+## The reviewer can send the specialist back around (2026-09-19)
+
+**What prompted it.** Several weeks of running the pipeline. A developer
+reviewing a story's pull request had two options for anything they wanted
+changed: fix it themselves, or re-run the story from scratch. Neither uses
+the thing already sitting there — an agent that has the story, the
+conventions and the branch, and that just wrote the code being reviewed. The
+ask was a third option: hand the feedback back and have it applied in the
+existing PR.
+
+**The trigger is GitHub's own "request changes" review.** One deliberate act
+the reviewer already performs, carrying a summary comment plus any number of
+inline comments anchored to a file and a line, and — unlike a stream of PR
+comments — with a boundary: submitting the review is the moment the reviewer
+is finished talking. It also clears the way a human expects, by the same
+person approving or by a dismissal, neither of which an agent can perform.
+
+Requesting changes does not block merging unless branch protection is
+configured to require it. That was accepted rather than worked around:
+whether to merge is the developer's call, and leaving it unblocked means a
+reviewer can always change their mind mid-loop instead of deadlocking.
+
+### Detection polls; it is not a webhook, and that was the interesting call
+
+The instinct was a GitHub webhook listener, on the grounds that it would pay
+for itself later. Three things argued against it for *this* feature.
+
+The workflow is already awake. `dispatchStoryWorkflow` does not end when the
+PR opens — it sits in `awaitPullRequestOutcome`, re-fetching that exact PR
+every two minutes until it merges or closes. Reading the review list is one
+more request on a call already going out, and two-minute latency against a
+human review cycle is nothing.
+
+A webhook's real cost is correlation, not the endpoint. GitHub knows a repo
+and a PR number; the workflow is keyed to a story. Something would have to
+map one to the other, and the workflow would have to be restructured to race
+a signal against the activity it is blocked in.
+
+And **GitHub does not automatically redeliver a failed webhook** — a delivery
+that fails, including one where the server takes more than ten seconds, is
+recorded and dropped. The listener is a single Fargate task whose deploys
+stop the old one before starting the new one, and CLAUDE.md is explicit that
+the resulting gap relies on the tracker's webhook retries. Linear retries;
+GitHub does not. A review submitted during a deploy would vanish, which is
+exactly the silent failure the development tier's "never silent" rule exists
+to prevent.
+
+A webhook earns itself the moment something *outside* a live workflow needs
+reacting to: the epic→BRD PR, which no workflow watches, or CI after a story
+merges. Not this.
+
+### The trigger is an unactioned review, never the review state
+
+A changes-requested decision persists on the PR until the reviewer clears it
+themselves — the specialist cannot, by design. So keying on the state would
+re-fire forever: round one finishes, the state is still CHANGES_REQUESTED,
+the next poll dispatches round two. The workflow carries the id of the last
+review it acted on and only a newer one counts. The watermark is the whole
+mechanism, and it is the thing that would have been easy to get wrong.
+
+Only the reviewer-of-record's reviews count. Otherwise any passer-by could
+spend an ECS task rewriting someone else's story, and "one named human owns
+this review" would quietly stop holding.
+
+### Three rounds, twenty-five turns
+
+Both numbers are the architect's. The cap is a diagnostic more than a cost
+guard: every round needs a human to sit down and submit a review first, so
+the loop cannot run away on its own. Reaching it is evidence the *story* was
+mis-shaped rather than the code being wrong — the same reading the size band
+takes of an over-band decomposition — so the exhaustion notice recommends
+closing the PR and reshaping the story rather than grinding on.
+
+The turn budget is deliberately unrelated to `resolveMaxTurns`'s tier/size
+calculation for a build. It is a scope fence: feedback that will not fit
+inside it was never a review comment, it was a story change. That only works
+if the specialist sizes the work *before* starting, so the definition makes
+that its first act — a round that runs out half-applied leaves the PR worse
+than it found it.
+
+### The specialist never ends anything
+
+It may recommend closing the PR; it may not close one, merge one, resolve a
+conversation, or move a checkbox — not even the close it is itself
+recommending. These are all the same rule, already established for the tick
+on 2026-09-17: the specialist does not perform acts that record a human's
+decision. Its replies go in the thread each comment was left in, because the
+reviewer is reading the PR, and an answer they never see is not an answer.
+
+### A re-run is a fresh start
+
+Closing a PR does not delete its branch, so the specialist's own
+"close it, reshape the story, run it again" recommendation walked straight
+into a re-dispatch silently building on top of abandoned work. Two changes
+close that.
+
+A PR closed without merging now moves the story back to To-Do. The workflow
+had been returning without doing so, leaving a story In-Process with nothing
+running and no PR being watched — the exact condition the 2026-08-07 rule
+retreats a story for, unhandled on that one path.
+
+And `createStoryBranch` refuses a dispatch onto a story branch that already
+carries commits the epic branch does not have. The test is `ahead_by` from
+the compare endpoint, not head equality: the epic branch moves forward as
+sibling stories merge, so a story branch cut an hour ago legitimately points
+at an older epic sha while carrying no work of its own, and comparing heads
+would refuse a perfectly good branch. Nothing is deleted — an agent never
+destroys commits — and the refusal names the branch deletion as the remedy so
+the fix is one command. The check sits in the app rather than the specialist
+because it is mechanical, and because failing there costs one API call
+instead of a whole container.
+
+### The reviewer mapping stopped being cosmetic
+
+`REVIEWER_EMAIL_TO_GITHUB_LOGIN` was best-effort by design: a missing entry
+meant a reviewer was not formally requested, which changes nothing about
+whether a human reviews the PR. Keying revision rounds on that login made it
+load-bearing — an unmapped mover means the developer requests changes and
+nothing happens, with nothing anywhere saying why.
+
+So the workflow announces it, once, when the PR opens: revision requests are
+off for this story, here is who could not be matched, here is the table to
+add them to, reviewing and merging are unaffected. The alternative considered
+was falling back to accepting any write-access reviewer, which fires more
+often but dissolves the reviewer-of-record property. Turning a silent gap
+into a visible one was preferred to widening who counts.
+
+Notifying the reviewer that a round finished is left to GitHub's own
+subscription rather than a fresh review request, so the person can silence it
+if they want to.
+
+### What the app says, and what it deliberately does not
+
+The app posts round started, round finished with the count remaining, rounds
+exhausted, and round failed. None of them says what the specialist did —
+that is the specialist's own reply, in its own words. Same split as the
+tracker notifier, which posts "working on it" and never a summary.
+
+Two smaller shapes worth recording. The exhaustion notice goes up the moment
+the cap is spent rather than when a fourth review arrives: a developer who
+submits one and hears nothing cannot tell a spent cap from a broken pipeline,
+and by then it is too late to tell them. And the PR notices are edited in
+place rather than deleted, which inverts the tracker's progress comment —
+that one is removed once the agent posts its own. A PR conversation is a
+review record people scroll back through when deciding to merge, so "round 2
+finished, one remaining" is exactly what belongs there later; a comment that
+vanishes leaves a hole where a round happened.
+
+The workflow cannot tell a round that applied the feedback from one that ran
+out of turns. `awaitSpecialistTask` returns on STOPPED whatever the exit code
+was, and nothing reads the specialist's own outcome — the same limit that has
+always applied to a first build, where the workflow infers what it needs by
+asking whether a PR now exists. So the app's notices state only what the app
+knows, and the mitigation for a misjudged budget lives in the definition
+rather than in the worker. A stale comment claiming a `read-specialist-
+outcome.ts` did this was corrected while here; that file was never built.
+
+### The story stays In-Process while a PR is open
+
+Including after the cap is spent. The work is genuinely live and the board
+should not say otherwise; the exhaustion notice lives on the PR, where the
+person who needs it is already looking.

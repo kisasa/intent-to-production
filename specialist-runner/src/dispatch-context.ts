@@ -52,6 +52,27 @@ export interface DispatchContext {
    * its own," so a caller must set this deliberately.
    */
   readonly maxTurns: number;
+
+  /**
+   * Set only on a revision round — the reviewer-of-record asked for changes
+   * on a PR this story already has open. Null means this is the story's
+   * first build, and the absence of these vars is the only thing
+   * distinguishing the two modes.
+   */
+  readonly revision: RevisionContext | null;
+}
+
+/**
+ * What a revision round is told. The review's prose and its inline comments
+ * are deliberately not passed: the specialist reads them from the PR itself,
+ * the same way it reads the story and the code. An agent handed a
+ * pre-digested copy builds against the copy.
+ */
+export interface RevisionContext {
+  readonly round: number;
+  readonly roundCap: number;
+  readonly pullRequestNumber: number;
+  readonly reviewId: number;
 }
 
 function requireEnv(name: string): string {
@@ -109,6 +130,31 @@ function surfacePathsFor(surfaces: Surface[], paths: string[]): string[] {
   return paths;
 }
 
+function requirePositiveInt(name: string): number {
+  const raw = requireEnv(name);
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${name}="${raw}" must be a positive integer`);
+  }
+  return value;
+}
+
+/**
+ * All four revision vars travel together or not at all. A partial set means
+ * the dispatcher is broken, and guessing at the missing half would produce a
+ * revision run that does not know which review it is answering — worse than
+ * refusing, because it would still open with confident-looking output.
+ */
+function optionalRevision(): RevisionContext | null {
+  if (!process.env.REVISION_ROUND) return null;
+  return {
+    round: requirePositiveInt("REVISION_ROUND"),
+    roundCap: requirePositiveInt("REVISION_ROUND_CAP"),
+    pullRequestNumber: requirePositiveInt("PULL_REQUEST_NUMBER"),
+    reviewId: requirePositiveInt("REVIEW_ID"),
+  };
+}
+
 export function loadDispatchContext(): DispatchContext {
   return {
     storyId: requireEnv("STORY_ID"),
@@ -123,5 +169,6 @@ export function loadDispatchContext(): DispatchContext {
     frameworkRepo: requireEnv("FRAMEWORK_REPO"),
     frameworkRef: requireEnv("FRAMEWORK_REF"),
     maxTurns: requireMaxTurns("MAX_TURNS"),
+    revision: optionalRevision(),
   };
 }

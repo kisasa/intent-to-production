@@ -5,11 +5,14 @@
  * `maxTurns`/no-timeout language), so a plain single-call activity with a
  * short default timeout is the wrong shape here.
  *
- * Only tells you the container exited, not why — `read-specialist-outcome.ts`
- * reads the actual complete/waiting/blocked label afterward, since by the
- * time the container exits the specialist has already posted it via its own
- * Linear MCP calls (or `specialist-runner`'s tracker-fallback path has, on a
- * startup failure).
+ * Only tells you the container exited, and returns on STOPPED whatever the
+ * exit code was. Nothing in the worker reads the specialist's own
+ * complete/waiting/blocked outcome — an earlier version of this comment
+ * pointed at a `read-specialist-outcome.ts` that was never built. The
+ * workflow infers what it needs from the world instead: whether a PR now
+ * exists, and later whether it merged. The specialist's own comment on the
+ * story carries the why, posted through its Linear MCP calls (or
+ * `specialist-runner`'s tracker-fallback path, on a startup failure).
  */
 
 import { DescribeTasksCommand, ECSClient } from "@aws-sdk/client-ecs";

@@ -26,9 +26,40 @@
  */
 
 import { proxyActivities } from "@temporalio/workflow";
+import type { PullRequestWatchResult } from "../activities/await-pull-request-outcome.js";
 import type { DispatchActivities } from "../activities/interface.js";
+import type { RepoBase } from "../activities/resolve-surfaces.js";
 import type { Surface, StoryMover } from "../activities/types.js";
 import { describeFailure } from "./describe-failure.js";
+import {
+  reviewerUnmatchedNotice,
+  revisionRoundFailedNotice,
+  revisionRoundFinishedNotice,
+  revisionRoundStartedNotice,
+  revisionRoundsExhaustedNotice,
+} from "./revision-notices.js";
+
+/**
+ * How many times a reviewer-of-record can send the specialist back around on
+ * one PR. Chosen by the architect (2026-09-19), and a diagnostic more than a
+ * cost guard: every round needs a human to sit down and submit a review
+ * first, so the loop cannot run away on its own. Reaching the cap is
+ * evidence the *story* was mis-shaped rather than the code being wrong —
+ * the same reading the size band takes of an over-band decomposition.
+ *
+ * Changing either constant changes workflow control flow, so an in-flight
+ * execution replayed against a new value would diverge. Treat a change as a
+ * versioned one (`patched()`) if any dispatch is live.
+ */
+const REVISION_ROUND_CAP = 3;
+
+/**
+ * Deliberately unrelated to `resolveMaxTurns`'s tier/size budget for the
+ * initial build. It is a scope fence: feedback that cannot be applied inside
+ * it was not a review comment, it was a story change, and the specialist is
+ * told to say so up front rather than half-apply it.
+ */
+const REVISION_MAX_TURNS = 25;
 
 // Domain-specific reason for a non-default retry policy (the SDK default is
 // generous — up to 100 attempts): these six all call external, rate-limited
@@ -46,6 +77,8 @@ const {
   deleteSpecialistProgressComment,
   findPullRequest,
   requestPullRequestReviewer,
+  postPullRequestNotice,
+  editPullRequestNotice,
   postDispatchFailed,
   moveStoryToTodo,
 } = proxyActivities<DispatchActivities>({
@@ -92,6 +125,13 @@ export interface DispatchStoryWorkflowResult {
 }
 
 export async function dispatchStoryWorkflow(input: DispatchStoryWorkflowInput): Promise<DispatchStoryWorkflowResult> {
+  // Held outside the try so the catch-all can reach the PR: once one exists,
+  // the person waiting on a failed revision round is reading the PR, not the
+  // tracker, and silence there is the failure this whole path exists to
+  // avoid. Null until the specialist has actually opened one.
+  let openPullRequest: { readonly number: number; readonly url: string; readonly repoBase: RepoBase } | null = null;
+  let revisionRound = 0;
+
   try {
     const dependencyCheck = await checkDependencies(input.storyId);
     if (!dependencyCheck.ready) {
@@ -138,19 +178,115 @@ export async function dispatchStoryWorkflow(input: DispatchStoryWorkflowInput): 
       return { outcome: "no-pr" };
     }
 
-    await requestPullRequestReviewer(repoBase, pr.number, input.mover);
-    const prOutcome = await awaitPullRequestOutcome(input.storyId, repoBase, pr.number, pr.url);
+    openPullRequest = { number: pr.number, url: pr.url, repoBase: repoBase };
 
-    return {
-      outcome: "complete",
-      pullRequest: { number: pr.number, url: pr.url, merged: prOutcome === "merged" },
-    };
+    const reviewerLogin = await requestPullRequestReviewer(repoBase, pr.number, input.mover);
+    if (!reviewerLogin) {
+      // Said once, now, rather than discovered later by a developer whose
+      // "request changes" review went nowhere. A missing mapping entry used
+      // to be purely cosmetic; keying revision rounds on it made it
+      // load-bearing, and an unmapped reviewer silently disables them.
+      await postPullRequestNotice(repoBase, pr.number, reviewerUnmatchedNotice(input.mover ? input.mover.name : null));
+    }
+
+    // Watermark, not review state. A "changes requested" decision persists
+    // until the reviewer clears it themselves, so triggering on the state
+    // would re-fire every poll; only a review newer than the last one acted
+    // on counts. See `await-pull-request-outcome.ts`.
+    let afterReviewId: number | null = null;
+
+    for (;;) {
+      const watch: PullRequestWatchResult = await awaitPullRequestOutcome({
+        storyId: input.storyId,
+        repoBase: repoBase,
+        prNumber: pr.number,
+        prUrl: pr.url,
+        reviewerLogin: reviewerLogin,
+        afterReviewId: afterReviewId,
+        watchForChangeRequests: revisionRound < REVISION_ROUND_CAP,
+      });
+
+      if (watch.outcome === "merged") {
+        return {
+          outcome: "complete",
+          pullRequest: { number: pr.number, url: pr.url, merged: true },
+        };
+      }
+
+      if (watch.outcome === "closed") {
+        // Nothing is running and nothing is left to watch, which is the
+        // condition that retreats a story to the gate a human has to re-open
+        // anyway. A closed PR is also where the specialist's "close it,
+        // reshape the story, run it again" recommendation lands, and that
+        // re-run starts from To-Do.
+        await moveStoryToTodo(input.storyId);
+        return {
+          outcome: "complete",
+          pullRequest: { number: pr.number, url: pr.url, merged: false },
+        };
+      }
+
+      revisionRound += 1;
+      afterReviewId = watch.changeRequest.reviewId;
+
+      const noticeId = await postPullRequestNotice(
+        repoBase,
+        pr.number,
+        revisionRoundStartedNotice(revisionRound, REVISION_ROUND_CAP),
+      );
+
+      const revisionTaskArn = await dispatchSpecialist({
+        storyId: input.storyId,
+        storyTitle: input.storyTitle,
+        epicId: input.epicId,
+        surfaces: input.surfaces,
+        repoBase: repoBase,
+        surfacePaths: target.surfaces.map((s) => s.path),
+        surfaceSkills: [...new Set(target.surfaces.flatMap((s) => s.skills))],
+        storyBranch: input.storyBranch,
+        epicBranch: input.epicBranch,
+        maxTurns: REVISION_MAX_TURNS,
+        revision: {
+          round: revisionRound,
+          roundCap: REVISION_ROUND_CAP,
+          pullRequestNumber: pr.number,
+          reviewId: watch.changeRequest.reviewId,
+        },
+      });
+
+      const revisionProgressCommentId = await postSpecialistStarted(input.storyId);
+      await awaitSpecialistTask(revisionTaskArn, revisionProgressCommentId);
+      if (revisionProgressCommentId) {
+        await deleteSpecialistProgressComment(revisionProgressCommentId);
+      }
+
+      if (noticeId !== null) {
+        await editPullRequestNotice(repoBase, noticeId, revisionRoundFinishedNotice(revisionRound, REVISION_ROUND_CAP));
+      }
+
+      if (revisionRound >= REVISION_ROUND_CAP) {
+        await postPullRequestNotice(repoBase, pr.number, revisionRoundsExhaustedNotice(REVISION_ROUND_CAP));
+      }
+      // Round done; back to watching. With the cap spent the next watch can
+      // only end in merged or closed, so this never spins.
+    }
   } catch (err) {
     // Posted, then re-thrown — Temporal still records the workflow itself
     // as Failed (the durable, queryable source of truth); the comment is
     // this tier's own equivalent of the shaping tier's fail-fast comment,
     // so a human watching the tracker (not Temporal) also finds out.
-    await postDispatchFailed(input.storyId, describeFailure(err));
+    const failure = describeFailure(err);
+    await postDispatchFailed(input.storyId, failure);
+    // Only a failed *revision* round gets a PR notice. A first-build failure
+    // has no PR yet, and one that fails after a clean build but before any
+    // revision has nothing on the PR to correct.
+    if (openPullRequest && revisionRound > 0) {
+      await postPullRequestNotice(
+        openPullRequest.repoBase,
+        openPullRequest.number,
+        revisionRoundFailedNotice(revisionRound, REVISION_ROUND_CAP, failure),
+      );
+    }
     await moveStoryToTodo(input.storyId);
     throw err;
   }

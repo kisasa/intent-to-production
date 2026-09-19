@@ -49,6 +49,7 @@ describe("loadDispatchContext", () => {
       frameworkRepo: "example-org/intent-to-production",
       frameworkRef: "main",
       maxTurns: 40,
+      revision: null,
     });
   });
 
@@ -125,5 +126,54 @@ describe("loadDispatchContext", () => {
   it("rejects a zero or negative MAX_TURNS", () => {
     stubAll({ MAX_TURNS: "0" });
     expect(() => loadDispatchContext()).toThrow(/MAX_TURNS/);
+  });
+});
+
+describe("loadDispatchContext — revision rounds", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  function stubRevision(overrides: Record<string, string | undefined> = {}): void {
+    const vars: Record<string, string | undefined> = {
+      REVISION_ROUND: "2",
+      REVISION_ROUND_CAP: "3",
+      PULL_REQUEST_NUMBER: "42",
+      REVIEW_ID: "501",
+      ...overrides,
+    };
+    for (const [key, value] of Object.entries(vars)) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        vi.stubEnv(key, value);
+      }
+    }
+  }
+
+  it("is null on a first build, which is the only thing distinguishing the two modes", () => {
+    stubAll();
+    stubRevision({ REVISION_ROUND: undefined, REVISION_ROUND_CAP: undefined, PULL_REQUEST_NUMBER: undefined, REVIEW_ID: undefined });
+    expect(loadDispatchContext().revision).toBeNull();
+  });
+
+  it("loads the round, the cap, the PR and the review it is answering", () => {
+    stubAll();
+    stubRevision();
+    expect(loadDispatchContext().revision).toEqual({ round: 2, roundCap: 3, pullRequestNumber: 42, reviewId: 501 });
+  });
+
+  it("refuses a partial set rather than guessing the missing half", () => {
+    // A revision run that does not know which review it is answering would
+    // still produce confident-looking output, which is worse than refusing.
+    stubAll();
+    stubRevision({ REVIEW_ID: undefined });
+    expect(() => loadDispatchContext()).toThrow(/REVIEW_ID/);
+  });
+
+  it("rejects a round that is not a positive integer", () => {
+    stubAll();
+    stubRevision({ REVISION_ROUND: "0" });
+    expect(() => loadDispatchContext()).toThrow(/REVISION_ROUND="0"/);
   });
 });

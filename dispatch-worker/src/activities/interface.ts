@@ -9,7 +9,7 @@
  * real implementations and binds them to these same names.
  */
 
-import type { PullRequestOutcome } from "./await-pull-request-outcome.js";
+import type { AwaitPullRequestOutcomeInput, PullRequestWatchResult } from "./await-pull-request-outcome.js";
 import type { DependencyCheckResult } from "./check-dependencies.js";
 import type { CreateStoryBranchInput } from "./create-story-branch.js";
 import type { DispatchSpecialistInput } from "./dispatch-specialist.js";
@@ -26,8 +26,11 @@ export interface DispatchActivities {
   awaitSpecialistTask(taskArn: string, progressCommentId: string | null): Promise<void>;
   deleteSpecialistProgressComment(commentId: string): Promise<void>;
   findPullRequest(repoBase: RepoBase, headBranch: string, baseBranch: string): Promise<PullRequestReference | null>;
-  requestPullRequestReviewer(repoBase: RepoBase, prNumber: number, mover: StoryMover | null): Promise<void>;
-  awaitPullRequestOutcome(storyId: string, repoBase: RepoBase, prNumber: number, prUrl: string): Promise<PullRequestOutcome>;
+  /** Returns the reviewer-of-record's GitHub login, or null when the mover could not be mapped to one. */
+  requestPullRequestReviewer(repoBase: RepoBase, prNumber: number, mover: StoryMover | null): Promise<string | null>;
+  awaitPullRequestOutcome(input: AwaitPullRequestOutcomeInput): Promise<PullRequestWatchResult>;
+  postPullRequestNotice(repoBase: RepoBase, prNumber: number, body: string): Promise<number | null>;
+  editPullRequestNotice(repoBase: RepoBase, commentId: number, body: string): Promise<void>;
   postDispatchFailed(storyId: string, message: string): Promise<void>;
   moveStoryToTodo(storyId: string): Promise<void>;
 }

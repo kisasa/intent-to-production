@@ -33,6 +33,23 @@ export interface DispatchSpecialistInput {
   readonly storyBranch: string;
   readonly epicBranch: string;
   readonly maxTurns: number;
+  /** Present only on a revision round. Absent means this is the story's first build. */
+  readonly revision?: RevisionAssignment;
+}
+
+/**
+ * What a revision round tells the specialist: which PR, which review, and
+ * where it sits in the round budget.
+ *
+ * The review itself is not passed — only its id. The specialist reads the
+ * body and the inline comments from the PR the same way it reads the story
+ * and the code, rather than working from a copy the app made.
+ */
+export interface RevisionAssignment {
+  readonly round: number;
+  readonly roundCap: number;
+  readonly pullRequestNumber: number;
+  readonly reviewId: number;
 }
 
 export function buildContainerOverrides(input: DispatchSpecialistInput, logLevel: string) {
@@ -45,7 +62,22 @@ export function buildContainerOverrides(input: DispatchSpecialistInput, logLevel
   // worker's own — but propagating this worker's configured level down
   // means the specialist's verbosity follows dispatch-worker's own
   // LOG_LEVEL without a second, separately-maintained setting.
+  // Revision vars are appended only on a revision round, so a first build's
+  // environment is byte-identical to what it was before revisions existed —
+  // the runner treats their absence as "this is a fresh build", which is the
+  // one signal distinguishing the two modes.
+  const revision = input.revision;
+  const revisionOverrides = revision
+    ? [
+        { name: "REVISION_ROUND", value: String(revision.round) },
+        { name: "REVISION_ROUND_CAP", value: String(revision.roundCap) },
+        { name: "PULL_REQUEST_NUMBER", value: String(revision.pullRequestNumber) },
+        { name: "REVIEW_ID", value: String(revision.reviewId) },
+      ]
+    : [];
+
   return [
+    ...revisionOverrides,
     { name: "STORY_ID", value: input.storyId },
     { name: "STORY_TITLE", value: input.storyTitle },
     { name: "EPIC_ID", value: input.epicId },
