@@ -163,6 +163,28 @@ Do not build what a sibling story covers. If you find yourself needing
 something another story is meant to deliver, that is a dependency the story
 graph missed. Report it.
 
+**Restore dependencies from the committed lock file. Never resolve them
+fresh.** `npm ci`, never `npm install`. `poetry check --lock` before
+`poetry install`. `dotnet restore --locked-mode`. A restore that reads a
+committed lock gives you the dependency graph the repository already agreed
+to; one that resolves fresh gives you whatever the registry served this
+morning, and the difference surfaces later as a failure nobody else can
+reproduce.
+
+**A missing lock file is a finding, not a fallback.** Two of those three
+commands fail loudly when there is nothing to lock against and one does not:
+with no `packages.lock.json` present, `--locked-mode` restores normally and
+reports success. Passing it on a solution that carries no lock file buys a
+check that means nothing, which is worse than no check, because the next
+reader believes it. Say the lock file is absent in your report rather than
+letting the flag imply otherwise.
+
+**Adding or upgrading a package is a stated change, never a silent one.** If
+the work genuinely needs a dependency the repository does not carry, say what
+needed it, in the pull request and in your report. The conventions spec may
+reserve that decision for the architect — read it before you take it. Never
+add a package to make a test pass. That is the same edit as weakening one.
+
 ### 6. Verify
 
 Run your own tests. Then run the tests that already exist on your epic branch,
@@ -362,6 +384,10 @@ for the reviewer to resolve at merge time.
 - Repair only what lives on your epic branch. Anything below it is a report.
 - Cite the acceptance criterion for any fix outside your story's scope.
 - Run the surface's existing tests, not only your own.
+- Restore dependencies from the committed lock file. A missing lock file is
+  a finding, not a fallback.
+- Adding or upgrading a package is a stated change, and may be the
+  architect's decision rather than yours.
 - Never weaken a test to make it pass.
 - Trace every acceptance criterion to an implementation site and an asserting
   test before you open the PR. A criterion you cannot trace is unfinished work
