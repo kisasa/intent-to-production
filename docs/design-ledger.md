@@ -4943,3 +4943,37 @@ outcome.ts` did this was corrected while here; that file was never built.
 Including after the cap is spent. The work is genuinely live and the board
 should not say otherwise; the exhaustion notice lives on the PR, where the
 person who needs it is already looking.
+
+## The packages' own tests run on a pull request (2026-09-19)
+
+**The observation.** A session changing `dispatch-worker` and
+`specialist-runner` found no `node_modules` in either one. Those suites —
+100 and 32 tests at the time — had never been run in that working copy.
+CONTRIBUTING.md has always asked contributors to run typecheck and
+`test:unit` for whatever they touched, and nothing checked whether they had.
+
+That is the same shape as the rule this repository already learned the hard
+way about private references: it "was violated within an hour of being
+written down, which is why it is checked here rather than remembered." Tests
+that run only when somebody remembers are not a gate. It is also the standard
+this framework asks of target repos, where a story PR is CI plus a human
+reviewer — the framework repository was not holding itself to it.
+
+**A separate workflow, not another job on the existing gate.**
+`private-references.yml` is dependency-free on purpose: its own comment says
+it "needs no install step and cannot be broken by a lockfile change... which
+is what makes the check unskippable." Four `npm ci` runs bolted onto it would
+spend exactly the property worth keeping, so the suites got their own file.
+
+`infrastructure` is deliberately outside it. Its typecheck needs generated
+provider bindings, so it wants a synth step ahead of the compile; including it
+would have meant either a second shape of job or a red gate on day one.
+CONTRIBUTING.md now says plainly that this one is still the contributor's to
+run, rather than leaving the omission to be discovered.
+
+**One property to know before making it required.** The workflow is path
+filtered, so a docs-only pull request skips it. A required check that a path
+filter skips never reports at all and the pull request waits forever — so
+making it required means either dropping the filter or adding a job that
+reports a skip. Recorded in the workflow itself, where someone turning on
+branch protection will be looking.
