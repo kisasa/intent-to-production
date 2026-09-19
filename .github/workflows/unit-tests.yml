@@ -32,6 +32,16 @@ on:
       - ".github/workflows/unit-tests.yml"
   push:
     branches: [main]
+  # On demand from the Actions tab, as the ECR build workflows already offer.
+  # No `ref` input, unlike those: they take one because the image they build
+  # can come from a ref other than the one dispatched. Here the ref you pick
+  # in the UI *is* what gets tested, so an input would only be a second way to
+  # say the same thing. A manual run ignores the path filter above and runs
+  # all three packages, which is the point of having it.
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 # A second push to the same pull request makes the first run's answer
 # irrelevant — the new head is what merges.
