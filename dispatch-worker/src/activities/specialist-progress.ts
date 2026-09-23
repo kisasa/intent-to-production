@@ -38,6 +38,12 @@ const PATIENCE_QUIPS = [
   "A clean diff is worth the wait.",
   "Slow is smooth, smooth is fast.",
   "Even a paused container is still making progress.",
+  "Reading the conventions spec, not skimming it.",
+  "Criteria don't trace themselves.",
+  "Running the suite that was already here, not just the new one.",
+  "Reading the branch before writing to it.",
+  "The boring part is the part that catches things.",
+  "Every criterion gets a line — the empty ones too.",
 ];
 
 export function pickPatienceQuip(): string {

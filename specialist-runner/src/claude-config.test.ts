@@ -23,10 +23,10 @@ describe("loadClaudeConfig", () => {
   });
 
   it("respects an explicit model and effort", () => {
-    vi.stubEnv("CLAUDE_MODEL", "claude-opus-5");
+    vi.stubEnv("CLAUDE_MODEL", "claude-opus-5-5");
     vi.stubEnv("CLAUDE_EFFORT", "xhigh");
 
-    expect(loadClaudeConfig()).toEqual({ model: "claude-opus-5", effort: "xhigh" });
+    expect(loadClaudeConfig()).toEqual({ model: "claude-opus-5-5", effort: "xhigh" });
   });
 
   it("rejects an unsupported effort level", () => {

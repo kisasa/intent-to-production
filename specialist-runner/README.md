@@ -117,9 +117,13 @@ keep in sync.
 
 ## Model and effort — always explicit, never the SDK's own default
 
-`src/claude-config.ts` reads `CLAUDE_MODEL` (default `claude-sonnet-5`) and
-`CLAUDE_EFFORT` (default `high`, validated against the SDK's own
-`low`/`medium`/`high`/`xhigh`/`max`) and passes both to every `query()` call.
+`src/claude-config.ts` reads `CLAUDE_MODEL` and `CLAUDE_EFFORT` (validated
+against the SDK's own `low`/`medium`/`high`/`xhigh`/`max`) and passes both to
+every `query()` call. **Neither has a code-level default** — both go through
+`requireEnv`, and an unset one fails the run at startup rather than falling
+back. The values come from the `specialist-sandbox.claude-model` /
+`.claude-effort` context keys; an earlier version of this paragraph named
+defaults that the code has never had.
 Deliberately not left unset: an unset `model`/`effort` would silently track
 whatever the Agent SDK's CLI default happens to be on a given build, drifting
 the specialist's behavior out from under this codebase without a line
