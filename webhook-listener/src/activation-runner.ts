@@ -507,7 +507,7 @@ export function createActivationRunner(lane: AgentLaneConfig): AgentFn {
           // (did it even connect? did content start arriving?) versus dying
           // with nothing. Trace-only: at full verbosity, not the default.
           stream.on("connect", () => reqLog.trace(`stream connected, request_id=${stream?.request_id ?? "(none)"}`));
-          stream.on("streamEvent", (event) => {
+          stream.on("streamEvent", (event: Anthropic.MessageStreamEvent) => {
             reqLog.trace(`stream event: ${JSON.stringify(event).slice(0, 500)}`);
           });
 
