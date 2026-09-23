@@ -266,7 +266,7 @@ manage. Values marked `REPLACE_ME` must be filled in before the first synth.
 | `listener.debounce-ms` | `15000` | Passed through as `DEBOUNCE_MS` |
 | `listener.log-level` | `info` | Passed through as `LOG_LEVEL` |
 | `listener.linear-api-url`, `.linear-mcp-url`, `.github-mcp-url`, `.product-context-paths` | `null` | Optional. `null` means the application's own default applies; the keys are spelled out to document that they exist |
-| `listener.claude-model-intake`, `.claude-model-specification`, `.claude-model-decompose` | `claude-sonnet-5` | Required — no code-level default. Per-lane model, passed through as `CLAUDE_MODEL_INTAKE`/`_SPECIFICATION`/`_DECOMPOSE`. Tune per engagement without a code change or redeploying the image — just this stack |
+| `listener.claude-model-intake`, `.claude-model-specification`, `.claude-model-decompose` | `claude-opus-5-5` (intake, specification) / `claude-sonnet-5` (decompose) | Required — no code-level default. Per-lane model, passed through as `CLAUDE_MODEL_INTAKE`/`_SPECIFICATION`/`_DECOMPOSE`. Tune per engagement without a code change or redeploying the image — just this stack |
 | `listener.claude-effort` | `high` | Required — no code-level default. Uniform across every lane's activation call, passed through as `CLAUDE_EFFORT`. One of `low`/`medium`/`high`/`xhigh`/`max` |
 | `specialist-sandbox.environment-name` | `prod` | Validated independently of `listener.environment-name`, though today they're the same value |
 | `specialist-sandbox.ecr-repository-name` | `intent-to-production-specialist` | Doesn't exist yet — see Prerequisites |
@@ -275,7 +275,7 @@ manage. Values marked `REPLACE_ME` must be filled in before the first synth.
 | `specialist-sandbox.log-retention-days` | `30` | |
 | `specialist-sandbox.framework-repo` | `example-org/intent-to-production` | `org/name` on GitHub — where the specialist clones its own `agents/`/`skills/` definitions from. Baked into the task definition's container environment as `FRAMEWORK_REPO`; not part of any per-dispatch `RunTask` override |
 | `specialist-sandbox.framework-ref` | `main` | Git ref of the framework repo to clone, as `FRAMEWORK_REF`. A pinned ref here controls what every specialist run in this deployment uses, independent of whatever ref this deployment's own listener/temporal-workers images were built from |
-| `specialist-sandbox.claude-model`, `.claude-effort` | `claude-sonnet-5` / `high` | Required — no code-level default. Baked into the task definition's baseline environment as `CLAUDE_MODEL`/`CLAUDE_EFFORT` — every specialist run in this deployment uses it, not just one dispatch |
+| `specialist-sandbox.claude-model`, `.claude-effort` | `claude-opus-5-5` / `high` | Required — no code-level default. Baked into the task definition's baseline environment as `CLAUDE_MODEL`/`CLAUDE_EFFORT` — every specialist run in this deployment uses it, not just one dispatch |
 | `temporal.environment-name` | `prod` | Validated independently of the other stacks' `environment-name`, though today they're the same value |
 | `temporal.namespace-name` | `intent-to-production-prod` | Base name — Temporal Cloud appends an account-id suffix to form the fully-qualified namespace id |
 | `temporal.ecr-repository-name` | `intent-to-production-temporal-worker` | Doesn't exist yet — see Prerequisites |
@@ -283,6 +283,43 @@ manage. Values marked `REPLACE_ME` must be filled in before the first synth.
 | `temporal.cpu` / `.memory` | `512` / `1024` | Task-level Fargate sizing |
 | `temporal.desired-count` | `1` | Not a singleton constraint like the listener's — safe to raise once there's real load to justify it |
 | `temporal.log-retention-days` | `30` | |
+
+### Model choice
+
+The example values are not placeholders — they are what this framework's own
+engagements settled on, and a new deployment can copy them as-is.
+
+Opus goes where the judgment is expensive to redo. **Intake** cuts the slice
+map, and a mis-cut propagates into every epic below it; the size band only
+catches that at decomposition, which is a late and expensive place to find
+it. The **specialist** writes the code. **Specification** judges what already
+exists by reading real code — the least contract-bound work in the shaping
+tier, and the judgment that failed on 2026-09-04, when a runtime claim was
+taken from a conventions document with the repository already open and six
+capabilities were mapped on top of it.
+
+Sonnet holds up on **Decompose** because it fills a tight output contract —
+`story-contract.md` and `epic-writing.md` specify the shape of a good answer,
+so the model is completing a form rather than deciding what is true.
+
+Keeping Decompose on the cheaper model is also deliberate as a comparison
+rather than a saving: at this volume — a handful of activations per epic — the
+per-token difference is under a dollar either way, and the thing actually
+worth measuring is whether the stronger model reduces rework. The API map
+records that directly: design touchpoints resolve to `confirmed` or
+`corrected`, so the correction rate is countable in the threads. Move
+Decompose up when that number says to, not on principle.
+
+The split is per lane precisely so it can be re-tuned per engagement without a
+code change or a new image. If a lane starts producing work the architect
+keeps sending back, move that one key up and redeploy this stack.
+
+**Set `claude-effort` explicitly — it matters more than it used to.** Claude
+Opus 5.5 defaults to `medium` effort, one level below Claude Opus 5's `high`,
+so a deployment that leaves effort to the model's own default gets quieter,
+cheaper runs than the same config did on the previous model. Both surfaces
+here send it on every call, and neither has a code-level default, which is
+what keeps that invisible change from happening silently.
 
 ### Image tags
 

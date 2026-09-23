@@ -83,6 +83,12 @@ const PATIENCE_QUIPS = [
   "The API map gets read once and drawn once — no shortcuts either way.",
   "Confirm rows don't resolve themselves, but they will.",
   "Even a paused activation is still making progress.",
+  "The map is being drawn, not guessed.",
+  "Reading the whole thread takes longer than skimming it. That's the point.",
+  "Still walking the codebase — existence is read here, never assumed.",
+  "Every row is addressed to someone who has to read it.",
+  "Decomposition is mostly deciding what not to cut.",
+  "A good slice map beats a fast one, and takes about this long.",
 ];
 
 export function pickPatienceQuip(): string {
