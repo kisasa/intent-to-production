@@ -5288,3 +5288,70 @@ to the Intake lane, and `intake-agent.md` already reads the comment thread,
 so the gap closes by itself. The webhook needs no Project updates
 subscription. The adapter's `ProjectUpdate` branch still maps a status update
 the same way; it is now redundant rather than wrong.
+
+## The specialist loads `tracker-writing` (2026-09-25)
+
+**Rule.** The specialist loads `tracker-writing` alongside `story-contract`
+and `epic-writing`. This is the 2026-09-02 rule ("Every agent that writes to
+the tracker loads `tracker-writing`") applied to the one tracker-writing agent
+it did not yet cover.
+
+**Observation.** A docs-only pass found `specialist.md` telling the specialist
+to "See `tracker-writing.md`" for its report's References footer, while
+`specialist-runner` never loaded that skill. The specialist was pointed at a
+file it could not see. The 2026-09-02 wiring named Intake, Specification and
+Decompose because they were the agents writing to the tracker then. The
+specialist writes to the tracker too: its completion report is a comment on
+the story, and a repair outside its story's scope is a comment on the story it
+restores. The skill's own description already names completion reports. The
+gap was never a decision; the specialist was wired to the app after the rule
+was written and the list was not revisited.
+
+**Decision** (the architect). Load the skill rather than drop the reference.
+The skill limits itself to tracker text, so it leaves the specialist's code,
+tests and PR body as they were. The reference in `specialist.md` now names the
+loaded skill instead of a file path.
+
+## Intake does not bounce on an unset epic-count band (2026-09-25)
+
+**Rule.** The epic-count band's value lives in the
+`business-requirements-writing` skill's "Scope band" section, and while that
+section sets no number, epic count alone never sends Intake to `ask`. The
+recorded-decision override stays written in `intake-agent.md`, ready for when a
+number is set.
+
+**Observation.** A docs-only pass found the two files pointing at each other.
+`intake-agent.md` bounced a brief that "exceeds the scope band defined in the
+brief skill"; the brief skill set no number and said the epic-count band was
+Intake's to apply. The value was parked on 2026-09-24 with no number. Intake
+was left holding a trigger it could not evaluate, and the way to evaluate it
+anyway is to invent a number — the size question re-litigated without grounds
+that activation 1 of the parity test showed to be a defect.
+
+**Decision** (the architect). Keep the mechanism and state the gap plainly in
+both files, rather than set a number from one data point or delete the trigger.
+Sizing stays human: the slice map lists every slice, so the designer and the PM
+see the size at the checkpoint. Setting a number is an edit to the variant
+skill alone; the agent does not change.
+
+## A project status update is no longer read as a reply (2026-09-25)
+
+**Rule.** The Linear adapter does not map a `ProjectUpdate` ("status update")
+post onto `comment_added`. A reply to Intake is a project comment, and only a
+comment wakes Intake's follow-up.
+
+**Observation.** The entry above ("Intake's follow-up is a project comment
+again") left the adapter's `ProjectUpdate` branch in place as redundant. Read
+again, it was not only redundant. It turned any new status update on a project
+carrying `ready for intake` into a follow-up activation framed as "A human
+replied in the comment thread", and a status update is usually a health post,
+not a reply. Whether it fired depended only on whether the webhook's Project
+updates subscription was left on, and nothing in the repository sets
+subscriptions. Intake's prompt template also still told the model that
+"a human's reply arrives as a status update".
+
+**Decision** (the architect). Delete the branch and its tests, and keep one
+test asserting a status update parses to nothing. Intake's template now
+determines state from the comment thread. It still reads the status-update
+history as context, because a project started before today may hold earlier
+replies there.

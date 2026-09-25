@@ -6,9 +6,10 @@ pipeline. Different audience and different distribution than `skills/`:
 - `skills/` is the framework's own skill set. Most of it is code-consumed:
   `webhook-listener` attaches skills to the shaping agents it runs
   (Intake, Specification, Decompose), and `specialist-runner` loads
-  `story-contract` and `epic-writing` into every specialist run. Two are
-  run by a person in their own session: `business-requirements-writing`
-  (the PM) and `conventions-writing` (the architect).
+  `story-contract`, `epic-writing` and `tracker-writing` into every
+  specialist run. Two are run by a person in their own session:
+  `business-requirements-writing` (the PM) and `conventions-writing` (the
+  architect).
 - `desktop-skills/` is uploaded through Claude's own org skill-sharing
   feature so every developer's Claude Desktop can load it, and used
   conversationally by a human with the Linear MCP connector attached.

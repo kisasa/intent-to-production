@@ -76,10 +76,9 @@ must never be filtered.
 Intake's follow-up is a comment on the project. Linear now sends a
 `Comment` webhook for project comments, and `adapters/linear.ts`'s comment
 branch already reads a comment's `projectId` and maps it onto the same
-`comment_added` event the issue lanes get. The adapter still maps a Project
-Update ("status update") post the same way — the workaround from when project
-comments were not webhook-visible — but a PM replying to Intake no longer
-needs to post one.
+`comment_added` event the issue lanes get. A Project Update ("status update")
+post is not a trigger: the adapter ignores it, so leave the webhook's Project
+updates subscription off.
 
 ## Run it locally
 

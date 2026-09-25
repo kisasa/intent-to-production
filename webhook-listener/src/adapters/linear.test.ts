@@ -236,50 +236,11 @@ describe("parseEvent — Project", () => {
 describe("parseEvent — ProjectUpdate", () => {
   const adapter = createLinearAdapter(SECRET, API_KEY);
 
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("returns comment_added when a status update is posted (Linear has no webhook for Project comments)", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          data: { project: { name: "Merchant Onboarding", status: { name: "Backlog" }, labels: { nodes: [{ name: "ready for intake" }] } } },
-        }),
-      }),
-    );
+  it("returns null for a status update — project replies arrive as Comment events", async () => {
     const payload = JSON.stringify({
       type: "ProjectUpdate",
       action: "create",
-      data: { id: "update-1", projectId: "project-7", userId: "user-abc", body: "Approve slice map" },
-    });
-    expect(await adapter.parseEvent(payload, "test-trace")).toMatchObject({
-      kind: "comment_added",
-      entityType: "project",
-      entityId: "project-7",
-      entityTitle: "Merchant Onboarding",
-      status: "Backlog",
-      authorId: "user-abc",
-      labels: ["ready for intake"],
-    });
-  });
-
-  it("returns null when the projectId is missing", async () => {
-    const payload = JSON.stringify({
-      type: "ProjectUpdate",
-      action: "create",
-      data: { id: "update-2", userId: "user-abc" },
-    });
-    expect(await adapter.parseEvent(payload, "test-trace")).toBeNull();
-  });
-
-  it("returns null for a ProjectUpdate edit (action !== create)", async () => {
-    const payload = JSON.stringify({
-      type: "ProjectUpdate",
-      action: "update",
-      data: { id: "update-3", projectId: "project-7", userId: "user-abc" },
+      data: { id: "update-1", projectId: "project-7", userId: "user-abc", body: "On track this week" },
     });
     expect(await adapter.parseEvent(payload, "test-trace")).toBeNull();
   });
