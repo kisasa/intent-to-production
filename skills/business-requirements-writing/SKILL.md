@@ -233,7 +233,10 @@ Then let the PM choose. Record the choice as the PM's decision so it is not
 re-asked. Absent multi-problem signals, there is nothing to ask. Proceed as
 one document.
 
-The Intake Agent applies the epic-count band from the other side.
+The Intake Agent applies the epic-count band from the other side. Its value
+belongs here, and none is set: one engagement is one data point, and a number
+waits for a second. Until one is set, the Intake Agent does not bounce a brief
+for its epic count.
 
 ## Readiness test
 

@@ -32,7 +32,7 @@ obvious from the conversation, ask once and remember the answer.
 ## What you're producing
 
 The exact contract a well-formed epic must meet is defined in
-`skills/epic-writing/epic-writing.md` in the `intent-to-production` repo —
+`skills/epic-writing/SKILL.md` in the `intent-to-production` repo —
 read it if you have access; if not, the required shape is summarized below
 and should not drift from it.
 
