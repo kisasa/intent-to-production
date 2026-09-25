@@ -3,9 +3,12 @@
 Two skills for a **developer's own Claude Desktop**, not for the automated
 pipeline. Different audience and different distribution than `skills/`:
 
-- `skills/` is loaded by `webhook-listener` and attached to the agents it
-  runs server-side (Intake, Specification, Decompose) — code-consumed,
-  never touched by a human directly.
+- `skills/` is the framework's own skill set. Most of it is code-consumed:
+  `webhook-listener` attaches skills to the shaping agents it runs
+  (Intake, Specification, Decompose), and `specialist-runner` loads
+  `story-contract` and `epic-writing` into every specialist run. Two are
+  run by a person in their own session: `business-requirements-writing`
+  (the PM) and `conventions-writing` (the architect).
 - `desktop-skills/` is uploaded through Claude's own org skill-sharing
   feature so every developer's Claude Desktop can load it, and used
   conversationally by a human with the Linear MCP connector attached.
@@ -19,10 +22,11 @@ where a human is creating work outside that automated flow:
 - [`ad-hoc-epic-creation/SKILL.md`](ad-hoc-epic-creation/SKILL.md) — new
   work or a bug with no BRD behind it.
 
-Both point back at `skills/story-contract/story-contract.md` and
-`skills/epic-writing/epic-writing.md` as the actual source of truth for what
-a well-formed story/epic contains, and summarize that contract rather than
-re-defining it — if the two ever disagree, the `skills/` file wins.
+Each points back at its contract in `skills/` —
+`skills/story-contract/SKILL.md` for a story, `skills/epic-writing/SKILL.md`
+for an epic — as the actual source of truth for what a well-formed one
+contains, and summarizes that contract rather than re-defining it — if the
+two ever disagree, the `skills/` file wins.
 
 **Nothing here is enforced by the pipeline's own code.** What is
 code-enforced (the `surface:<name>` label, the surface registry documents,

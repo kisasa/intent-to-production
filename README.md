@@ -35,10 +35,10 @@ mechanical half of review already and the rest is judgment.
    boundaries match the areas the designer will work, proposes an order,
    and checkpoints with the PM and the designer. Only the epics the designer
    is starting with are released.
-3. **Specification.** For each released epic, once the designer's assets for
-   that area are attached, the Specification Agent reads them and the
-   codebase and produces the API map: design touchpoints the designer
-   resolves, technical touchpoints the architect resolves.
+3. **Specification.** A human moves a released epic into Evaluation once the
+   designer's assets for that area are attached; the Specification Agent then
+   reads them and the codebase and produces the API map: design touchpoints
+   the designer resolves, technical touchpoints the architect resolves.
 4. **Decompose.** The Decompose Agent cuts the epic into dependency-ordered,
    surface-assigned stories, each carrying a point estimate and a blocked-by
    relation mirroring its dependency section; checkpoints with the PM, showing

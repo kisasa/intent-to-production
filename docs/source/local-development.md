@@ -3,7 +3,7 @@
 A `docker-compose.yml` at the repo root brings up this framework's own
 services (`webhook-listener`, `dispatch-worker`) plus enough of Temporal and
 AWS to actually exercise the whole dispatch loop — a story entering
-`In-Process` can start a real Temporal workflow that runs a real ECS
+`In Progress` can start a real Temporal workflow that runs a real ECS
 `RunTask` call and launches a real `specialist-runner` container.
 
 **What's real, what's local:**
@@ -31,7 +31,7 @@ VPC/subnet/security-group, not `infrastructure/`'s real `network` stack.
   branches and PRs to, and real API keys for Linear, GitHub, and Anthropic.
 - [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
   (or any tunnel tool) — compose doesn't change how Linear reaches your
-  machine; see [`webhook-listener/README.md`](../webhook-listener/README.md#run-it-locally)'s
+  machine; see [`webhook-listener/README.md`](../../webhook-listener/README.md#run-it-locally)'s
   existing local-dev section for the same step this always needed.
 
 ## Bring-up order
@@ -46,6 +46,19 @@ VPC/subnet/security-group, not `infrastructure/`'s real `network` stack.
    auto-merges `docker-compose.override.yml` if present (gitignored — never
    commit your filled-in copy); it only needs to name the specific keys
    it's overriding, since Compose merges `environment:` maps key-by-key.
+
+   One non-secret value must be overridden too: `FRAMEWORK_REPO` on
+   `localstack-bootstrap`. It names the framework repo (`org/name`) the
+   specialist reads its agent definition and skills from, and
+   `docker-compose.yml` ships a placeholder. Set `FRAMEWORK_REF` alongside it
+   (default `main`) to a feature branch when testing framework changes
+   locally.
+
+   To exercise revision rounds, also set `REVIEWER_EMAIL_TO_GITHUB_LOGIN` on
+   `dispatch-worker`, a JSON object mapping your Linear email to your GitHub
+   login (e.g. `{"you@example.com":"your-github-login"}`). Without an entry
+   for whoever moves the story, dispatch still works, but no reviewer is
+   requested and a "request changes" review does nothing.
 
    The per-package `.env.example` files (`webhook-listener/`,
    `dispatch-worker/`, `specialist-runner/`) are unrelated to this compose
@@ -83,8 +96,25 @@ VPC/subnet/security-group, not `infrastructure/`'s real `network` stack.
 
 ## Triggering and watching a dispatch
 
-Move a story with a `surface:backend`/`surface:frontend` label to
-`In-Process` in your Linear sandbox. Watch it happen:
+Before a status move can dispatch anything, the sandbox tracker and repo
+need what a real engagement has:
+
+- **A `Surfaces` document on the project**, with a record for each surface
+  the story is labelled with (repo, ref, and optionally path, conventions
+  file, mandatory skills). Without a matching record, dispatch fails and the
+  story goes back to Todo with a comment.
+- **A story carrying a `surface:<name>` label** that matches a record. The
+  lane ignores a story with no `surface:` label.
+- **The epic's branch in the target repo**, named as the tracker names it
+  and cut from a BRD branch. The app creates the story branch; it does not
+  create the epic branch.
+- **A `CONVENTIONS.md`** at the surface root on that ref. The specialist
+  stops without one.
+- **A `Blocking dependencies` section** in the story's description ("No
+  blocking dependencies." is fine). Every story it names must be Done.
+
+Then move the story to the status named `In Progress` in your Linear
+sandbox; that exact name is what the lane matches. Watch it happen:
 
 - **Temporal UI** — `http://localhost:8080` — the workflow execution,
   its activities, and (once one's dispatched) the heartbeat/status detail
@@ -107,43 +137,14 @@ After any code change under `specialist-runner/`, rebuild the image
 easy-to-hit local-dev footgun worth knowing about up front, not a bug in
 the bootstrap or the workflow.
 
-## Verified in this session
+## How dispatch-worker gets the LocalStack values
 
-A single `docker compose up --build -d`, from a clean state, brings up all
-seven services correctly: `postgresql` → `temporal` → `temporal-ui` (default
-namespace registered, search attributes added, UI answers `HTTP 200` at
-`:8080`); `localstack` (healthy) → `localstack-bootstrap` (exits 0, having
-registered a real cluster/task-definition in LocalStack); `webhook-listener`
-(healthy, `/health` answers `ok` with `TEMPORAL_TLS=false` and no
-`TEMPORAL_API_KEY`); `dispatch-worker` (connects to Temporal, worker state
-`RUNNING`, polling its task queue) — confirming the whole chain, not just
-each piece in isolation.
-
-Real bugs found and fixed along the way, each confirmed by reproducing it
-and then confirming the fix, not assumed:
-
-- `webhook-listener/package-lock.json` (last regenerated on Windows) was
-  missing Linux-only optional dependencies (`@emnapi/*`), which made
-  `npm ci` fail inside the Linux-based Dockerfile. Regenerated from inside
-  a `node:22-slim` container so the lockfile is complete for both platforms.
-- `temporalio/auto-setup` rejects `DB=postgresql` — its own entrypoint wants
-  `postgres12`. Found by reading its actual error message.
-- `docker-compose.yml`'s `env_file:` resolves at container *creation* time,
-  not process-start time, so `dispatch-worker` could never see the
-  `SPECIALIST_*` values `localstack-bootstrap` writes within one `up`
-  invocation via `env_file` alone. Fixed with a bind mount plus
-  `local-env-file.ts`, read directly inside the container at actual process
-  start.
-- The real bug behind several confusing failed attempts at the above: the
-  same gotcha `env.ts`'s own `envOr` already documents — a `.env` file with
-  `KEY=` present but no value sets `process.env.KEY` to an empty string,
-  not `undefined`. `dispatch-worker/.env`'s `SPECIALIST_*=` lines meant an
-  `=== undefined` overwrite check silently kept those empty strings forever.
-  Found by adding temporary debug logging and watching a fully correct file
-  read still fail to reach `loadWorkerConfig()` — not a mount timing issue,
-  as first suspected and initially (wrongly) fixed with a retry loop and a
-  restart policy. The retry loop stayed as reasonable defensive margin; the
-  restart policy was removed once proven unnecessary.
+`localstack-bootstrap` writes the `SPECIALIST_*` values (cluster, task
+definition, subnet, security group) to `local/localstack.env`.
+`docker-compose.yml`'s `env_file:` resolves at container *creation* time, not
+process-start time, so `dispatch-worker` could never see those values within
+one `up` through `env_file` alone. Instead the file is bind-mounted and read
+inside the container at process start (`dispatch-worker/src/local-env-file.ts`).
 
 ## What this does NOT do
 

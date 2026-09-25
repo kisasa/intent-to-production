@@ -1,7 +1,18 @@
-# Design Ledger — Entry Tier, Layering, and White Paper Restructure
+# Design Ledger
 
-The settled decisions from this design session, in one place. This is the
-record the drafted artifacts encode and the reference for future sessions.
+The framework's settled design decisions, in one place, appended in date order
+across every session since the first. This is the record the drafted artifacts
+encode and the reference for future sessions. The earliest sections (through
+"Guiding phrasing") are undated and were written in the first design session;
+where a later entry superseded one, a note under its heading says where to
+read on.
+
+**This ledger records settled decisions only (added 2026-09-24).** It is not a
+to-do list. A decision that needs a build is entered when the build lands; a
+deferral is entered as a settled decision not to build yet, naming the
+condition that would reopen it. Publication, admin and verification chores do
+not belong here at all. The two "Open items" sections below are closed and kept
+as history; see "The ledger stops keeping a to-do list" at the end of the file.
 
 **Provenance contract (maintenance rule for this document):** every rule
 entry preserves three things — the rule, the specific observation that forced
@@ -26,10 +37,15 @@ issue as a milestone was a category error and has been rewritten — what matter
 is the mechanism and the preconditions that made a first run possible, never
 which ticket happened to carry it. When an observation is durable but its anchor
 is not, state the finding; do not cite an identifier a reader cannot open.
+(Superseded in part 2026-08-24 — see "The repository stops referencing anything
+private." Entries from 2026-09-02 on were derived against a real engagement,
+not the sandbox.)
 
 ---
 
 ## Entry tier
+
+*Superseded in part.* The feature brief became the business-requirements document in "Ladder restructure" below, and the story band default is 3–15, not 3–10 ("Decompose's story band widens to 3–15," 2026-08-20).
 
 - **Feature brief**: the business-intent artifact. PM-authored in a chat
   session using the org-level `feature-brief-writing` skill. Admits technical
@@ -99,6 +115,8 @@ is not, state the finding; do not cite an identifier a reader cannot open.
 
 ## Control model
 
+*Superseded in part.* Agents write the tracker themselves over MCP rather than submitting a verdict ("Write-path collapse" below). Humans still move statuses forward; the dispatch workflow moves a story back to To-Do itself ("Moving back to Todo," 2026-08-07).
+
 - Two primitives, uniform across tiers: **status** (gates; human-moved at
   shaping tiers) and **label** (signals; agent-moved).
 - **Gates are budget control as much as quality control** — every agent
@@ -118,6 +136,8 @@ is not, state the finding; do not cite an identifier a reader cannot open.
   states.
 
 ## Immutability
+
+*Superseded in part.* Nothing is single-authored by the app from a verdict any more; see "Write-path collapse" below.
 
 - **Immutability demoted from cornerstone to scoped discipline** (the architect,
   after live testing — every contact between freeze-as-law and real behavior
@@ -143,6 +163,8 @@ is not, state the finding; do not cite an identifier a reader cannot open.
 
 ## Layering (replaces "forging")
 
+*Superseded in part.* The app no longer executes structured actions or enforces whitelists; see "Write-path collapse" below. The three-layer split itself stands.
+
 - **App** — deterministic: tracker adapter, event routing on status+label,
   executes structured actions, enforces whitelists.
 - **Agents** — invariant judgment: lifecycles, slicing rules, size-check
@@ -158,6 +180,8 @@ is not, state the finding; do not cite an identifier a reader cannot open.
 
 ## Roster after this session
 
+*Superseded.* This is the first session's roster and none of it is current. The Evaluation Agent split into Specification and Decompose ("Ladder restructure" below); the four specialists collapsed into one ("Specialist types collapse into surfaces," 2026-08-08); the Testing and Code Review agents were retired (2026-08-03); `feature-brief-writing` became `business-requirements-writing` and `story-decomposition` was deleted (2026-09-02).
+
 **Agents (5, invariant):** Intake (new) · Evaluation (amended: story-tier
 size check, route-back) · Specialists ×4 (unchanged) · Testing (unchanged) ·
 Code Review (unchanged).
@@ -169,6 +193,8 @@ sprint language out) · story-contract (unchanged).
 brief).
 
 ## Reconciliation with first-pass code (Evaluation runner)
+
+*Superseded.* This audits code that no longer exists. The app stopped rendering from a verdict ("Write-path collapse" below); tracker-native blocked-by relations were added alongside the parsed section ("Dependencies gain a relation," 2026-09-17); the test taxonomy moved into each surface's conventions spec (2026-08-08); `tier` feeds the specialist's turn budget (2026-08-10); the story band is 3–15 (2026-08-20).
 
 - Evaluation Agent definition merged: field-tuned original as base (state
   detection, placement guidance, worked examples, PASS flag) + settled
@@ -227,6 +253,8 @@ brief).
 
 ## White paper restructure
 
+*A publication plan, not a framework decision.* Kept as the first session recorded it; its progress is not tracked in this ledger. Hosting is AWS Fargate, not the stack named below ("Hosting the listener," 2026-08-04), and the client-content audit and license are done (2026-08-24).
+
 - Started over. **Reference register**: the paper argues, articles narrate.
   No running example, no breakage narrative in the paper — exhibits (redacted
   real artifacts) yes, story no. TaskTango dropped.
@@ -246,6 +274,8 @@ brief).
   contributes exhibits and §11 material — the argument drafts now.
 
 ## Ladder restructure — tiers, vocabulary, and the Specification Agent
+
+*Superseded in part.* Decompose loads skills now (`epic-writing`, `story-contract`, `tracker-writing`), so the "loads no skill" statements below no longer hold (2026-09-02).
 
 Prompted by a PM's-eye review of the first business-requirements draft: the
 API map was too deep too soon — a PM does not know the codebase and cannot
@@ -309,6 +339,8 @@ renamed to Decompose.
 
 ## Write-path collapse — MCP access replaces the app's tracker client
 
+*Amended later.* The app also posts a "working on it" comment, edits it with progress, and removes it once the run ends cleanly (`webhook-listener/src/tracker-notifier.ts`), and the development tier's dispatch workflow makes its own git-host and tracker writes (2026-08-04 onward).
+
 - **Rule:** with Claude holding direct MCP access to the tracker, the app's
   own tracker contact collapses to zero on the happy path. The only write
   the app performs is posting an error comment, and only in two enumerated
@@ -340,6 +372,8 @@ renamed to Decompose.
   agent-design-agnostic, and don't change under the MCP shift.
 
 ## Reconciliation with current webhook-listener code (audit, this session)
+
+*Resolved 2026-08-05/06.* Every finding below was fixed by the listener rebuild (see the closed "Open items" section) and the dispatch trigger (2026-08-05). Kept as the audit that forced the rebuild.
 
 - **Finding: agent definitions are current, the app is not.**
   `agents/intake-agent.md`, `specification-agent.md`, and
@@ -528,7 +562,11 @@ renamed to Decompose.
   human). Single-source held: coordinate lives once in the recorded base, not
   duplicated per row. Cleanly extends to multi-repo epics (frontend + backend
   bases captured as each surface first comes up) — dissolves the earlier
-  two-codebases open question without a separate design.
+  two-codebases open question without a separate design. (Superseded
+  2026-09-02: the per-epic repo-base line gave way to a project-level surface
+  registry, the design rejected here — see "The surface registry lives in the
+  project." The specialist resolves its own anchors; no app-assembled payload
+  exists.)
 
 - **Specialist context: invariant agent, richer scoped input.** Rejected
   "Specification generates a per-work specialist" (re-merges tiers, reopens
@@ -546,7 +584,10 @@ renamed to Decompose.
   to read (→ attached document), "wish the code were included" and "wish
   evidence were attached" (→ app resolves anchors/evidence into the payload).
   Single-source held: map authored once by Spec, resolved once by architect,
-  consumed many times.
+  consumed many times. (Superseded in part: no app assembles a payload. The
+  specialist fetches the epic, story and map itself over MCP — see the
+  2026-08-03 "story contract described the app-hands-context model" item in
+  the closed "Open items" section.)
 
 - **Single document is the default; the split question fires only on multi-
   problem signals.** The scoping question was surfacing on every BRD run
@@ -613,7 +654,10 @@ renamed to Decompose.
       runner already does this (postErrorComment in catch); the Specification
       runner and every other runner need the same guarantee. Integration-list
       item, not a prompt fix — you cannot reliably instruct a model to
-      gracefully report a crash it's crashing through.
+      gracefully report a crash it's crashing through. (Built: every shaping
+      lane posts the fail-fast error comment, and the dispatch workflow has
+      its own catch-all — "Development tier's own 'never silent' guarantee,"
+      2026-08-06.)
   (b) AGENT-DECISION case — DEFINITION responsibility. No deliberate agent
       end-state may terminate without a visible comment/label. Mostly already
       true (ask/drafting/resolved all post); stated as an explicit invariant
@@ -762,7 +806,10 @@ renamed to Decompose.
   quality out, the relationship visible and the responsibility the architect's.
   Corner-cutting is not prevented, it is made the architect's own and its
   consequences visible. ("Prototype"/conventions-skill vocabulary scrubbed;
-  the four `*-conventions` skills removed from the framework.)
+  the four `*-conventions` skills removed from the framework.) (Superseded in
+  part 2026-08-08: the conventions spec is mandatory, not optional, once the
+  specialist definition became generic — see "Specialist types collapse into
+  surfaces." It is still architect-owned and never auto-derived.)
 
 - **Spec-readiness gate — the codebase must be readable before the map is
   drawn (Specification Agent, blocking).** Real failure from the last live run:
@@ -1199,7 +1246,10 @@ the dependency's own tier — a story's dependency is Done when it merges into
 the epic branch; an epic's dependency (the closing epic's case, below) is
 Done when it merges into the BRD branch. The check is the same shape at every
 tier; the definition of Done it resolves against is not, and the code should
-not hardcode one.
+not hardcode one. (Built for stories only — `checkDependencies` in the
+dispatch workflow, 2026-08-05. The epic half was dropped 2026-09-24; see the
+next note. `dispatch:blocked` was never added: the workflow comments and moves
+the story back to To-Do instead.)
 
 **Execution surface: Claude Agent SDK, not Claude Code.** Same correction as
 the dispatch rule, same reason. "A Claude Code agent driven by a developer
@@ -1269,6 +1319,17 @@ configuration determines which endpoint or credential set gets used; a diff
 that touches either anyway is a mandatory-human-review flag on the resulting
 PR regardless of what else passed.
 
+*Where each of these stands (2026-09-24).* `maxTurns` is set on every session.
+The egress allowlist and the credential-injection proxy are parked — see the
+next entry, "Specialist-sandbox infra, first PR." The "sandbox-only
+credentials" check has its answer: since 2026-08-11 the sandbox reads the same
+parameters as the listener, accepted as the current state ("One SSM prefix for
+every stack"). The rule against writing test files or environment config
+during the integration/E2E stage is dropped: the specialist never runs that
+stage (2026-08-07, "E2E execution moves from the story's own PR to the
+epic→BRD PR"), and every story PR already gets a human reviewer working from
+the acceptance-criteria trace (2026-09-17).
+
 **BRD closure, the second half of this session.** A fourth epic, created at
 slice time alongside the design and evidence issues, not added by the
 architect after the fact. The original idea — have the architect author a
@@ -1288,6 +1349,13 @@ spanning two surfaces still gets two epic branches "related by naming
 convention and nothing else" (open item, prior session) — the closing epic's
 seed is only as reliable as that convention already is, and a wrong pairing
 there now also produces a wrong seed here.
+
+*Dropped 2026-09-24, never built.* The four paragraphs that follow — the
+Specification gate, its consequence for release, its cost, and dependency
+granularity — describe a check that was never implemented, and the architect
+decided not to build it: an epic's Specification runs whenever a human releases
+the epic, and only story dispatch checks dependencies. See "The ledger stops
+keeping a to-do list" at the end of the file.
 
 **The dependency block gates any epic's Specification pass, not just
 Decompose — a general rule the closing epic merely was first to force, not a
@@ -1374,7 +1442,9 @@ ask/checkpoint/reply mechanism every agent in this pipeline already leans on
 depends on replies waking an agent, which requires an issue. Confirmed
 separately: Linear projects do carry labels, but not the same label set as
 issues, so even if the webhook problem didn't exist, the label vocabulary
-wouldn't transfer cleanly either. Labels, same AND-gate shape as the spec
+wouldn't transfer cleanly either. (2026-09-25: Linear now sends webhooks for
+project comments, so the first reason no longer holds; the label-set reason
+still does.) Labels, same AND-gate shape as the spec
 tier's: `brd:awaiting-architect`, `brd:awaiting-pm`, `brd:awaiting-designer`,
 each cleared independently the moment that reviewer signs off, in any order;
 `brd:resolved` once all three are clear.
@@ -1451,6 +1521,8 @@ recorded here per this document's own provenance contract.
   which is its own design and build. Narrowed, not dropped: recorded as a
   Known gap in `infrastructure/README.md`, same treatment as the listener's
   own two accepted gaps, so it stays visible rather than reading as done.
+  (Parked 2026-09-24, for the dispatch workers too. Reopen before an
+  engagement whose security review requires domain-level egress control.)
 - **Secrets are direct, sandbox-scoped SSM parameters, not a
   credential-injection proxy.** The proxy has its own unsettled design
   questions — where it runs, how it authenticates a sandbox task, its
@@ -1460,7 +1532,10 @@ recorded here per this document's own provenance contract.
   (`specialist-sandbox.parameter-prefix`), through the same
   execution-role-scoped-`ssm:GetParameters` mechanism the listener already
   uses. The proxy remains the target design; this is the interim that keeps
-  the sandbox buildable without it.
+  the sandbox buildable without it. (Superseded 2026-08-11: the separate prefix
+  is gone and the sandbox shares the listener's credentials — see "One SSM
+  prefix for every stack." The proxy is parked; reopen alongside the egress
+  allowlist.)
 - **The task definition has no caller yet.** Nothing calls `ecs:RunTask`
   against it — that's the Temporal-workers piece, not built this session.
   This stack only registers the task definition and publishes its outputs
@@ -1574,7 +1649,10 @@ was built) finally gets an image.
   epic's frontend story confirming the real backend contract needs the app to
   know which sibling repos exist for a given epic — nothing does yet); no
   caller (`RunTask` invocation is the Temporal worker's job, not built this
-  session).
+  session). (2026-09-24: the caller was built 2026-08-05 and the image gained
+  Python and .NET on 2026-09-19. Sibling-repo reads are parked: the runner
+  still clones one repo. Reopen when an engagement's surfaces first sit in
+  separate repos — the same condition as the parked branch-topology item.)
 - **RESOLVED same day: the image build itself.** Docker Desktop's engine
   wasn't reachable when this was first written; once it was up, `docker build
   -f specialist-runner/Dockerfile specialist-runner` succeeded clean. Spot-
@@ -2269,7 +2347,13 @@ suite's `webServer` boots `npm start` against the frontend, no docker-compose �
 further evidence the "Fargate cannot run the stack" constraint was
 over-generalized from a full-stack scenario that does not exist yet.
 
-## Open items
+## Open items (closed 2026-09-24)
+
+*Closed 2026-09-24.* This section is history now, not a to-do list; see "The
+ledger stops keeping a to-do list" at the end of the file. Every bullet is
+**RESOLVED**, **SETTLED**, or **PARKED** — a settled decision not to act yet,
+naming what would reopen it. Publication and admin chores that used to sit
+here were removed.
 
 *Pruned 2026-09-02.* Under the rule recorded that day (a decision that needs a
 build is not done until the build lands, and the build lives here), this
@@ -2325,8 +2409,12 @@ session" rather than here, because the file is append-only by date.
   specialist sandbox landed on infrastructure the team already operates, and a
   payment-processing client engagement puts weight on being able to state
   precisely where code executes. Recorded as considered twice now, not
-  rejected once.
-- **PARKED: right-sized pipeline entry (bug fixes).** Not all work should enter
+  rejected once. (2026-09-24: still one static `agents/specialist.md`. Reopen
+  when real runs show the conventions spec and story context are not enough to
+  steer one generic definition.)
+- **RESOLVED 2026-08-17: right-sized pipeline entry (bug fixes).** Settled by
+  the two desktop skills — see "Work that skips Intake enters by conversation"
+  (2026-08-17). Original entry: Not all work should enter
   at the top (BRD). A small bug fix has no intent to map or epic to slice —
   forcing it through five gates would discredit the framework. Likely shape:
   work enters at the tier matching it; story-shaped work (a bug fix) enters at
@@ -2340,7 +2428,10 @@ session" rather than here, because the file is append-only by date.
   ran 2026-08-06 and a full engagement's worth of specialist runs followed;
   the preconditions list below held and is now reference material for the
   next engagement's setup rather than a frontier. What the run answered is in
-  the 2026-08-23 and 2026-09-02 entries. Original entry follows.
+  the 2026-08-23 and 2026-09-02 entries. The list lives on as
+  `docs/source/engagement-readiness.md`. One precondition was reversed:
+  item 2's conventions spec became mandatory on 2026-08-08. Original entry
+  follows.
 
   Rewritten 2026-08-03: this entry used to name a specific sandbox story as
   "the frontier," which was a category error. The story it ran against
@@ -2374,26 +2465,25 @@ session" rather than here, because the file is append-only by date.
   survive contact with a real story. Both are questions about the mechanism, so
   either can be answered by whatever story comes next.
 
-- **OPEN:** exhibit redaction depth (per exhibit; reconstructed exhibits
-  weaken the reference claim). The 2026-08-24 no-private-references rule
-  sharpens this: exhibits lifted from a real engagement need redaction before
-  they can appear anywhere in this repository.
-- **OPEN:** epic-tier scope band value (empirical). First data point: the
+- **PARKED 2026-09-24: epic-tier scope band value (empirical).** No number
+  is set. First data point: the
   first full engagement ran seven epics under one BRD and the team called the
   resulting backlog too large to take in at once — an argument for the
   release default changing (2026-09-02) at least as much as for a band.
-- **OPEN:** first-pass article requires the designer's OK; candidate
-  co-author.
-- **PARTLY RESOLVED 2026-08-24:** repo license and org home. The repository
-  is now open source and lives at a public remote (the history-rewrite entry);
-  the license file exists. Left open only for whether the org home is final.
-- **OPEN:** slice-map-as-record vs. pre-creation review — flagged as a
-  judgment call in the Intake definition; revisit if practice wants the map
-  before epics exist. (2026-09-02: the designer now reviews the slice map at
-  the checkpoint, which is pre-creation review in practice; the record-vs-
-  proposal wording in `intake-agent.md` should be checked when that change is
-  made.)
-- **OPEN:** skill/agent file resolution is a single fixed directory
+  Reopen when a second engagement gives a second data point.
+- **RESOLVED 2026-08-24: repo license.** The repository is open source and
+  lives at a public remote (the history-rewrite entry); the license file
+  exists.
+- **RESOLVED 2026-09-02: slice-map-as-record vs. pre-creation review.**
+  `intake-agent.md` posts the slice map as a proposal before anything exists
+  to delete, and the designer reviews it at the checkpoint. Original entry:
+  flagged as a judgment call in the Intake definition; revisit if practice
+  wants the map before epics exist.
+- **RESOLVED 2026-09-02: skill/agent file resolution.** The framework's
+  `skills/` directory holds process skills only; stack skills live with the
+  surface (2026-08-23), and the surface registry names each surface's
+  mandatory skills, resolved from the surface repo first ("The surface
+  registry, built"). Original entry: skill/agent file resolution is a single fixed directory
   (`skills.ts`: one top-level `skills/` path), not engagement-scoped.
   (2026-08-23 narrowed it: surface-local skills in the target repo are now
   discovered by the specialist; the framework's own skills are still one
@@ -2420,7 +2510,7 @@ session" rather than here, because the file is append-only by date.
   above): the partition rules and size band are now written inline in
   `decompose-agent.md` as their own sections, and every `story-decomposition.md`
   citation is removed — the "loads no skill" claim is now literally true. The
-  band default (3–10) is a stated inline value, the one thing a team may tune;
+  band default (3–10 then; 3–15 since 2026-08-20) is a stated inline value, the one thing a team may tune;
   the rule that an over-band decomposition must surface as a choice is
   invariant. (Done alongside the MCP-direct reconciliation of the same file.)
 - **RESOLVED 2026-08-05** (trail kept; the resolution is at the end of this
@@ -2455,7 +2545,10 @@ session" rather than here, because the file is append-only by date.
   are both corrected to match. `webhook-listener/src/story-context.ts`'s
   `parseSpecialistType` is the first mechanical reader of this label —
   confirmed there is no other code in the repo reading either prefix today,
-  so this is a clean settling, not a migration.
+  so this is a clean settling, not a migration. (Superseded 2026-08-08: the
+  assignment label is `surface:<name>` — see "Specialist types collapse into
+  surfaces." The outcome labels that argued for `specialist:*` were removed
+  2026-08-07.)
 - **RESOLVED 2026-08-03: story contract described the app-hands-context model.**
   `story-contract.md` said the app "resolves each entry and provides completion
   status in the specialist's context payload" (blocking dependencies) and
@@ -2468,7 +2561,8 @@ session" rather than here, because the file is append-only by date.
   be specific enough for the specialist to retrieve the artifact, anchors
   resolve against the epic's recorded base, and the `tier` label is described as
   informing a human's model choice rather than driving app routing (because
-  nothing routes it any more).
+  nothing routes it any more). (Later: dispatch became app-driven on
+  2026-08-04, and `tier` now sizes the specialist's turn budget, 2026-08-10.)
 - **RESOLVED 2026-09-02: three shaping agents and two skills still carried the
   retired model.** Closed by the plain-register rewrite (end of this file);
   `story-decomposition.md`, the fifth location, was deleted outright as an
@@ -2511,7 +2605,7 @@ session" rather than here, because the file is append-only by date.
 
   The surface prefix is dropped rather than stacked. `Story: API: expose payment
   status` reads badly, and unlike parent/child, the surface *is* carried by the
-  `specialist:*` label, which the tracker shows wherever it shows titles. One
+  `specialist:*` label (now `surface:*`), which the tracker shows wherever it shows titles. One
   prefix only. Decompose's three examples were rewritten accordingly.
 
   One rule earned its place from practice rather than principle: **sibling
@@ -2541,11 +2635,12 @@ session" rather than here, because the file is append-only by date.
   longer describes how that work starts. Whatever it is kept for, it is not
   that.
 
-  Not resolved here — the call is the architect's, since it may still be
-  serving a live purpose the framework does not know about.
+  Left to the architect at the time, since it might have been serving a
+  purpose the framework did not know about; the architect deleted it the same
+  day.
 - **SETTLED 2026-08-06: a house prose standard for tracker text —
-  `tracker-writing`.** (The standard is settled; its *wiring* is the open build
-  item at the end of this file, still unbuilt as of 2026-09-02.)
+  `tracker-writing`.** (The standard is settled; its wiring into the shaping
+  lanes landed 2026-09-02 — see "Open items added by this session.")
   Feedback from people reading the output: issue descriptions and comments are
   hard to read as English. Not layout — sentences. Three complaints, all
   specific. The text constantly justifies its own decisions. It interrupts
@@ -2590,7 +2685,7 @@ session" rather than here, because the file is append-only by date.
   than folded in here. (2026-09-02: still not wired at the end of the first
   full engagement; the same feedback recurred. Now an open build item — see
   "Two of the three complaints trace to decisions that were recorded and never
-  built.")
+  built." Wired into Intake, Specification and Decompose later that day.)
 - **SETTLED 2026-08-03: capability resolution moved out of the tracker and
   into the authoring session.** (A decision recorded here rather than as a
   keeper; not open.) Supersedes the original `confirm` mechanism, where
@@ -2631,8 +2726,9 @@ session" rather than here, because the file is append-only by date.
   epic cannot start clean (2026-08-08).** (2026-09-02: the per-epic sign-off
   rule keeps the epic merge atomic — an epic reaches the BRD branch only once
   it has run and been signed off — so this stays parked and the branch hole it
-  describes is unchanged. The shaping-overlap decision at the end of this file
-  is the same tension seen from the shaping tier.) The architect: the backend developer is done
+  describes is unchanged. 2026-09-24: the shaping-overlap question that used to
+  sit at the end of this file is withdrawn, because no epic-level gate on
+  Specification exists; this item is now the only place the tension lives.) The architect: the backend developer is done
   while the frontend still needs time, and wants to move to the next epic rather
   than wait.
 
@@ -2674,8 +2770,14 @@ session" rather than here, because the file is append-only by date.
   regardless, since epic dependencies overstating the truth is a defect either
   way, but the second is the one with a real cost and should be decided against
   observed pain rather than a scenario.
-- **OPEN: branch topology is per-repo, and nothing reconciles across
-  surfaces.** Settled 2026-08-03: the developer starts Claude Code from a workspace parent
+- **PARKED 2026-09-24: branch topology is per-repo, and nothing reconciles
+  across surfaces.** Most of the premise below has gone. Dispatch is
+  app-driven, so there is no developer workspace parent; a story may carry
+  several surface labels when they share one repo and ref (2026-08-08); and the
+  closing epic was never built. What remains is an epic whose surfaces live in
+  different repos: its epic branches are still related by name only. Reopen
+  when such an epic first needs its surfaces merged together. Original entry,
+  settled 2026-08-03: the developer starts Claude Code from a workspace parent
   holding every surface repo plus the framework clone, so cross-surface reads
   work (a frontend story confirming the real backend contract, an integration
   story spanning implementations). But `main → BRD → epic → story` exists
@@ -2688,12 +2790,12 @@ session" rather than here, because the file is append-only by date.
   Inherited, not fixed, by the closing epic added 2026-08-04: its seeded
   description names sibling epic branches by this same naming convention, so a
   wrong pairing here now also produces a wrong seed at BRD closure.
-- **PARTLY RESOLVED 2026-08-04: the framework clone is a silent version
+- **RESOLVED 2026-08-04: the framework clone is a silent version
   dependency.** Closed by construction for app dispatch — `workspace.ts`
-  clones the framework fresh on every run. The remaining exposure is the
-  manual runbook in `docs/development-tier-dispatch.md`, which still says
-  "pull first"; since every surface type is app-dispatched as of 2026-08-07,
-  whether that runbook is still needed at all is the real question. Original
+  clones the framework fresh on every run. The manual runbook
+  (`docs/source/development-tier-dispatch.md`) is kept as a fallback, and its
+  "pull first" is an accepted convention for a path that is no longer primary.
+  Original
   entry: specialist definitions and skills are read from the developer's
   local `intent-to-production` checkout by absolute path — not vendored, not
   packaged. Chosen for zero packaging overhead and always-current-with-`dev`,
@@ -2704,17 +2806,17 @@ session" rather than here, because the file is append-only by date.
   skills alongside the Linear MCP the team already installs).
 - **RESOLVED 2026-08-04, superseded in part 2026-09-02: BRD-branch tier gets
   its own E2E, via a fourth epic, and review is a three-way sign-off.** (The
-  three-way sign-off now happens per epic against a cumulative environment;
-  what the closing epic still owns is an open decision at the end of this
-  file.) (Kept here as the trail from open
+  three-way sign-off now happens per epic against a cumulative environment.
+  The closing epic itself was never built; whether it ever is, is parked at
+  the end of this file.) (Kept here as the trail from open
   question to fix; the resolution is the automated-dispatch session above.)
   Cross-epic flows are covered by a closing epic — blocked-by every other epic
   in the BRD, containing only E2E-type stories, created by Intake at slice time
   rather than added after the fact. The PR to `main` is opened and merged by
   the architect, directly in GitHub, once the closing epic's own three-way
   sign-off (`brd:resolved`) has landed.
-- **OPEN: the listener's single-instance constraint has one known escape,
-  undecided.**
+- **PARKED: the listener's single-instance constraint has one known escape,
+  not taken.**
   `desired_count = 1` follows from the scheduler keeping its dedupe set and
   debounce timers in process memory, and that constraint is also what makes the
   no-drain deploy gap unfixable — a task replaced mid-activation drops the run.
@@ -3471,6 +3573,117 @@ as planned, not running) or actually build it, since both the doc and the
 underlying CI piece point at the same gap.
 
 
+## The specialist's turn budget comes from tier and size (2026-08-10)
+
+*Recorded 2026-09-24, from the commit that made it; the ledger missed it at
+the time.*
+
+**The observation.** An E2E story — four test tiers plus a cross-surface
+consistency check — ran out of turns live against the flat 80-turn ceiling and
+bounced back to To-Do. It was labelled `tier:small` and `size:medium`. Tier
+measures architectural weight, which is what model class the work deserves;
+size measures effort relative to the rest of the epic. The two do not move
+together, and before this only tier fed anything mechanical — and nothing read
+size at all.
+
+**Rule.** The webhook listener's `resolveMaxTurns` sets the budget as a base of
+80 × a tier multiplier × a size multiplier, each label contributing small = 1,
+mid or medium = 2, large = 4. The two compound rather than one capping the
+other, because they are independent cost signals, not two votes on one
+difficulty score: a story heavy on both axes needs more room than one heavy on
+either. A missing or unrecognized label contributes a neutral 1× instead of
+failing dispatch, since a story merely missing a sizing label is still real
+work. The failing story's `tier:small` × `size:medium` resolves to 160 turns.
+
+**What it superseded.** The flat `DEFAULT_MAX_TURNS = 80`, and
+`story-contract`'s description of `tier` as informing a human's model choice —
+a leftover from when a developer dispatched by hand. The multipliers are not a
+claim of correctness: a story that still runs out at its combined budget means
+the work needs more room or Decompose under-labelled it, which is information,
+not a bug in the table. Revision rounds deliberately do not use this budget
+(2026-09-19, "Three rounds, twenty-five turns").
+
+## One SSM prefix for every stack, and the sandbox shares the listener's credentials (2026-08-11)
+
+*Recorded 2026-09-24, from the commit that made it; the ledger missed it at
+the time, including what it cost.*
+
+**The observation.** `parameter-prefix` was three independent free-text
+values, one per stack, with no link to `environment-name`, and it had already
+produced a real collision risk between concurrent deployments.
+`TEMPORAL_API_KEY` also had to be read under a separately tracked prefix.
+
+**Decision.** One root-level `parameter-prefix` context key for every stack.
+`TEMPORAL_API_KEY` folded into the listener's ordinary secret list.
+
+**What it superseded, and the cost.** The 2026-08-04 interim that stood in for
+the credential-injection proxy: a sandbox-only prefix, so the sandbox would
+never hold a credential with production reach. With one prefix, the specialist
+sandbox reads `ANTHROPIC_API_KEY`, `LINEAR_AGENT_API_KEY` and `GITHUB_TOKEN`
+from the same parameters as the listener. Nothing recorded that side effect
+when it happened; a documentation pass found it on 2026-09-24. The architect's
+decision that day: shared credentials are the accepted current state. The
+proxy and the egress allowlist stay parked together, to be reopened before an
+engagement whose security review requires them.
+
+## Work that skips Intake enters by conversation (2026-08-17)
+
+*Recorded 2026-09-24, from the commit that made it; the ledger missed it at
+the time.*
+
+**What forced it.** The parked "right-sized pipeline entry" item: a bug fix
+has no intent to map or epic to slice, and forcing it through every gate would
+discredit the framework — but a "skip to story" path is an exception to
+every-story-traces-to-intent, and exceptions leak quality. Two cases came up
+in practice. A developer finds blocking work mid-story that no existing story
+covers, under an epic that has a real BRD. And new work or a bug arrives with
+no BRD behind it at all.
+
+**Decision.** Two Claude Desktop skills, used by a developer in their own
+Claude Desktop with the Linear connector attached: `ad-hoc-story-creation`
+files a story under an existing epic, and `ad-hoc-epic-creation` creates a
+standalone epic cut from the current release branch rather than `main`. The
+human does Intake's or Decompose's shaping judgment, with the skill walking
+them through it one question at a time and drafting the contract's exact
+shape from their loose description. Nothing is created until the developer
+has confirmed the whole draft.
+
+**Why skills and not a relaxed gate.** The quality risk was the exception
+leaking, so the exception gets no relaxation: the story still meets
+`story-contract`, the epic still meets `epic-writing`, and dispatch enforces
+the same code checks on both — a `surface:` label, a recorded repo base for
+the surface (a surface registry record since 2026-09-02), a `Blocking
+dependencies` heading, a real branch chain. The skills summarize
+those contracts and defer to them when the two disagree.
+
+**What it superseded.** A static template draft under `docs/templates/`,
+removed. A form drifts out of sync with the contract and cannot check its
+answers; a skill reads the real tracker — the epic, the team's labels, the
+registry — and verifies against it. The skills live in `desktop-skills/`
+rather than `skills/` because they reach developers through Claude's org
+skill sharing, not through the pipeline, so that directory is the source of
+truth to re-upload from.
+
+## Decompose's story band widens to 3–15 (2026-08-20)
+
+*Recorded 2026-09-24; the ledger missed it at the time.*
+
+**The observation.** Decompose was consistently hitting the 3–10 ceiling, and
+going a little over 10 turned out not to be a big deal. An early note had
+pointed the same way: a coherent five-section epic came out at 12 stories once
+test stories counted against the band, which suggested 3–10 was calibrated
+before that taxonomy existed ("Reconciliation with first-pass code").
+
+**Decision** (the architect). The default band is 3–15. It gives Decompose a
+little extra room without changing what the band is for: a check on the tier
+above, not a target. An over-band decomposition still surfaces as a choice at
+the checkpoint — re-slice at intake, or proceed by recorded decision — and a
+team may still tune the number.
+
+**What it superseded.** The 3–10 default in `decompose-agent.md`'s rule, its
+checkpoint cross-reference, and its worked overrun example, which moved from
+~16 to ~20 stories so it still reads as clearly over band.
+
 ## Skills consolidate on `SKILL.md`, and the surface repo's own skills become invocable (2026-08-23)
 
 Two changes, from one question the architect asked while reviewing the first full engagement run:
@@ -3724,7 +3937,9 @@ which is the only part of this document a later session reads as a to-do list
 rather than as history. An inline "not yet built" is indistinguishable, three
 weeks later, from the surrounding prose describing things that were built.
 
-**Rule.** A decision that requires code, wiring, or infrastructure to be true
+**Rule** (superseded 2026-09-24 — the ledger no longer keeps an open-items
+list; see "The ledger stops keeping a to-do list" at the end of the file). A
+decision that requires code, wiring, or infrastructure to be true
 is not recorded as done in this ledger until it is. The entry that makes the
 decision states the design; the build it depends on goes into "Open items" as
 its own bullet naming exactly what has to exist, and that bullet is resolved
@@ -4183,7 +4398,10 @@ next shape of the same leak. This is that next shape. Recorded here; to be
 added to `CONTRIBUTING.md`'s "People" bullet and, if a pattern for it can be
 written without flagging every ordinary sentence, to the check.
 
-### Open items added by this session
+### Open items added by this session (closed 2026-09-24)
+
+*Closed 2026-09-24,* like the section above: each bullet is resolved, settled
+or parked with what would reopen it.
 
 - **PARKED 2026-09-02 (same day, by decision): E2E execution at the epic's PR
   into the BRD branch.** Designed 2026-08-04, trigger point corrected
@@ -4255,16 +4473,21 @@ written without flagging every ordinary sentence, to the check.
   symbols and routes, never line ranges, and `specialist.md` and the manual
   dispatch runbook were updated to read the map's design section and the
   epic's design evidence instead of a seeded design issue.
-- **DESIGN, deferred to observed practice (2026-09-02): per-epic three-way
-  sign-off** — `epic:awaiting-architect`, `epic:awaiting-designer`,
+- **PARKED 2026-09-02: per-epic three-way sign-off labels.** Partly
+  overtaken on 2026-09-17: Decompose now writes a definition-of-done coverage
+  checklist onto the epic, and the three signers tick it ("Epic tier: the
+  definition of done becomes an enumerated, human-ticked list"). The labels
+  below were never built; reopen if the ticked checklist and the thread
+  replies stop being enough to tell who still owes a sign-off. Original:
+  `epic:awaiting-architect`, `epic:awaiting-designer`,
   `epic:awaiting-pm`, the same independent-clear shape as the closure gate;
   who applies them and what wakes when they clear; what triggers the
   environment redeploy (the same "not pinned down" item the closure entry left
   open, now needed per epic). Per the decision above, the next engagement runs
   this by hand — three replies in the epic's thread — and the labels and any
   automation are designed from what that shows. Nothing is built for it now.
-- **DECIDE: the closing epic's remaining job** under a cumulative environment
-  — decide against the next run's actual closing-epic content.
+- **PARKED: the closing epic's remaining job** under a cumulative environment.
+  Folded into the closing-epic item under "Open items added" below.
 - **RESOLVED 2026-09-02 (same day): one document or two** — one document,
   two sections (one regeneration, one thread, same as Shape A); the designer
   resolves and extends through the thread but does not author rows (machine
@@ -4275,11 +4498,16 @@ written without flagging every ordinary sentence, to the check.
   only; Intake reads both reviewers' replies and waits for both. Reopen as
   `intake:awaiting-*` labels only if people cannot tell who still owes an
   answer.
-- **ASK THE DESIGNER: an authoring skill** for turning an area's assets and
+- **PARKED: an authoring skill for the designer** for turning an area's assets and
   review transcript into the epic's design evidence document plus any new
   cross-cutting rules — the designer-side sibling of
-  `business-requirements-writing`. Not assumed.
-- **DECIDE: shaping overlap when epic N depends on N-1.** The 2026-08-04 gate
+  `business-requirements-writing`. Not assumed; reopen when the designer asks
+  for one.
+- **WITHDRAWN 2026-09-24: shaping overlap when epic N depends on N-1.** The
+  premise was false: the 2026-08-04 Specification gate was never built, and it
+  has since been dropped, so nothing puts N's shaping on N-1's critical path.
+  The throughput tension that remains is the parked "surfaces within an epic
+  finish at different rates" item. Original: The 2026-08-04 gate
   blocks N's Specification until N-1 merges. Under design-one-ahead, that puts
   N's whole shaping tier on the critical path whenever there is a dependency.
   Alternatives — map against N-1's resolved map with rows flagged not-yet-real,
@@ -4287,9 +4515,9 @@ written without flagging every ordinary sentence, to the check.
   to prevent exactly the map-fiction failure the missed endpoints resemble.
   Decide against observed pain, not a scenario.
 - **RESOLVED 2026-09-02 (same day), in part: role names, never pronouns** —
-  added to `CONTRIBUTING.md`'s People bullet. **OPEN:** whether the check can
-  carry a pattern for it without flagging every ordinary sentence; not
-  attempted.
+  added to `CONTRIBUTING.md`'s People bullet. **PARKED:** a check pattern for
+  it, since one would flag every ordinary sentence. Reopen if a pronoun for a
+  real person gets past review.
 
 ### Later the same day: readying for the next engagement (2026-09-02)
 
@@ -4353,18 +4581,17 @@ may by hand) and listed below. Whether to build it at all is entangled with
 the open question of what the closing epic still owns once E2E is cumulative
 per epic; decide both together, against the next engagement's end.
 
-**Open items added:**
+**Open items added** (closed 2026-09-24):
 
-- **DECIDE, then BUILD or RETIRE: the closing epic.** Designed 2026-08-04,
-  never implemented in Intake. Decide against the next engagement's actual
-  closing needs whether Intake should create it, whether the architect creates
-  it by hand, or whether cumulative per-epic E2E has made it unnecessary.
-  Until then `docs/engagement-readiness.md` says what is true: nothing
-  creates it.
-- **OPEN: the first live activation of the rewritten definitions.** Watch the
-  first Intake, Specification, and Decompose runs of the next engagement for
-  behavior the rewrite changed unintentionally; the diffs are large and
-  reviewed by reading, not by running.
+- **PARKED: the closing epic.** Designed 2026-08-04, never implemented in
+  Intake, and not built by decision until an engagement reaches its end: then
+  decide whether Intake should create it, whether the architect creates it by
+  hand, or whether cumulative per-epic E2E has made it unnecessary.
+  `docs/source/engagement-readiness.md` says what is true: nothing creates it.
+- **RESOLVED 2026-09-17: the first live activation of the rewritten
+  definitions.** Specification, Decompose and the specialist ran live under
+  them from 2026-09-04 to 2026-09-13; what that run found is "Acceptance
+  criteria become checkable, at both tiers."
 
 ### The surface registry lives in the project and is overridable in the epic (2026-09-02)
 
@@ -4499,12 +4726,14 @@ not add an engagement-setup skill for the architect to author the registry
 directly; the first Specification run proposes it instead, per the accepted
 default. If that proves slow in practice, the skill is the fallback.
 
-**Open items added:**
+**Open items added** (closed 2026-09-24):
 
-- **VERIFY: the Linear document queries** in `dispatch-worker/src/tracker.ts`
-  (`getIssueDocuments`, `getProjectDocuments`) against a live workspace before
-  the first dispatch of the next engagement.
-- **OPEN: the specialist does not yet enforce its directory scope.** The
+- **RESOLVED 2026-09-13: the Linear document queries** in
+  `dispatch-worker/src/tracker.ts` (`getIssueDocuments`,
+  `getProjectDocuments`). Every story dispatched in the 2026-09-04 to
+  2026-09-13 run resolved its surfaces through them.
+- **PARKED: the specialist does not enforce its directory scope.** Reopen
+  when a PR first writes outside its surfaces. The
   assignment message tells it which directories its surfaces occupy; nothing
   checks the PR's diff against them. A mandatory-review flag on a PR that
   writes outside its surfaces is the natural next step, in the same family as
@@ -4660,6 +4889,10 @@ Re-dispatch into unchanged blocking conditions stays as it is too, with the
 cheap path recorded for whenever it is wanted: `dispatch-worker`'s `getIssue`
 already maps every comment body and nothing consumes it, so a prior-Blocked
 guard in `checkDependencies` needs no new tracker read.
+
+Both are parked (2026-09-24). The escalation container reopens when the
+Claude Project settles it as a board design. The prior-Blocked guard reopens
+the next time a story is re-dispatched into conditions that have not changed.
 
 ### Dependencies gain a relation, stories gain a number (2026-09-17, same session)
 
@@ -4936,7 +5169,9 @@ always applied to a first build, where the workflow infers what it needs by
 asking whether a PR now exists. So the app's notices state only what the app
 knows, and the mitigation for a misjudged budget lives in the definition
 rather than in the worker. A stale comment claiming a `read-specialist-
-outcome.ts` did this was corrected while here; that file was never built.
+outcome.ts` did this was corrected while here. That file was built with the
+outcome labels and deleted along with them on 2026-08-07 ("Outcome labels
+removed"); nothing has read the specialist's own outcome since.
 
 ### The story stays In-Process while a PR is open
 
@@ -4977,3 +5212,79 @@ filter skips never reports at all and the pull request waits forever — so
 making it required means either dropping the filter or adding a job that
 reports a skip. Recorded in the workflow itself, where someone turning on
 branch protection will be looking.
+
+## The ledger stops keeping a to-do list (2026-09-24)
+
+**The observation.** A documentation pass found four open-item lists in this
+file — the "Open items" section and three "Open items added" lists under the
+2026-09-02 entries — holding about 35 bullets between them. Most were already
+resolved, or rested on premises that no longer existed: specialist types,
+outcome labels, a developer dispatching from a local workspace. A reader could
+not tell the live items from the dead ones without checking each against the
+code. One item, "shaping overlap when epic N depends on N-1," argued from a
+gate that had never been built. Five more decided-but-unbuilt rules sat inline,
+outside any list. And four decisions that *were* built — the turn budget, the
+shared SSM prefix, the desktop skills, the wider story band — had no entry at
+all, because they landed as commits with no session writing them down.
+
+**Rule.** This ledger records settled decisions only. A decision that needs a
+build is entered when the build lands. A deferral is a settled decision too —
+not to build yet — and is entered with the condition that would reopen it.
+Publication, admin and verification chores are not recorded here.
+
+**What it superseded.** The 2026-09-02 rule that sent every unbuilt build into
+"Open items" as its own bullet. That rule was answering a real failure: two
+deferrals recorded as the last sentence of an entry were invisible three weeks
+later. The new rule answers the same failure differently. A deferral with a
+reopen condition cannot be mistaken for built work, and a decision that is not
+entered until it is built cannot be either. What the old rule added, a list
+to maintain, was what decayed.
+
+**What changed in this file.**
+
+- Both "Open items" headings are marked closed. Every bullet under them is now
+  resolved, settled, parked with its reopen condition, or withdrawn.
+- Removed outright as chores rather than decisions: exhibit redaction depth,
+  the designer's sign-off on the first article, and whether the repository's
+  org home is final.
+- **Dropped, never built: the dependency gate on an epic's Specification
+  pass** (2026-08-04, "The dependency block gates any epic's Specification
+  pass"). The architect's decision: the flow as it runs works. A human
+  releases each epic into Evaluation when it is ready, and story dispatch is
+  where dependencies are checked mechanically. The shaping-overlap item that
+  assumed the gate is withdrawn with it.
+- The five inline rules, settled the same day. Parked: the sandbox and
+  workers' egress allowlist, the credential-injection proxy, sibling-repo
+  reads, and the escalation container with its prior-Blocked guard. Dropped:
+  the rule against the specialist writing test files or environment config
+  during the integration/E2E stage, a stage it no longer runs.
+- **Accepted: the sandbox shares the listener's credentials.** Found while
+  settling the proxy — the 2026-08-11 prefix consolidation had quietly ended
+  the sandbox-only separation.
+- Backfilled, each in date order: "The specialist's turn budget comes from
+  tier and size" (2026-08-10), "One SSM prefix for every stack" (2026-08-11),
+  "Work that skips Intake enters by conversation" (2026-08-17), and
+  "Decompose's story band widens to 3–15" (2026-08-20).
+- The earliest sections carry a note under their headings where a later
+  entry superseded them, instead of being edited; the history is the point of
+  the file.
+- Corrected: the 2026-09-19 entry said `read-specialist-outcome.ts` was never
+  built. It was built, and deleted with the outcome labels on 2026-08-07.
+
+## Intake's follow-up is a project comment again (2026-09-25)
+
+**The observation.** Linear now sends a `Comment` webhook for comments on a
+project. On 2026-07-16 it did not — only issue and document comments were
+webhook-visible — so a PM's reply to Intake had to be posted as a Project
+Update ("status update"), which the adapter mapped onto `comment_added`.
+That workaround left a gap recorded in `webhook-listener/README.md`:
+`intake-agent.md` reads the project's comment thread, and a status update is
+not a comment, so Intake's follow-up could run without seeing the reply.
+
+**Decision** (the architect). Replies to Intake are ordinary project
+comments; nobody needs to post a status update. No code changes: the
+adapter's comment branch already reads a comment's `projectId` and routes it
+to the Intake lane, and `intake-agent.md` already reads the comment thread,
+so the gap closes by itself. The webhook needs no Project updates
+subscription. The adapter's `ProjectUpdate` branch still maps a status update
+the same way; it is now redundant rather than wrong.
