@@ -32,8 +32,9 @@ does and when to use it, one sample opening message to kick it off.
 
 > **What it does:** walks you through setting up a standalone epic for work
 > that isn't tied to any BRD — a bug, a small standalone request, whatever
-> doesn't have a slice already going through the pipeline. It knows our
-> current surfaces and their repos, so it won't make you look those up, and
+> doesn't have a slice already going through the pipeline. It reads the
+> project's surface registry for you, so it won't make you look up surfaces
+> or their repos, and
 > it'll remind you about the one setup step that's easy to miss: the epic's
 > git branch needs to be cut from the current release branch, not `main`.
 >

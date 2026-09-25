@@ -24,8 +24,8 @@ someone who knows it is theirs.
 - **PM** — writes the business-requirements document with the
   `business-requirements-writing` skill; resolves every capability row
   before the project exists; applies `ready for intake`; confirms the slice
-  map covers the intent; approves each epic's decomposition; signs off each
-  completed epic by using it.
+  map covers the intent; approves each epic's decomposition, including the
+  point estimate on each story; signs off each completed epic by using it.
 - **Designer** — works one area at a time, one area ahead of development;
   produces a design asset for each area and attaches it to that area's epic;
   confirms the slice map's areas and order at the Intake checkpoint;
@@ -41,7 +41,9 @@ someone who knows it is theirs.
 - **Developers** — read a story and ask the architect questions in its
   thread before dispatching it; move the story to In Progress, which
   dispatches the specialist and records the mover as the PR's requested
-  reviewer; review the PR and merge it into the epic branch.
+  reviewer; review the PR against the acceptance-criteria checklist in its
+  body, ticking what they verified; request changes when needed; merge it
+  into the epic branch.
 
 ## 2. The tracker
 
@@ -100,16 +102,19 @@ surface the engagement will touch:
   down. Write it with the `conventions-writing` skill. Decompose refuses to
   cut stories for a surface without one.
 - **CI that runs the surface's unit tests on every pull request.** The
-  specialist sandbox cannot build or test most stacks; every specialist
-  hand-back in the first engagement said "CI on the PR is the load-bearing
-  check." Make sure it is there to bear the load.
+  specialist sandbox carries Node, Python (with Poetry) and .NET, and the
+  specialist runs its own tests there, but CI is the independent check on
+  that. A stack outside those three cannot be built or tested in the sandbox
+  at all, and CI is then the only check. Make sure it is there.
 - **The GitHub token** (`GITHUB_TOKEN` for `dispatch-worker` and the
   sandbox) can read the repo, create branches, and open pull requests.
 - **A reviewer mapping.** `REVIEWER_EMAIL_TO_GITHUB_LOGIN` in
   `dispatch-worker`'s environment maps each developer's Linear email to
   their GitHub login, so the person who moves a story becomes the PR's
-  requested reviewer. Unmapped developers still get a PR; nobody is asked to
-  review it.
+  requested reviewer. The mapping is also how a "request changes" review is
+  recognized as the reviewer-of-record's, so an unmapped developer still gets
+  a PR, but nobody is asked to review it and revision rounds are off for that
+  story. The PR says so when it opens.
 
 ## 4. The requirements session
 
@@ -156,20 +161,31 @@ ahead of the developers.
    epic with no user-facing behavior), then drafts the API map: design
    touchpoints for the designer, technical touchpoints for the architect,
    references in a footer. Each reviewer resolves their rows in the thread,
-   one row at a time. Decompose cuts stories once both gates clear; the PM
-   approves the decomposition; the stories land in To-Do.
+   one row at a time. Decompose cuts stories once both gates clear, and
+   proposes a point estimate for each; the PM approves the decomposition and
+   corrects any estimate; the stories land in To-Do. Each story's `Blocking
+   dependencies` section is what dispatch checks. Decompose mirrors it as the
+   tracker's blocked-by relations so the order is visible on the board, but
+   the section is the source of truth. Decompose also writes a `Definition of
+   done — coverage` checklist into the epic's description, mapping each line
+   of the definition of done to the stories behind it.
 5. **Developers pick stories up** by reading the story, asking the architect
-   in the thread, and moving the story to In Progress. The specialist runs,
-   opens a PR against the epic branch, and the mover reviews and merges.
+   in the thread, and moving the story to In Progress. The specialist runs
+   and opens a PR against the epic branch whose body lists each acceptance
+   criterion as an unticked checkbox, with the code and test behind it. The
+   mover reviews the diff against that list, ticks what they verified, and
+   merges. If they submit a "request changes" review, the specialist is sent
+   back to address it on the same PR, up to three rounds; the app posts a
+   note on the PR as each round starts and finishes, and when the rounds run
+   out. The story stays In Progress while the PR is open.
 6. **The designer is already on the next area** while this happens. Its
    epic is released when its design lands — not before.
 
 ## 6. Epic completion — a human procedure, for now
 
-The pipeline does not yet execute E2E suites or track epic sign-off; the
-automation is deliberately parked until this loop has been seen working end
-to end. Until then, when every story under an epic has merged into the epic
-branch:
+The pipeline does not execute E2E suites or record epic sign-off; that
+automation is deliberately parked, and humans run it. When every story under
+an epic has merged into the epic branch:
 
 1. **The architect opens the epic's PR** into the BRD branch.
 2. **The architect stands the BRD branch up** with that epic's work included
@@ -177,11 +193,14 @@ branch:
    **runs the E2E suite**: this epic's tests and every previously merged
    epic's. A failure routes to whoever reviews the epic PR; it does not go
    back through a specialist.
-3. **Three people sign off in the epic's thread**, in any order: the
-   architect (everything merged, E2E green, no open blockers), the designer
-   (the area's design intent holds in the running software), and the PM (it
-   works, and the PM can speak to it). No artifact, no rollup — a reply
-   each.
+3. **Three people sign off**, in any order: the architect (everything
+   merged, E2E green, no open blockers), the designer (the area's design
+   intent holds in the running software), and the PM (it works, and the PM
+   can speak to it). Each ticks the lines of the epic's `Definition of done —
+   coverage` checklist they verified and replies in the epic's thread. An
+   unticked acceptance criterion from a story PR is already in the epic
+   branch's history, since story PR bodies become the squash-merge commit
+   messages; read those when opening the epic's PR.
 4. **The architect merges the epic PR** and redeploys. The environment is
    cumulative from here; the next epic's E2E runs against it.
 
@@ -196,23 +215,31 @@ When the last epic has merged, the BRD branch gets the same three-way
 sign-off — architect, designer, PM — and the architect merges it into `main`
 and moves the project to Done by hand. Nothing automates either step.
 
-The design ledger describes a closing epic, created by Intake at slice time
-and holding only cross-epic E2E stories, with `brd:awaiting-*` labels for its
-sign-off. **Intake does not create it today** — the design was recorded on
-2026-08-04 and never reached `intake-agent.md`. If the engagement wants one,
-the architect creates it by hand as the last epic in the project, depending
-on every other epic. With E2E running cumulatively at every epic completion,
-how much of that epic's job is left is an open question; decide it against
-what this engagement actually needs at the end, not in advance.
+There is no closing epic. The design ledger describes one, holding
+cross-epic E2E stories, but it is parked and nothing creates it. With E2E
+run cumulatively at every epic completion, cross-epic flows are already
+exercised along the way. If the engagement wants one anyway, the architect
+creates it by hand as the last epic in the project, depending on every other
+epic.
 
 ## 8. What to expect, honestly
 
-- **Specialists cannot build or test most stacks in the sandbox.** They
-  read, write, and hand back; CI on the PR is the check. Rebuilds of a story
-  are not idempotent — two runs of the same story can make opposite
-  decisions — so review before closing a PR unmerged and re-dispatching.
+- **The sandbox runs Node, Python and .NET.** On those stacks the
+  specialist runs its own tests and the existing ones before opening the PR;
+  CI is still the independent check. It cannot run the team's full local
+  environment, which is why E2E runs by hand at epic completion.
+- **Rebuilds of a story are not idempotent.** Two runs of the same story can
+  make opposite decisions, so review before closing a PR unmerged. Closing
+  one moves the story back to Todo. Before it can be dispatched again,
+  delete its story branch: the app refuses to dispatch onto a story branch
+  that still carries commits from the abandoned attempt, and says so on the
+  story.
 - **A story that cannot proceed goes back to Todo with a comment.** Read
   the comment; the pipeline does not retry on its own.
+- **Revision rounds are capped at three, each deliberately short.** Feedback
+  too big for a round is a story change, and the specialist will say so and
+  recommend closing the PR. When the rounds run out, the PR stays open for
+  the reviewer to finish by hand.
 - **Formats the pipeline parses are strict.** The surface registry's
   `surfaces` block, the `## References` footer, the blocking-dependency
   bullets. The agents write them; a human should not need to, and a
