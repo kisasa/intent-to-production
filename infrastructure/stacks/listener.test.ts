@@ -17,7 +17,7 @@ const TEST_CONTEXT = {
   listener: {
     "environment-name": "test",
     subdomain: "intent",
-    "ecr-repository-name": "intent-to-production",
+    "ecr-repository-name": "intent-to-production-listener",
     "image-tag": "test-tag",
     port: 8787,
     cpu: 512,
