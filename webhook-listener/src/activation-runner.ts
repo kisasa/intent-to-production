@@ -46,6 +46,7 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
+import type { BetaMessageStreamParams } from "@anthropic-ai/sdk/resources/beta/messages/messages.js";
 import type { AgentLaneConfig } from "./agent-lane.js";
 import type { AgentFn, Pass } from "./tracker-event.js";
 import { buildSystemBlocks, renderActivationPrompt, type SystemBlock } from "./prompt-assembly.js";
@@ -94,6 +95,22 @@ const GITHUB_MCP_SERVER: McpServerConfig = {
 // the agent discovers and records the repo base per surface itself.
 function mcpServersFor(lane: AgentLaneConfig): McpServerConfig[] {
   return lane.codebaseAccess ? [LINEAR_MCP_SERVER, GITHUB_MCP_SERVER] : [LINEAR_MCP_SERVER];
+}
+
+const MCP_CLIENT_BETA = "mcp-client-2025-04-04";
+
+// The beta stream, not client.messages.stream, because only the beta
+// accumulator assembles an mcp_tool_use block's input from its
+// input_json_delta events — the non-beta one tracks tool_use and
+// server_tool_use only, so finalMessage() handed back every mcp_tool_use
+// with the empty input it opened with. That was invisible until a
+// pause_turn: the paused turn is re-sent as-is, and any call in it the
+// server had not yet executed then ran with no arguments at all — the
+// "body … received undefined", "title is required" and "missing required
+// parameter: owner" errors seen 2026-09-21 to 2026-09-26, clustered at the
+// first content-block indices of each resumed response.
+export function openActivationStream(client: Anthropic, params: BetaMessageStreamParams) {
+  return client.beta.messages.stream({ ...params, betas: [MCP_CLIENT_BETA] });
 }
 
 // System blocks (agent file + skills) are static per lane for the process
@@ -176,8 +193,10 @@ function hasUsableTarget(input: Record<string, unknown>): boolean {
 
 // Observed 2026-07-17: a pause_turn boundary landed mid-argument-stream on a
 // save_comment call, corrupting one field (body came back as a non-string,
-// tripping the MCP server's own validation) — a real is_error result, but an
-// artifact of where the pause fell, not of anything Claude decided. Claude
+// tripping the MCP server's own validation) — a real is_error result, but not
+// of anything Claude decided. The cause, found 2026-09-28, was the runner
+// re-sending the paused turn with every mcp_tool_use input emptied (see
+// openActivationStream); the tolerance below stays as defence. Claude
 // noticed the failure on resume, retried the identical save_comment against
 // the same issueId with corrected arguments, and that retry succeeded — yet
 // the leftover error block from the corrupted first attempt was still enough
@@ -188,7 +207,7 @@ function hasUsableTarget(input: Record<string, unknown>): boolean {
 // the conversation with a result that succeeded — never on tool name alone,
 // which would risk swallowing an unrelated write's real failure.
 export function findMcpError(
-  content: Anthropic.ContentBlock[],
+  content: Anthropic.Beta.BetaContentBlock[],
   allToolUses?: Map<string, ToolUseRecord>,
 ): string | null {
   const blocks = content as unknown as {
@@ -226,7 +245,8 @@ export function findMcpError(
     if (toolName && failedUse) {
       // Observed 2026-07-29: a save_comment call came back as just
       // `{"issueId": ""}` — no body, no real target — and was rejected by
-      // the MCP server's own schema validation. Claude retried immediately
+      // the MCP server's own schema validation (the same emptied-input
+      // cause as above). Claude retried immediately
       // with a complete, correctly-targeted call (`projectId`, not
       // `issueId`, since the target was a project) and that retry
       // succeeded — but sameTarget requires the same key with the same
@@ -259,14 +279,13 @@ export function findMcpError(
 // same save_comment — same issueId, byte-identical body — twice, 219ms apart.
 // Both calls succeeded (no is_error block on either), so findMcpError had
 // nothing to flag; the only visible symptom was two duplicate comments on the
-// issue, found by reading the thread directly. Root cause unconfirmed —
-// possibly the same pause_turn-boundary fragility findMcpError's write-retry
-// tolerance above already documents, this time duplicating a call instead of
-// corrupting one. This check doesn't try to prevent or undo a duplicate
+// issue, found by reading the thread directly. Root cause unconfirmed — the
+// emptied-input resume findMcpError documents corrupts a call rather than
+// duplicating one, so it does not obviously explain this. This check doesn't try to prevent or undo a duplicate
 // write; it only makes one visible in the trace log instead of silently
 // absorbed, the same way a duplicate is nothing to look past.
 export function findDuplicateWrites(
-  content: Anthropic.ContentBlock[],
+  content: Anthropic.Beta.BetaContentBlock[],
   allToolUses: Map<string, ToolUseRecord>,
 ): ToolUseRecord[] {
   const blocks = content as unknown as { type: string; tool_use_id?: string; is_error?: boolean }[];
@@ -297,8 +316,8 @@ export function findDuplicateWrites(
 // so the failed call's target can be recovered regardless of which round it
 // was in.
 function collectToolUses(
-  messages: Anthropic.MessageParam[],
-  finalContent: Anthropic.ContentBlock[],
+  messages: Anthropic.Beta.BetaMessageParam[],
+  finalContent: Anthropic.Beta.BetaContentBlock[],
 ): Map<string, ToolUseRecord> {
   const byId = new Map<string, ToolUseRecord>();
   const record = (block: unknown) => {
@@ -375,7 +394,7 @@ export function createActivationRunner(lane: AgentLaneConfig): AgentFn {
     // request_id and receivedMessages are exactly what's needed to diagnose
     // a mid-stream drop (e.g. "terminated"), and are only available on the
     // stream object itself, not on whatever error it throws.
-    let stream: ReturnType<typeof client.messages.stream> | undefined;
+    let stream: ReturnType<typeof openActivationStream> | undefined;
 
     // Cleared in the finally below on every exit path — success, MCP error,
     // or a thrown exception — so a finished or failed run never keeps ticking.
@@ -417,7 +436,7 @@ export function createActivationRunner(lane: AgentLaneConfig): AgentFn {
       const userMessage = userMessageParts.join("\n");
       reqLog.trace(`assembled user message, ${userMessage.length} chars`);
 
-      const messages: Anthropic.MessageParam[] = [{ role: "user", content: userMessage }];
+      const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: userMessage }];
       const mcpServers = mcpServersFor(lane);
       reqLog.trace(`attaching MCP server(s): [${mcpServers.map((s) => s.name).join(", ")}]`);
 
@@ -442,7 +461,7 @@ export function createActivationRunner(lane: AgentLaneConfig): AgentFn {
         system: systemBlocks,
         mcp_servers: mcpServers,
         messages: messages,
-      } as unknown as Anthropic.MessageStreamParams;
+      } as unknown as BetaMessageStreamParams;
 
       // Posted before opening the stream, not after Claude's first move —
       // some runs take minutes before Claude makes its own first tracker
@@ -495,19 +514,19 @@ export function createActivationRunner(lane: AgentLaneConfig): AgentFn {
       // still hands back the same assembled Message once the run concludes;
       // nothing downstream (error scanning, content-block inspection) needs
       // to know the transport was streaming.
-      async function callOnce(): Promise<Anthropic.Message> {
+      async function callOnce(): Promise<Anthropic.Beta.BetaMessage> {
         for (let streamAttempt = 0; ; streamAttempt++) {
           attempt++;
           callStartedAt = Date.now();
-          reqLog.trace(`calling Anthropic messages.stream, model=${lane.model} (attempt ${attempt})`);
-          stream = client.messages.stream(params, { headers: { "anthropic-beta": "mcp-client-2025-04-04" } });
+          reqLog.trace(`calling Anthropic beta.messages.stream, model=${lane.model} (attempt ${attempt})`);
+          stream = openActivationStream(client, params);
 
           // Raw visibility into what Anthropic actually sent, event by event —
           // the only way to tell, on a mid-stream failure, how far the run got
           // (did it even connect? did content start arriving?) versus dying
           // with nothing. Trace-only: at full verbosity, not the default.
           stream.on("connect", () => reqLog.trace(`stream connected, request_id=${stream?.request_id ?? "(none)"}`));
-          stream.on("streamEvent", (event: Anthropic.MessageStreamEvent) => {
+          stream.on("streamEvent", (event: Anthropic.Beta.BetaRawMessageStreamEvent) => {
             reqLog.trace(`stream event: ${JSON.stringify(event).slice(0, 500)}`);
           });
 

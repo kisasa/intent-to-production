@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { findMcpError, findDuplicateWrites, type ToolUseRecord } from "./activation-runner.js";
+import Anthropic from "@anthropic-ai/sdk";
+import { findMcpError, findDuplicateWrites, openActivationStream, type ToolUseRecord } from "./activation-runner.js";
 
 // Minimal content blocks — only the fields findMcpError reads.
 function toolUse(id: string, name: string, input: Record<string, unknown> = {}) {
@@ -171,5 +172,70 @@ describe("findDuplicateWrites", () => {
       ["t2", { name: "save_issue", input: { issueId: "PROJ-31", title: "Story B" } }],
     ]);
     expect(findDuplicateWrites(content as never, allToolUses)).toEqual([]);
+  });
+});
+
+describe("openActivationStream", () => {
+  // A paused turn as the API streams it: an mcp_tool_use block opened with an
+  // empty input, its arguments arriving only as input_json_delta fragments.
+  const pausedTurnEvents: Record<string, unknown>[] = [
+    {
+      type: "message_start",
+      message: {
+        id: "msg_1",
+        type: "message",
+        role: "assistant",
+        model: "claude-sonnet-5",
+        content: [],
+        stop_reason: null,
+        stop_sequence: null,
+        usage: { input_tokens: 1, output_tokens: 0 },
+      },
+    },
+    {
+      type: "content_block_start",
+      index: 0,
+      content_block: { type: "mcp_tool_use", id: "mcptoolu_1", name: "save_comment", server_name: "linear", input: {} },
+    },
+    { type: "content_block_delta", index: 0, delta: { type: "input_json_delta", partial_json: '{"issueId": "PROJ-1", ' } },
+    { type: "content_block_delta", index: 0, delta: { type: "input_json_delta", partial_json: '"body": "Ready to decompose."}' } },
+    { type: "content_block_stop", index: 0 },
+    { type: "message_delta", delta: { stop_reason: "pause_turn", stop_sequence: null }, usage: { output_tokens: 20 } },
+    { type: "message_stop" },
+  ];
+
+  function sseResponse(events: Record<string, unknown>[]): Response {
+    const body = events.map((e) => `event: ${String(e.type)}\ndata: ${JSON.stringify(e)}\n\n`).join("");
+    return new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } });
+  }
+
+  // The paused turn is re-sent verbatim on resume, so whatever input
+  // finalMessage() carries is what the server executes any not-yet-run call
+  // with. The non-beta stream left this `{}` (2026-09-28).
+  it("keeps an mcp_tool_use block's streamed arguments in the final message", async () => {
+    const requests: { headers: Headers; body: Record<string, unknown> }[] = [];
+    const client = new Anthropic({
+      apiKey: "test-key",
+      maxRetries: 0,
+      fetch: async (_url: string | URL | Request, init?: RequestInit) => {
+        requests.push({ headers: new Headers(init?.headers), body: JSON.parse(String(init?.body)) });
+        return sseResponse(pausedTurnEvents);
+      },
+    });
+
+    const message = await openActivationStream(client, {
+      model: "claude-sonnet-5",
+      max_tokens: 1024,
+      mcp_servers: [{ type: "url", url: "https://mcp.example.test/mcp", name: "linear" }],
+      messages: [{ role: "user", content: "go" }],
+    }).finalMessage();
+
+    expect(message.stop_reason).toBe("pause_turn");
+    expect(message.content[0]).toMatchObject({
+      type: "mcp_tool_use",
+      input: { issueId: "PROJ-1", body: "Ready to decompose." },
+    });
+    expect(requests[0]?.headers.get("anthropic-beta")).toContain("mcp-client-2025-04-04");
+    expect(requests[0]?.body.mcp_servers).toHaveLength(1);
   });
 });

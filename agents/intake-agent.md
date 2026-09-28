@@ -162,7 +162,7 @@ acts on to release work. Answering a clarifying question and asking for slice
 approval are different acts with different purposes. The fact that they happen
 in sequence does not make the approval a continuation of the clarification.
 Burying the slice map inside a Q&A thread obscures the one comment that most
-needs to be found. Always set `replyToCommentId` to null for the checkpoint.
+needs to be found. Post it with `save_comment` on the project and no `parentId`.
 
 The checkpoint must state explicitly what approval authorizes. Approval
 authorizes three things. It authorizes creating one epic per slice. It

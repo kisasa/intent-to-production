@@ -5355,3 +5355,44 @@ test asserting a status update parses to nothing. Intake's template now
 determines state from the comment thread. It still reads the status-update
 history as context, because a project started before today may hold earlier
 replies there.
+
+## A paused turn is re-sent with its MCP tool arguments intact (2026-09-28)
+
+**Rule.** The activation runner streams through the SDK's beta Messages
+stream (`openActivationStream` in `webhook-listener/src/activation-runner.ts`),
+never the non-beta one. Only the beta stream builds an `mcp_tool_use` block's
+input from its streamed argument fragments, and a `pause_turn` resume re-sends
+the paused turn exactly as the stream assembled it.
+
+**Observation.** A week of listener logs (2026-09-21 to 2026-09-26) held a
+steady run of tool calls rejected for missing arguments: `save_comment` without
+a `body`, `save_issue` without a `title`, `save_project` without a `name`,
+`get_issue` without an `id`, GitHub reads without an `owner`. They clustered at
+the first content-block indices of a resumed response, up to eight in one
+batch. The non-beta stream tracks arguments for `tool_use` and `server_tool_use`
+only, so every `mcp_tool_use` in a paused turn came back with the empty input
+it opened with, and any call the server had not yet run executed with no
+arguments. Claude usually noticed and retried, which is why most of these never
+surfaced; one Intake run after three pauses ended on an unrecovered
+`save_comment` and posted a pipeline error. The 2026-07-17 and 2026-07-29
+entries on corrupted calls at a pause boundary were this.
+
+**Decision** (the architect). Switch the stream, and pin it with a test that
+streams a paused `mcp_tool_use` through a fake response and asserts its
+arguments survive `finalMessage()`. The retry tolerance in `findMcpError` stays
+as a defence: with arguments intact it should rarely fire.
+
+## Replies are placed with `parentId` (2026-09-28)
+
+**Rule.** Decompose and Intake place a reply with `save_comment`'s `parentId`,
+and a new top-level comment omits it.
+
+**Observation.** Both definitions still named `replyToCommentId`, a field from
+when the app posted Claude's comments for it. The tracker connector's
+`save_comment` rejects it as an unrecognised key, and between 2026-09-22 and
+2026-09-26 Decompose's first attempt at a threaded reply failed on it in every
+run that made one, then succeeded on a retry without it.
+
+**Decision** (the architect). Name the connector's own field. The worked
+examples in `decompose-agent.md` still show the old whole-response object and
+are a separate cleanup.
