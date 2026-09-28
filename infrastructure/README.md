@@ -258,7 +258,7 @@ manage.
 | `parameter-prefix` | `/example/prod/` | Trailing slash included. One shared prefix for every stack's SSM secrets — see Creating the SSM parameters |
 | `listener.environment-name` | `prod` | **Max 30 characters** — load balancer and target group names cap at 32 |
 | `listener.subdomain` | `intent` | Combines into `intent.prod.example.com` |
-| `listener.ecr-repository-name` | `intent-to-production` | Must match the CI workflow's `ECR_REPOSITORY` |
+| `listener.ecr-repository-name` | `intent-to-production-listener` | Must match the CI workflow's `ECR_REPOSITORY` |
 | `listener.image-tag` | `latest` | See Image tags below |
 | `listener.port` | `8787` | Container port and target group port |
 | `listener.cpu` / `.memory` | `512` / `1024` | Task-level Fargate sizing |

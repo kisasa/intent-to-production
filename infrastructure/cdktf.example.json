@@ -31,7 +31,7 @@
     "listener": {
       "environment-name": "prod",
       "subdomain": "intent",
-      "ecr-repository-name": "intent-to-production",
+      "ecr-repository-name": "intent-to-production-listener",
       "image-tag": "latest",
       "port": 8787,
       "cpu": 512,
