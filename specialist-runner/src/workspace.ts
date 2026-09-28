@@ -7,9 +7,9 @@
  * quietly dispatch a superseded definition"): a fresh per-run clone can't go
  * stale the way a human's forgotten `git pull` can.
  *
- * Named limitation: assumes a Node-based target surface. A non-Node surface
- * would need a broader image or a per-dispatch toolchain step — out of scope
- * until an actual non-Node surface needs a specialist run.
+ * The image carries Node, Python and .NET toolchains (see the Dockerfile); a
+ * surface on any other runtime needs the image extended before the specialist
+ * can run its tests.
  */
 
 import { execFile } from "node:child_process";

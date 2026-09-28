@@ -62,9 +62,11 @@ describe("buildSystemPrompt", () => {
     await mkdir(join(frameworkPath, "agents"), { recursive: true });
     await mkdir(join(frameworkPath, "skills", "story-contract"), { recursive: true });
     await mkdir(join(frameworkPath, "skills", "epic-writing"), { recursive: true });
+    await mkdir(join(frameworkPath, "skills", "tracker-writing"), { recursive: true });
     await writeFile(join(frameworkPath, "agents", "specialist.md"), "AGENT DEFINITION");
     await writeFile(join(frameworkPath, "skills", "story-contract", "SKILL.md"), "STORY CONTRACT SKILL");
     await writeFile(join(frameworkPath, "skills", "epic-writing", "SKILL.md"), "EPIC WRITING SKILL");
+    await writeFile(join(frameworkPath, "skills", "tracker-writing", "SKILL.md"), "TRACKER WRITING SKILL");
   }
 
   afterEach(async () => {
@@ -72,17 +74,19 @@ describe("buildSystemPrompt", () => {
     if (surfaceRepoPath) await rm(surfaceRepoPath, { recursive: true, force: true });
   });
 
-  it("concatenates the agent file and both framework skill files", async () => {
+  it("concatenates the agent file and every framework skill file", async () => {
     await scaffold();
     const { systemPrompt, skills } = await buildSystemPrompt(frameworkPath, surfaceRepoPath, context);
 
     expect(systemPrompt).toContain("AGENT DEFINITION");
     expect(systemPrompt).toContain("STORY CONTRACT SKILL");
     expect(systemPrompt).toContain("EPIC WRITING SKILL");
+    expect(systemPrompt).toContain("TRACKER WRITING SKILL");
     expect(systemPrompt.indexOf("AGENT DEFINITION")).toBeLessThan(systemPrompt.indexOf("STORY CONTRACT SKILL"));
     expect(skills).toEqual([
       { name: "story-contract", source: "framework" },
       { name: "epic-writing", source: "framework" },
+      { name: "tracker-writing", source: "framework" },
     ]);
   });
 

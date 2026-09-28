@@ -28,7 +28,7 @@ import type { DispatchContext, RevisionContext } from "./dispatch-context.js";
 
 const AGENT_FILE = "specialist.md";
 /** Framework-process skills every specialist reads, whatever the surface. */
-const FRAMEWORK_SKILL_NAMES = ["story-contract", "epic-writing"];
+const FRAMEWORK_SKILL_NAMES = ["story-contract", "epic-writing", "tracker-writing"];
 
 async function exists(path: string): Promise<boolean> {
   try {

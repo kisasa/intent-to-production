@@ -17,14 +17,14 @@
  * usable signal, gated on subscribing the webhook to that team specifically
  * (a webhook scoped to "all public teams" never fires for a private team).
  *
- * Confirmed against a live payload (2026-07-16): Linear does not emit a
- * webhook for comments added to a Project — only Issue/Document comments are
- * webhook-visible. A human's follow-up on a Project (Intake's entity type)
- * therefore can't arrive as a `Comment` event; it arrives as a `ProjectUpdate`
- * ("status update") post instead, mapped onto the same comment_added
- * TrackerEvent kind below. Posting a ProjectUpdate also fires a same-tick
- * `Project`/`update` webhook (health/lastUpdateId changed) — already a no-op
- * here since that branch only reacts to label/status changes.
+ * Confirmed (2026-09-25): a comment on a Project arrives as an ordinary
+ * `Comment` webhook carrying `projectId`, so a human's follow-up to Intake
+ * takes the same comment branch as an issue comment. `ProjectUpdate`
+ * ("status update") posts are deliberately not triggers: they stood in for
+ * project comments while Linear sent no webhook for those, and today a status
+ * update is a health post, not a reply. Posting one also fires a same-tick
+ * `Project`/`update` webhook (health/lastUpdateId changed), a no-op here since
+ * that branch only reacts to label/status changes.
  *
  * VERIFY before relying on this in production (marked inline, still
  * unconfirmed against a live payload):
@@ -320,42 +320,6 @@ export function createLinearAdapter(webhookSecret: string, agentApiKey: string):
 
         reqLog.trace(`${entityType} ${entityId}: neither labels nor status changed — discarding`);
         return null; // some other field changed (title edit, description, etc.) — not a trigger
-      }
-
-      // Linear does not emit a webhook for comments on a Project — only for
-      // comments on Issues/Documents. A ProjectUpdate ("status update") post
-      // is the only webhook-visible signal that a human touched a project's
-      // discussion, so it stands in for comment_added on Projects. Confirmed
-      // against a live payload (2026-07-16): data.projectId/data.userId/
-      // data.body mirror the Comment branch's field names, just without the
-      // nested-object fallback Comment needs (project/user are always
-      // present alongside the flat ids here, but the flat id is simpler).
-      if (hook.type === "ProjectUpdate" && hook.action === "create") {
-        const authorId = (hook.data.userId as string | undefined) ?? null;
-        const entityId = hook.data.projectId as string | undefined;
-        if (!entityId) {
-          reqLog.trace("project update has no projectId — discarding");
-          return null;
-        }
-        reqLog.trace(`project update on ${entityId} by ${authorId ?? "(unknown author)"}`);
-
-        const ctx = agentApiKey ? await fetchEntityContext("project", entityId, agentApiKey, traceId) : null;
-        if (!ctx) {
-          reqLog.trace(`could not resolve context for project ${entityId} — discarding`);
-          return null;
-        }
-
-        return {
-          kind: "comment_added",
-          entityType: "project",
-          entityId: entityId,
-          entityTitle: ctx.title,
-          status: ctx.status,
-          labels: ctx.labels,
-          authorId: authorId,
-          addedLabels: [],
-          actor: extractActor(hook),
-        };
       }
 
       if (hook.type === "Comment" && hook.action === "create") {

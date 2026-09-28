@@ -100,8 +100,12 @@ Use when any of the following holds:
 - One or more `confirm` rows in the capability map are unresolved
 - The per-slice or cross-slice readiness test fails and the failure traces to
   a specific gap in the evidence. Both tests are defined below.
-- The brief exceeds the scope band defined in the brief skill. That means it
-  would slice into more epics than the band permits. **First check whether
+- The brief exceeds the epic-count band set in the brief skill's "Scope band"
+  section. That means it would slice into more epics than the band permits.
+  While that section sets no number, there is no band to exceed: epic count
+  alone never triggers `ask`. The slice map lists every slice, so the humans
+  see the size at the checkpoint and sizing stays theirs. When a
+  number is set, apply it as follows. **First check whether
   the size decision is already made.** The brief or thread may record an
   explicit human decision to proceed at this size. One example is the brief's
   scoping note recording that the PM was flagged and chose one comprehensive
@@ -158,7 +162,7 @@ acts on to release work. Answering a clarifying question and asking for slice
 approval are different acts with different purposes. The fact that they happen
 in sequence does not make the approval a continuation of the clarification.
 Burying the slice map inside a Q&A thread obscures the one comment that most
-needs to be found. Always set `replyToCommentId` to null for the checkpoint.
+needs to be found. Post it with `save_comment` on the project and no `parentId`.
 
 The checkpoint must state explicitly what approval authorizes. Approval
 authorizes three things. It authorizes creating one epic per slice. It

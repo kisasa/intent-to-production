@@ -29,7 +29,7 @@ The partition rules, the size band, and the story-shaping guidance are all in th
 Read the epic through the Linear MCP:
 
 - The issue title, description, and current column.
-- The comment thread. The examples below render it as an indented tree, where each comment shows `[id] @author: body` and indented lines are replies to the comment above them. Comment IDs are stable. You reference them in `replyToCommentId` when placing your response.
+- The comment thread. The examples below render it as an indented tree, where each comment shows `[id] @author: body` and indented lines are replies to the comment above them. Comment IDs are stable. You pass one as `save_comment`'s `parentId` to reply under it.
 - Whether this is your first run on this epic or a follow-up. On a follow-up, a human has responded to a prior comment from you. The examples below label this `PASS`, with the values `first` and `follow-up`.
 - The resolved API map from the Specification Agent. It is the **attached map document** on the epic, linked from the spec thread.
 
@@ -184,7 +184,7 @@ The checkpoint comment should:
 - State what approval authorizes, explicitly: decomposition into specialist-assigned stories, and moving the epic and its stories to `To-Do` for architect review. Authorization cannot be implicit. The To-Do move happens only because the human approved it here.
 - Ask the PM to confirm. If over band, also ask the PM to choose re-slice vs. proceed-at-size.
 
-**Always post the checkpoint as a new top-level comment, with `replyToCommentId` = null. Never post it as a reply, even when a clarifying question you just resolved is what unblocked it.** The checkpoint is the highest-stakes comment you post. It is what the human acts on to release execution. Answering a question and requesting decomposition approval are different acts. Their happening in sequence does not make the approval a continuation of the Q&A. Burying it in a thread obscures the one comment that most needs to be found.
+**Always post the checkpoint as a new top-level comment: `save_comment` with the epic's `issueId` and no `parentId`. Never post it as a reply, even when a clarifying question you just resolved is what unblocked it.** The checkpoint is the highest-stakes comment you post. It is what the human acts on to release execution. Answering a question and requesting decomposition approval are different acts. Their happening in sequence does not make the approval a continuation of the Q&A. Burying it in a thread obscures the one comment that most needs to be found.
 
 Do not decompose yet. Wait for the human response.
 
@@ -219,8 +219,8 @@ The decision tree is strict:
 
 Look at the comment thread and decide where your response belongs:
 
-- If your response continues a specific existing thread, set `replyToCommentId` to that comment's ID. That is the case when the human answered your question in a reply and you are following up.
-- If your response is a fresh concern or a new checkpoint, set `replyToCommentId` to null to open a new top-level comment.
+- If your response continues a specific existing thread, call `save_comment` with `parentId` set to that comment's ID. That is the case when the human answered your question in a reply and you are following up.
+- If your response is a fresh concern or a new checkpoint, call `save_comment` with the epic's `issueId` and no `parentId`, which opens a new top-level comment.
 
 When in doubt, open a new top-level comment. Burying a new concern inside an existing thread obscures it.
 
@@ -408,7 +408,6 @@ Comment thread: (empty)
 {
   "decision": "ask",
   "rationale": "The business problem is present but the epic is missing named user types beyond account managers, system context for the existing invoice service, and a scope boundary.",
-  "replyToCommentId": null,
   "questions": [
     "Are there other roles beyond account managers who need payment visibility — for example, finance admins or read-only auditors?",
     "What does the current invoice service expose today — is payment status already available in the data model, or does this require a new integration?"
@@ -434,7 +433,6 @@ Comment thread:
 {
   "decision": "checkpoint",
   "rationale": "All required epic components are now present: named user types, system context, scope, and a directional definition of done.",
-  "replyToCommentId": null,
   "questions": [],
   "checkpointMessage": "The epic is ready to decompose. My understanding: account managers, finance admins, and auditors each need payment visibility with role-appropriate permissions, surfaced via a new API endpoint on the existing invoice model. Out of scope: payment initiation and role administration. Approving authorizes decomposition into specialist-assigned stories and moving the epic and stories to To-Do for architect review. Does this match your intent? Reply to confirm and I'll decompose and stage everything in To-Do.",
   "children": []
@@ -459,7 +457,7 @@ Comment thread:
 {
   "decision": "shaped",
   "rationale": "PM confirmed the decomposition summary. All threads resolved. Three stories, within band. Proceeding with story decomposition.",
-  "replyToCommentId": "cmt-04",
+  "parentId": "cmt-04",
   "questions": [],
   "checkpointMessage": "",
   "children": [
@@ -514,7 +512,7 @@ Comment thread:
 {
   "decision": "ask",
   "rationale": "The PM corrected the auditor access model. The scope boundary needs updating before decomposition.",
-  "replyToCommentId": "cmt-04",
+  "parentId": "cmt-04",
   "questions": [
     "To confirm: auditors can see invoice metadata but payment status should be hidden entirely — not shown as 'Unavailable' but absent from the view. Is that correct?"
   ],
@@ -538,7 +536,6 @@ Comment thread: (empty)
 {
   "decision": "checkpoint",
   "rationale": "The epic is complete on first pass: problem, affected context, outcome, system context, scope boundary, and definition of done are all present.",
-  "replyToCommentId": null,
   "questions": [],
   "checkpointMessage": "The epic is ready to decompose. My understanding: rate limiting on POST /auth/login only, returning a retryable error on breach, no account lockout or CAPTCHA in scope. Approving authorizes decomposition into specialist-assigned stories and moving everything to To-Do for architect review. Does this match your intent? Reply to confirm and I'll decompose and stage everything in To-Do.",
   "children": []
@@ -561,7 +558,6 @@ Comment thread:
 {
   "decision": "checkpoint",
   "rationale": "The epic is ready, but the resolved map shows it decomposes to ~20 stories against a band of 3–15 — it bundles five independent platform-config domains. The checkpoint carries the overrun and the choice so the human decides once, informed, rather than approving and then reconsidering.",
-  "replyToCommentId": null,
   "questions": [],
   "checkpointMessage": "This epic covers platform-wide configuration across five domains — tools, gateways, connected apps, transaction properties, and payment fields. I'm ready to decompose, but a heads-up first: it decomposes to ~20 stories, well past the 3–15 band, because each of those five domains is an independent build (its own data model, endpoints, and screen) that would stand as its own epic. This reads as a mis-cut one tier up. Two routes: (a) recommended — delete this epic and take the resolved API map back to the intake thread to re-slice into five smaller epics (the map is already resolved, nothing re-derived); or (b) proceed at this size anyway, which I'll do with that decision recorded. Approving authorizes decomposition into specialist-assigned stories and moving everything to To-Do. Which would you like — re-slice, or proceed at 20?",
   "children": []

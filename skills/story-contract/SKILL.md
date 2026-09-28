@@ -216,8 +216,10 @@ Every story carries three assignment fields, applied as labels at
 decomposition time, plus a point estimate in a native field — see below:
 
 - `surface` — one or more, applied as `surface:<name>`, e.g. `surface:web`.
-  Each names a place work happens: a repo, or a project inside one. It is
-  recorded on the epic as `Repo base — <name>`. The prefix is fixed, because
+  Each names a place work happens: a repo, or a project inside one. Every
+  surface named must have a record in the surface registry: the project's
+  `Surfaces` document, or the epic's `Surfaces (override)` document, whose
+  record for a surface replaces the project's. The prefix is fixed, because
   the dispatch trigger reads it mechanically to route a story. The vocabulary
   is not fixed. A surface is whatever this engagement actually has, so `web`,
   `mobile`, `api`, and `e2e` are equally valid. Nothing is gained by forcing a

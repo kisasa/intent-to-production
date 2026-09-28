@@ -358,7 +358,8 @@ There is no label. The comment is the record.
 ## References
 
 Put every path, identifier, and link at the end of your report under a
-`## References` heading, not inline in the prose. See `tracker-writing.md`.
+`## References` heading, not inline in the prose. The `tracker-writing` skill
+sets the house standard for everything you write into the tracker.
 
 Do not report merge conflicts as a blocker. They are a concurrency artifact
 for the reviewer to resolve at merge time.

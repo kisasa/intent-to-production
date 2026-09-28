@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Runs a backend or frontend Specialist against one story inside the specialist-sandbox ECS task. Reads its dispatch context from env vars a Temporal worker sets via ECS RunTask overrides (see src/dispatch-context.ts); everything else it fetches itself through the Linear and GitHub MCP servers, and a local git checkout, the same way the manually-dispatched specialist did.",
+  "description": "Runs the specialist against one story inside the specialist-sandbox ECS task. Reads its dispatch context from env vars a Temporal worker sets via ECS RunTask overrides (see src/dispatch-context.ts); everything else it fetches itself through the Linear and GitHub MCP servers, and a local git checkout, the same way the manually-dispatched specialist did.",
   "scripts": {
     "start": "node --import tsx src/run.ts",
     "test:unit": "vitest run",

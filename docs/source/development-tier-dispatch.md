@@ -158,6 +158,7 @@ Read these files now. They define your role and the contracts you work to:
 - <FRAMEWORK_PATH>/agents/specialist.md
 - <FRAMEWORK_PATH>/skills/story-contract/SKILL.md
 - <FRAMEWORK_PATH>/skills/epic-writing/SKILL.md
+- <FRAMEWORK_PATH>/skills/tracker-writing/SKILL.md
 - <any mandatory skill the surface registry lists for this surface>
 
 You are the Specialist those files describe. Follow that definition; this

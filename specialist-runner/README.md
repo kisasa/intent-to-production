@@ -40,10 +40,10 @@ and frontend are separate GitHub repos that both need checking out.
    repo fresh, every run — see `src/workspace.ts`. Checks out the story branch
    the tracker already assigned; does not create or repair one.
 3. Builds a system prompt from the specialist's own `.md` definition, the
-   two framework skills every specialist reads (`story-contract`,
-   `epic-writing`), and the surfaces' mandatory skills from `SURFACE_SKILLS`,
-   plus an initial user message naming the story, epic, branches, and
-   surface(s). On a revision round (the `REVISION_*` vars below are set) that
+   three framework skills every specialist reads (`story-contract`,
+   `epic-writing`, `tracker-writing`), and the surfaces' mandatory skills
+   from `SURFACE_SKILLS`, plus an initial user message naming the story,
+   epic, branches, and surface(s). On a revision round (the `REVISION_*` vars below are set) that
    message is instead the revision assignment: which PR and review to answer,
    which round of how many, and to follow the definition's revision
    lifecycle. The review itself is not passed in — the specialist reads it

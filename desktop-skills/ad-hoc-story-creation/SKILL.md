@@ -37,7 +37,7 @@ epic.** That's a different situation — tell the developer to use the
 ## What you're producing
 
 The exact contract a well-formed story must meet is defined in
-`skills/story-contract/story-contract.md` in this repo (`intent-to-production`)
+`skills/story-contract/SKILL.md` in this repo (`intent-to-production`)
 — read it if you have access to the repo; if not, the required shape is
 summarized below and should not drift from it. If the two ever disagree,
 the repo file wins — this skill's job is to interview a human through that
@@ -85,7 +85,7 @@ Labels and fields:
   the developer doesn't know or care, say so and skip them rather than
   guessing.
 - **Point estimate** — optional, in the tracker's estimate field rather than
-  a label, on the 1/2/3/5/8 scale in `story-contract.md`. Offer a number and
+  a label, on the 1/2/3/5/8 scale in the `story-contract` skill. Offer a number and
   let the developer correct it; skip it if they'd rather not have one. A bare
   story has no sibling set to be relative to, so the guess is weaker here
   than at decomposition — say so rather than implying precision.
