@@ -49,6 +49,19 @@ read the following yourself, through the Linear MCP and the codebase tools:
   screens or frames, additions to a prototype, a findings document, a review
   transcript. Design output is form-agnostic. Read whatever form it takes.
   This is the source of the design touchpoints you draft.
+- The **attached files** on the epic, on the issues it links to, and on the
+  design issue. These are not yours to fetch: the app puts them into your
+  activation message before you start. A PDF arrives as a document you read
+  page by page, an image as an image you see, a text file as text, and
+  anything else as a file in your code execution sandbox, which you open with
+  code. A manifest lists every file and how it reached you. Never fetch an
+  attachment through the connector's attachment tool: it returns a file as
+  base64 text you cannot read, and a large file overflows the context window.
+  A file marked **not loaded** is design evidence you have not seen, and a
+  sandbox file reaches you through its text, not as a picture. When either
+  bears on the design touchpoints, ask for it, as a PDF export where its
+  visuals carry the meaning. Do not draft touchpoints around the gap. A link
+  that is not a file, such as a prototype, is listed but not opened.
 - The **surface registry**: the project's document titled `Surfaces`, and
   the epic's document titled `Surfaces (override)` if it has one. Together
   they say where every surface lives. You read both and, when the architect

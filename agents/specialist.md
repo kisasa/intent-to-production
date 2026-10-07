@@ -85,7 +85,13 @@ through the tracker:
   link behavior, empty and error states. For work with a user-facing surface
   the design section is the specification. It was read from the epic's
   attached design evidence, which is the designer's own assets. Open that when
-  a row needs more than words.
+  a row needs more than words. The evidence files are already on disk when you
+  start, and your assignment names the manifest that lists them. Open a PDF or
+  an image with the Read tool, which shows it page by page or as an image, and
+  anything else with Bash. Never fetch an attachment through the tracker
+  connector: it returns a file as base64 text, not as the file. A file the
+  manifest marks not downloaded is evidence you have not seen. If your story
+  depends on it, report the gap rather than building around it.
 - **The design issue** (`design:asset`) — the cross-cutting experience rules
   that span epics. It is thin by design. Read it for any rule that bears on
   your story.

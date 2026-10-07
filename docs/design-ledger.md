@@ -5396,3 +5396,69 @@ run that made one, then succeeded on a retry without it.
 **Decision** (the architect). Name the connector's own field. The worked
 examples in `decompose-agent.md` still show the old whole-response object and
 are a separate cleanup.
+
+## Attachments reach Claude as documents, images and sandbox files (2026-10-07)
+
+**Rule.** For Intake and Specification, the listener pre-loads the evidence
+files into the request before the call (`webhook-listener/src/attachments/`),
+and the agents never fetch an attachment through the tracker connector. A PDF
+goes in as a document block, an image as an image block, text as text, and
+anything else — or anything over the budget — into the code execution sandbox.
+A manifest at the end of the attachments tells Claude where each file went.
+Which files: the walker follows issue and document links from the project and
+its documents (Intake) or the epic (Specification), plus the `design:asset`
+issue, three hops deep and across projects. The budget is 250K tokens of
+attachments, no text file over 100K, at most 20 images; the pre-flight ceiling
+is 600K.
+
+**Observation.** On 2026-10-06 an Intake run fetched a 16-page captioned
+screens PDF through the connector's attachment tool. The tool returns a file
+as base64 text; the request came to 1,623,952 tokens against a 1M window and
+was refused before Claude read anything. The same PDF as a document block is
+about 64K tokens, and a probe confirmed Claude reads its pages visually.
+Designing the scope against two real projects ruled out "every issue in the
+project": one runs a second business-requirements document in the same
+project, where membership would pull in every delivered epic; the other keeps
+its design evidence in a proof-of-concept issue in a different project. One
+evidence chain needed three hops (brief → its evidence issue → a shared
+evidence issue and a scope-authority issue). The probe
+(`scripts/probe-attachment-preload.ts`) also settled what the documentation
+doesn't: an upload URL needs the API key despite its signature; the token
+counting endpoint refuses file sources, so the pre-flight counts an inline
+copy; code execution and the MCP connector share a request; sandbox files land
+at `$INPUT_DIR/<name>`. It also showed one PDF read three times uncached across
+the server's tool passes (192K input tokens), which is why the request now
+carries an automatic cache breakpoint at the tail beside the system prompt's
+and the manifest's.
+
+**Decision** (the architect). Fetching is the app's mechanical job; what the
+files mean stays Claude's. Nothing is ever truncated: a file that doesn't fit
+the prompt reaches Claude in the sandbox, and a file Claude can't use — not
+loaded, or a deck whose visuals matter but arrived as extracted text — becomes
+a question in the thread, never a gap reasoned past. Files go to the Files API
+once with a one-day expiry and are reused by content hash, so a resume re-sends
+ids rather than bytes and nothing ever has to be deleted. The code execution
+tool is attached only when a file went to the sandbox, because preloaded
+sandbox files are billed whether or not Claude runs anything. `maxInputTokens`
+moves from 180K, sized for a 200K window, to 600K, since every lane runs a 1M
+model. The pre-flight adds the per-file measurements to a count of the text
+alone, rather than re-sending every file inline to a counting endpoint with its
+own request size limit, and a file that endpoint refuses goes to the sandbox
+instead of failing the run.
+
+Downloads are capped at 50 MB per file and 150 MB per activation, and run one
+at a time. The listener is one task with 1 GB of memory shared by every
+concurrent activation, and an uncapped download of one large attachment could
+take the process, and every run in it, down. A file over the cap is listed as
+not loaded, with a note that a smaller export would load. The caps sit in
+code, so the task stays its current size.
+
+The specialist gets the same files the same way, on disk instead of in a
+request: `specialist-runner` downloads the epic's evidence beside the surface
+checkout before the run, with the same walk and caps, and writes a manifest
+the assignment names. The Agent SDK would not have overflowed — it saves an
+oversized tool result to a file and hands over the path — but what it saved
+was still base64, and turning it back into a file was left to the specialist's
+improvisation. On disk the Read tool shows PDFs and images natively, and there
+is no token budget to manage, because a file costs nothing until it is
+opened.

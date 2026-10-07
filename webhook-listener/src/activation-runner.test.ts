@@ -1,6 +1,13 @@
 import { describe, it, expect } from "vitest";
 import Anthropic from "@anthropic-ai/sdk";
-import { findMcpError, findDuplicateWrites, openActivationStream, type ToolUseRecord } from "./activation-runner.js";
+import {
+  buildActivationParams,
+  findMcpError,
+  findDuplicateWrites,
+  openActivationStream,
+  type ActivationRequest,
+  type ToolUseRecord,
+} from "./activation-runner.js";
 
 // Minimal content blocks — only the fields findMcpError reads.
 function toolUse(id: string, name: string, input: Record<string, unknown> = {}) {
@@ -85,7 +92,7 @@ describe("findMcpError", () => {
     const content = [
       toolUse("t1", "save_comment", { issueId: "" }),
       toolResult("t1", true),
-      toolUse("t2", "save_comment", { projectId: "a50e804f-6aa3-47a0-b973-b5fc2a78fa66", body: "Decision: ask" }),
+      toolUse("t2", "save_comment", { projectId: "00000000-0000-4000-8000-000000000003", body: "Decision: ask" }),
       toolResult("t2", false),
     ];
     expect(findMcpError(content as never)).toBeNull();
@@ -237,5 +244,32 @@ describe("openActivationStream", () => {
     });
     expect(requests[0]?.headers.get("anthropic-beta")).toContain("mcp-client-2025-04-04");
     expect(requests[0]?.body.mcp_servers).toHaveLength(1);
+  });
+});
+
+describe("buildActivationParams", () => {
+  const base: ActivationRequest = {
+    model: "claude-opus-5-5",
+    effort: "high",
+    maxTokens: 32_000,
+    system: [{ type: "text", text: "agent" }],
+    mcpServers: [{ type: "url", url: "https://mcp.example.test/mcp", name: "linear", authorization_token: "t" }],
+    needsCodeExecution: false,
+    messages: [{ role: "user", content: "go" }],
+  };
+
+  it("carries no tools when no attachment went to the sandbox", () => {
+    const params = buildActivationParams(base) as unknown as Record<string, unknown>;
+    expect(params.tools).toBeUndefined();
+  });
+
+  it("attaches the code execution tool when an attachment went to the sandbox", () => {
+    const params = buildActivationParams({ ...base, needsCodeExecution: true }) as unknown as Record<string, unknown>;
+    expect(params.tools).toEqual([{ type: "code_execution_20260521", name: "code_execution" }]);
+  });
+
+  it("turns on automatic caching for the conversation tail", () => {
+    const params = buildActivationParams(base) as unknown as Record<string, unknown>;
+    expect(params.cache_control).toEqual({ type: "ephemeral" });
   });
 });

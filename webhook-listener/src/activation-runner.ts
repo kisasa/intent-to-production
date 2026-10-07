@@ -9,10 +9,14 @@
  * client-side tool loop either — the app declares no tools of its own. Claude
  * reads the thread and the code, decides, and posts/labels/creates/moves via
  * its own MCP tool calls, all resolved server-side within one Anthropic call.
- * This function's only job is to assemble that one call, post the one
- * courtesy "working on it" comment right before opening it (see
- * tracker-notifier.ts — some runs take minutes before Claude's own first
- * tracker write), and catch the two failure modes the app itself must report.
+ * This function's only job is to assemble that one call — including, for the
+ * lanes that read evidence, pre-loading the tracker attachments into it as
+ * documents, images, text and sandbox files (attachments/attachment-preload.ts),
+ * since the tracker connector can only hand Claude a file as unreadable
+ * base64 text — post the one courtesy "working on it" comment right before
+ * opening it (see tracker-notifier.ts — some runs take minutes before
+ * Claude's own first tracker write), and catch the two failure modes the app
+ * itself must report.
  *
  * VERIFY before relying on this in production (unconfirmed against the current
  * @anthropic-ai/sdk MCP connector surface as of this rewrite):
@@ -55,6 +59,9 @@ import trackerNotifier, { pickPatienceQuip } from "./tracker-notifier.js";
 import { createLogger, type Logger } from "./logger.js";
 import { envOr } from "./env.js";
 import { readFile } from "node:fs/promises";
+import { createAttachmentPreloader, type PreloadedAttachments } from "./attachments/attachment-preload.js";
+import { createLinearEvidenceClient } from "./attachments/linear-evidence-source.js";
+import type { EvidenceScope } from "./attachments/evidence-walker.js";
 
 // The exact string @anthropic-ai/sdk's MessageStream throws when the SSE
 // connection ends with no message_stop and no error frame — confirmed
@@ -74,7 +81,7 @@ const PRODUCT_CONTEXT_PATHS = (process.env.PRODUCT_CONTEXT_PATHS ?? "")
   .map((p) => p.trim())
   .filter((p) => p.length > 0);
 
-type McpServerConfig = { type: "url"; url: string; name: string; authorization_token: string };
+export type McpServerConfig = { type: "url"; url: string; name: string; authorization_token: string };
 
 const LINEAR_MCP_SERVER: McpServerConfig = {
   type: "url",
@@ -99,6 +106,62 @@ function mcpServersFor(lane: AgentLaneConfig): McpServerConfig[] {
 
 const MCP_CLIENT_BETA = "mcp-client-2025-04-04";
 
+// Attached only when pre-load put a file in the sandbox. With files preloaded,
+// the sandbox is billed even if Claude never calls the tool, so a run whose
+// attachments all fit in the prompt doesn't carry it. Confirmed to share a
+// request with the MCP connector by scripts/probe-attachment-preload.ts on
+// 2026-10-07.
+const CODE_EXECUTION_TOOL = { type: "code_execution_20260521", name: "code_execution" };
+
+const LINEAR_API_URL = envOr("LINEAR_API_URL", "https://api.linear.app/graphql");
+
+// One preloader for the process lifetime: its upload cache is what lets a
+// later activation on the same evidence reuse an earlier one's uploads. The
+// listener is a pinned singleton, so in-process state is the whole state.
+export const attachmentPreloader = createAttachmentPreloader(
+  createLinearEvidenceClient(LINEAR_API_URL, LINEAR_AGENT_API_KEY, fetch),
+  activationConfig.attachments,
+);
+
+export function evidenceScopeFor(lane: AgentLaneConfig, entityId: string): EvidenceScope | null {
+  if (lane.attachmentScope === "project") return { kind: "project", projectId: entityId };
+  if (lane.attachmentScope === "epic") return { kind: "epic", issueId: entityId };
+  return null;
+}
+
+export interface ActivationRequest {
+  model: string;
+  effort: string;
+  maxTokens: number;
+  system: SystemBlock[];
+  mcpServers: McpServerConfig[];
+  needsCodeExecution: boolean;
+  messages: Anthropic.Beta.BetaMessageParam[];
+}
+
+// One place that shapes the request, so scripts/preview-attachment-preload.ts
+// sends exactly what an activation sends rather than a hand-copied cousin.
+export function buildActivationParams(req: ActivationRequest): BetaMessageStreamParams {
+  return {
+    model: req.model,
+    max_tokens: req.maxTokens,
+    thinking: { type: "adaptive" },
+    output_config: { effort: req.effort },
+    system: req.system,
+    mcp_servers: req.mcpServers,
+    ...(req.needsCodeExecution ? { tools: [CODE_EXECUTION_TOOL] } : {}),
+    // Automatic caching for the growing conversation tail. Within one call
+    // the server re-reads the whole prompt on every pass of its own tool
+    // loop, and a pause_turn resume re-sends the whole conversation — without
+    // a breakpoint at the tail, each of those was billed in full. Observed in
+    // the 2026-10-07 probe: one 16-page PDF and three tool passes came to
+    // 192K uncached input tokens. This is the third breakpoint, after the
+    // system prompt's and the attachment manifest's.
+    cache_control: { type: "ephemeral" },
+    messages: req.messages,
+  } as unknown as BetaMessageStreamParams;
+}
+
 // The beta stream, not client.messages.stream, because only the beta
 // accumulator assembles an mcp_tool_use block's input from its
 // input_json_delta events — the non-beta one tracks tool_use and
@@ -116,7 +179,7 @@ export function openActivationStream(client: Anthropic, params: BetaMessageStrea
 // System blocks (agent file + skills) are static per lane for the process
 // lifetime — loaded once on first activation, not re-read from disk per run.
 const systemBlockCache = new Map<string, Promise<SystemBlock[]>>();
-function getSystemBlocks(lane: AgentLaneConfig): Promise<SystemBlock[]> {
+export function getSystemBlocks(lane: AgentLaneConfig): Promise<SystemBlock[]> {
   let cached = systemBlockCache.get(lane.name);
   if (!cached) {
     cached = buildSystemBlocks(lane.agentFile, lane.skills);
@@ -436,15 +499,36 @@ export function createActivationRunner(lane: AgentLaneConfig): AgentFn {
       const userMessage = userMessageParts.join("\n");
       reqLog.trace(`assembled user message, ${userMessage.length} chars`);
 
-      const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: userMessage }];
+      // Attachments first, then the activation text: the documents and images
+      // lead (the order the API recommends), and their cache breakpoint sits
+      // before the part of the message that differs between passes.
+      const scope = evidenceScopeFor(lane, entityId);
+      let preloaded: PreloadedAttachments | null = null;
+      if (scope) {
+        reqLog.trace(`pre-loading attachments, scope=${scope.kind}`);
+        preloaded = await attachmentPreloader.preload(client, scope, lane.model, reqLog);
+      }
+      const userContent: Anthropic.Beta.BetaContentBlockParam[] = [
+        ...(preloaded?.blocks ?? []),
+        { type: "text", text: userMessage },
+      ];
+      const countContent: Anthropic.ContentBlockParam[] = [
+        ...(preloaded?.countBlocks ?? []),
+        { type: "text", text: userMessage },
+      ];
+
+      const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: userContent }];
       const mcpServers = mcpServersFor(lane);
       reqLog.trace(`attaching MCP server(s): [${mcpServers.map((s) => s.name).join(", ")}]`);
 
-      const { input_tokens } = await client.messages.countTokens({
+      const counted = await client.messages.countTokens({
         model: lane.model,
         system: systemBlocks,
-        messages: messages,
+        messages: [{ role: "user", content: countContent }],
       } as unknown as Anthropic.MessageCountTokensParams);
+      // The attachment files were measured one by one during pre-load; see
+      // PreloadedAttachments.countBlocks for why they aren't re-sent here.
+      const input_tokens = counted.input_tokens + (preloaded?.attachmentTokens ?? 0);
 
       log.debug(`entity ${entityId}: ${input_tokens} input tokens`);
       if (input_tokens > activationConfig.maxInputTokens) {
@@ -453,15 +537,15 @@ export function createActivationRunner(lane: AgentLaneConfig): AgentFn {
         );
       }
 
-      const params = {
+      const params = buildActivationParams({
         model: lane.model,
-        max_tokens: activationConfig.maxOutputTokens,
-        thinking: { type: "adaptive" },
-        output_config: { effort: activationConfig.effort },
+        effort: activationConfig.effort,
+        maxTokens: activationConfig.maxOutputTokens,
         system: systemBlocks,
-        mcp_servers: mcpServers,
+        mcpServers: mcpServers,
+        needsCodeExecution: preloaded?.needsCodeExecution ?? false,
         messages: messages,
-      } as unknown as BetaMessageStreamParams;
+      });
 
       // Posted before opening the stream, not after Claude's first move —
       // some runs take minutes before Claude makes its own first tracker

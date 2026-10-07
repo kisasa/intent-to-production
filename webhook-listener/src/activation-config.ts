@@ -14,6 +14,7 @@
  */
 
 import { requireEnv } from "./env.js";
+import type { AttachmentPreloadConfig } from "./attachments/attachment-preload.js";
 
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 
@@ -43,14 +44,20 @@ export interface ActivationConfig {
   limits: {
     productContextCharsPerFile: number;
   };
+  attachments: AttachmentPreloadConfig;
 }
 
 export const activationConfig: ActivationConfig = {
-  // Maximum input tokens allowed before the Anthropic API call. Reserving 10%
-  // of a 200K window leaves headroom for output and extended thinking tokens,
-  // which count against the same window. Enforced via an exact pre-flight
-  // countTokens() call rather than a character-to-token approximation.
-  maxInputTokens: 200_000 * 0.9,
+  // Maximum input tokens allowed before the Anthropic API call — the system
+  // prompt, the pre-loaded attachments and the activation template together.
+  // Every lane runs a 1M-token model; this leaves about 400K of the window
+  // for what the run itself reads through its connectors (threads, documents,
+  // the codebase), which accumulates through the turn, plus output and
+  // thinking. Enforced via an exact pre-flight countTokens() call rather than
+  // a character-to-token approximation. Was 180K, sized for a 200K window
+  // long after the lanes moved to 1M models — with PDFs in the prompt that
+  // ceiling would refuse runs the model handles comfortably.
+  maxInputTokens: 600_000,
 
   // Anthropic requires max_tokens on every call — there is no "unbounded"
   // option. Generous on purpose: Decompose's shaped output can carry several
@@ -106,5 +113,39 @@ export const activationConfig: ActivationConfig = {
     // Maximum characters read from a single product context file, folded into
     // every lane's activation alongside the issue/project and skill blocks.
     productContextCharsPerFile: 80_000,
+  },
+
+  // Attachment pre-load (attachments/attachment-preload.ts) for the lanes that
+  // read evidence.
+  attachments: {
+    walk: {
+      // Links followed from where the activation starts. One real evidence
+      // chain needed three: brief → its evidence issue → a shared evidence
+      // issue and a scope-authority issue.
+      maxHops: 3,
+      maxNodes: 40,
+    },
+    budget: {
+      // About 1.5–2× the heaviest real evidence set seen so far (a 16-page
+      // screens PDF, a brand guide, canvas HTML sources, logos and
+      // screenshots). Roughly $1 at Opus input pricing on an activation's
+      // first call; its pause_turn resumes read it from cache.
+      totalTokens: 250_000,
+      maxTextFileTokens: 100_000,
+      maxNativeImages: 20,
+    },
+    download: {
+      // Bounds on what pre-load holds in this process's memory. The listener
+      // is one small task (memory set in the deployment's cdktf.json) shared
+      // by every concurrent activation, so these keep one activation's
+      // evidence from starving the others. A file over the per-file cap is
+      // listed as not loaded, with a note that a smaller export would load.
+      maxFileBytes: 50 * 1024 * 1024,
+      maxTotalBytes: 150 * 1024 * 1024,
+    },
+    // A day of life per upload, reused only while six hours remain — longer
+    // than an activation's 30-minute attempts across every pause_turn resume.
+    fileExpirySeconds: 24 * 60 * 60,
+    minRemainingFileLifeMs: 6 * 60 * 60 * 1000,
   },
 };

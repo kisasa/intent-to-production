@@ -101,3 +101,18 @@ test("reports the path and line it found, so a failure is actionable", () => {
   assert.equal(found[0].path, "src/example.ts");
   assert.equal(found[0].line, 2);
 });
+
+test("catches a tracker URL naming any workspace but the placeholder", () => {
+  assert.ok(flags('const url = "https://linear.app/acme/issue/PROJ-1";'));
+  assert.ok(!flags('const url = "https://linear.app/example-org/issue/PROJ-1";'));
+});
+
+test("catches a UUID copied from a live tracker, but allows the placeholder range", () => {
+  // The miss that added this rule: a mention-tag fixture with a real issue UUID.
+  assert.ok(flags('<issue id="a9d17504-0000-46f9-91f6-000000000000">'));
+  assert.ok(!flags('<issue id="00000000-0000-4000-8000-000000000002">'));
+});
+
+test("does not mistake the tracker's MCP host for a workspace URL", () => {
+  assert.ok(!flags('const url = "https://mcp.linear.app/mcp/readonly";'));
+});

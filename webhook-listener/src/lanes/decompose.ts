@@ -23,6 +23,9 @@ export const config: AgentLaneConfig = {
   agentFile: "decompose-agent.md",
   skills: ["epic-writing", "story-contract", "tracker-writing"],
   codebaseAccess: true,
+  // Decompose cuts stories from the epic and its resolved API map; the
+  // evidence was read upstream by Intake and Specification.
+  attachmentScope: "none",
   // Infra-required per engagement, no code-level default — see
   // infrastructure/models/listener-configuration.ts and CLAUDE_MODEL_DECOMPOSE
   // in webhook-listener/.env.example.

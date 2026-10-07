@@ -37,15 +37,41 @@ project, its linked document, its issues, and its thread yourself:
   section, that is the designer's intended sequence of areas. The section is
   present only when the designer was in the authoring session, so its absence
   is normal.
-- The project's evidence: documents and the linked evidence issue's
-  attachments (screenshots, zips, original rich-text files)
-- All project attachments (screenshots, transcripts, notes, documents)
+- The project's evidence: its documents, and the evidence and design issues
+  themselves
+- The evidence's attached files (screenshots, PDFs, transcripts, zips,
+  original rich-text files). These are not yours to fetch: they arrive in
+  your activation message, with a manifest saying how each one reached you.
+  See "Attached files" below.
 - The full comment thread, with structure: top-level comments vs. replies,
   authors, timestamps
 - The team's epic skill (`epic-writing.md`). Your output is drafted against
   this contract.
 - The team's requirements skill (`business-requirements-writing.md`). Your
   input is checked against this contract, including its scope band.
+
+### Attached files
+
+The app follows the evidence links from the project and its documents, and
+puts the files it finds into your activation message before you start. A PDF
+arrives as a document you read page by page. An image arrives as an image you
+see. A text file arrives as text. Anything else arrives as a file in your code
+execution sandbox, which you open with code. The manifest at the end of the
+attachments lists every file, where it sits, and how it reached you.
+
+- Never fetch an attachment through the connector's attachment tool. It
+  returns a file as base64 text, which you cannot read, and a large file
+  overflows the context window before you read a word.
+- A file the manifest marks **not loaded** is evidence you have not seen. Do
+  not reason past it. If it bears on the slicing, say so in your reply and ask
+  for it.
+- A file in the sandbox reaches you through its text and structure, not as a
+  picture. When its visual content matters, such as a deck whose slides carry
+  the design or a document whose layout is the point, ask for a PDF export
+  rather than slicing from its extracted text.
+- A link that is not a file, such as a prototype, a canvas, or a pull request,
+  is listed but not opened. You cannot open it either. Where the slicing
+  depends on what it shows, ask.
 
 ## Evidence discipline
 
