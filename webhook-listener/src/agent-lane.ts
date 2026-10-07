@@ -29,6 +29,12 @@ export interface AgentLaneConfig {
   // the repo base per surface itself (see specification-agent.md).
   codebaseAccess: boolean;
 
+  // Which tracker attachments the app pre-loads into the request before the
+  // call (attachments/attachment-preload.ts). "project" walks the evidence
+  // links from the project and its documents; "epic" from the epic itself;
+  // both add the design issue. "none" for a lane that reads no evidence.
+  attachmentScope: "project" | "epic" | "none";
+
   model: string;
 
   // Template file basenames under prompt-templates/, selected by activation

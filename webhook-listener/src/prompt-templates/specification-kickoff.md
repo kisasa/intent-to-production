@@ -10,7 +10,10 @@ Using the Linear connector: read the surface registry first — the project's
 one — before proposing any surface record. Read the epic's capabilities, scope boundary,
 business context, and evidence pointers, and the epic's design evidence — the
 designer's assets for this epic's area, attached to the epic or linked from
-its Evidence section. If there is none, that is your first `ask`. Find and
+its Evidence section. If there is none, that is your first `ask`. The files
+attached to the epic, to the issues it links to, and to the design issue are
+already in this message, listed in the attachments manifest above: read them
+there, and never fetch an attachment through the connector's attachment tool. Find and
 read the project's design issue yourself (labeled `design:asset`) for any
 cross-cutting rule that bears on this epic — its identity isn't something this
 app tracks, so it is yours to locate via the connector, not a value supplied

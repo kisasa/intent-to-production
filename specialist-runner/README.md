@@ -90,9 +90,25 @@ per story:
 Plus the secrets every container in this project reads the same way (SSM,
 injected by the ECS agent — see `infrastructure/README.md`):
 `ANTHROPIC_API_KEY`, `LINEAR_AGENT_API_KEY`, `GITHUB_TOKEN`. Optional URL
-overrides: `LINEAR_MCP_URL`, `GITHUB_MCP_URL`, `LINEAR_API_URL` (used only by
-the fallback-comment path). `WORKSPACE_ROOT` (default `/workspace`) sets where
-the two repos are cloned.
+overrides: `LINEAR_MCP_URL`, `GITHUB_MCP_URL`, `LINEAR_API_URL` (used by the
+fallback-comment path and the evidence download). `WORKSPACE_ROOT` (default
+`/workspace`) sets where the two repos are cloned.
+
+## Evidence files on disk
+
+Before the specialist starts, `src/evidence/evidence-download.ts` downloads
+the epic's evidence into `<WORKSPACE_ROOT>/<run>/evidence/`, beside the surface
+checkout and never inside it. These are the same files the Specification Agent
+was handed: the epic, the issues it links to (three hops, across projects), and
+the `design:asset` issue. It writes a `MANIFEST.md` there, and the assignment
+message names that file. The specialist opens PDFs and images with its Read
+tool, which shows them natively, and anything else with Bash. It never calls
+the tracker connector's attachment tool, which hands a file over as base64
+text. Caps: 50 MB per file and 150 MB per run. A file over either cap, or one
+that fails to download, is listed as not downloaded. A walk that fails
+outright is written into the manifest rather than failing the run. The walker,
+link parser and Linear client mirror `webhook-listener/src/attachments/`; the
+packages share no library.
 
 `LOG_LEVEL` is set too, but it isn't part of `dispatch-context.ts`'s own
 contract above — `src/logger.ts` reads it independently, same as every other

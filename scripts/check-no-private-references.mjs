@@ -184,6 +184,32 @@ const RULES = [
     label: "org name used as a code identifier or filename",
     pattern: /Kisasa[A-Z]\w*|kisasa-[a-z]+\.ts/g,
   },
+  {
+    /**
+     * A tracker URL names its workspace in the path, and test fixtures for
+     * link parsing need realistic URLs. Added 2026-10-07 after fixtures used a
+     * made-up workspace slug the other rules couldn't see — the habit that, on
+     * a bad day, pastes the real one.
+     */
+    label: "tracker workspace URL (only linear.app/example-org/ is allowed)",
+    // Not preceded by a dot or word character: the connector host
+    // (mcp.linear.app/mcp/…) is a product URL, not a workspace.
+    pattern: /(?<![\w.])linear\.app\/(?!example-org\/)[A-Za-z0-9-]+\//g,
+  },
+  {
+    /**
+     * Added 2026-10-07: a test fixture carried a real tracker issue UUID,
+     * copied from a live description into a mention-tag example, and no rule
+     * matched it — the people rule pins one user id by value, which catches
+     * that id and nothing else. Any UUID outside CONTRIBUTING.md's placeholder
+     * range is a value somebody copied from somewhere. Skips generated lock
+     * files, which carry no authored content.
+     */
+    label: "UUID outside the placeholder range (use 00000000-0000-4000-8000-…)",
+    pattern: /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi,
+    ignore: (token) => token.startsWith("00000000-0000-4000-8000-"),
+    skipGenerated: true,
+  },
 ];
 
 /**

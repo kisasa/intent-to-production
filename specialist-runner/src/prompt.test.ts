@@ -3,6 +3,8 @@ import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildSystemPrompt, buildUserMessage } from "./prompt.js";
+
+const EVIDENCE_MANIFEST = "/workspace/run/evidence/MANIFEST.md";
 import type { DispatchContext } from "./dispatch-context.js";
 
 const context: DispatchContext = {
@@ -23,7 +25,7 @@ const context: DispatchContext = {
 
 describe("buildUserMessage", () => {
   it("names the specialist, the story, the epic, and both branches", () => {
-    const message = buildUserMessage(context);
+    const message = buildUserMessage(context, EVIDENCE_MANIFEST);
     expect(message).toContain("You are the Specialist described in the system prompt");
     expect(message).toContain('PROJ-101 — "Add refund endpoint"');
     expect(message).toContain("PROJ-10");
@@ -32,22 +34,22 @@ describe("buildUserMessage", () => {
   });
 
   it("names the story's single surface label", () => {
-    const message = buildUserMessage(context);
+    const message = buildUserMessage(context, EVIDENCE_MANIFEST);
     expect(message).toContain("surface:backend");
   });
 
   it("names every surface label when a story carries more than one", () => {
-    const message = buildUserMessage({ ...context, surfaces: ["web", "e2e"] });
+    const message = buildUserMessage({ ...context, surfaces: ["web", "e2e"] }, EVIDENCE_MANIFEST);
     expect(message).toContain("surface:web surface:e2e");
   });
 
   it("does not tell the specialist to run tests — not true for e2e, which only self-reviews", () => {
-    const message = buildUserMessage(context);
+    const message = buildUserMessage(context, EVIDENCE_MANIFEST);
     expect(message).not.toMatch(/run the tests/i);
   });
 
   it("does not mention an outcome label — removed 2026-08-07, the comment is the only record", () => {
-    const message = buildUserMessage(context);
+    const message = buildUserMessage(context, EVIDENCE_MANIFEST);
     expect(message).not.toMatch(/outcome label/i);
   });
 });
@@ -136,7 +138,7 @@ describe("buildUserMessage — revision rounds", () => {
   };
 
   it("says which PR and which review it is answering, and where in the budget it sits", () => {
-    const message = buildUserMessage(revisionContext);
+    const message = buildUserMessage(revisionContext, EVIDENCE_MANIFEST);
     expect(message).toContain("#42");
     expect(message).toContain("501");
     expect(message).toContain("revision round 2 of 3");
@@ -145,32 +147,46 @@ describe("buildUserMessage — revision rounds", () => {
   it("sends it to read the review itself rather than handing it a copy", () => {
     // Same reason it reads the story and the code itself: an agent given a
     // pre-digested copy builds against the copy.
-    expect(buildUserMessage(revisionContext)).toMatch(/Read review 501 .* yourself/);
+    expect(buildUserMessage(revisionContext, EVIDENCE_MANIFEST)).toMatch(/Read review 501 .* yourself/);
   });
 
   it("points it at its own prior report and the trace before it changes anything", () => {
-    const message = buildUserMessage(revisionContext);
+    const message = buildUserMessage(revisionContext, EVIDENCE_MANIFEST);
     expect(message).toContain("your own completion report");
     expect(message).toContain("acceptance-criteria trace");
     expect(message).toContain("before you change anything");
   });
 
   it("frames the smaller budget as a fence, with the recommendation to make when it does not fit", () => {
-    const message = buildUserMessage(revisionContext);
+    const message = buildUserMessage(revisionContext, EVIDENCE_MANIFEST);
     expect(message).toContain("25 turns");
     expect(message).toContain("scope fence");
     expect(message).toContain("closing the PR and reshaping the story");
   });
 
   it("forbids creating or ending anything, and leaves the checkboxes to the reviewer", () => {
-    const message = buildUserMessage(revisionContext);
+    const message = buildUserMessage(revisionContext, EVIDENCE_MANIFEST);
     expect(message).toContain("never close or merge the PR");
     expect(message).toContain("Leave every checkbox exactly as the reviewer left it");
   });
 
   it("still leaves a first build's message untouched", () => {
-    const message = buildUserMessage(context);
+    const message = buildUserMessage(context, EVIDENCE_MANIFEST);
     expect(message).not.toContain("revision round");
     expect(message).toContain("open the PR into");
+  });
+});
+
+describe("buildUserMessage — evidence", () => {
+  it("points the specialist at the downloaded evidence, on a build and on a revision round", () => {
+    const build = buildUserMessage(context, EVIDENCE_MANIFEST);
+    expect(build).toContain(EVIDENCE_MANIFEST);
+    expect(build).toMatch(/Never fetch an attachment through the Linear connector/);
+    expect(
+      buildUserMessage(
+        { ...context, revision: { pullRequestNumber: 7, reviewId: 501, round: 1, roundCap: 3 } },
+        EVIDENCE_MANIFEST,
+      ),
+    ).toContain(EVIDENCE_MANIFEST);
   });
 });

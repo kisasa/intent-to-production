@@ -32,9 +32,10 @@ Linear webhook ──▶ adapters/linear.ts   parse the payload into a TrackerEv
                  agent-scheduler.ts      dedupe deliveries, debounce follow-up bursts
                          │
                          ▼
-                 activation-runner.ts    assemble the prompt, attach MCP servers,
-                         │                post + refresh "working on it", open the
-                         │                stream, error-report
+                 activation-runner.ts    assemble the prompt, pre-load evidence
+                         │                attachments, attach MCP servers, post +
+                         │                refresh "working on it", open the stream,
+                         │                error-report
                          ▼
                     Claude ◀──MCP──▶ Linear   (comments, labels, child issues, and the
                          │                     one status move each checkpoint authorized)
@@ -174,18 +175,70 @@ one request's entire path through the system.
 | `src/temporal-client.ts` | This process's `@temporalio/client` connection for *starting* workflows — distinct from `dispatch-worker`'s own `NativeConnection`, which executes them |
 | `src/prompt-assembly.ts` + `src/prompt-templates/*.md` | Template lookup, placeholder substitution, system-block assembly |
 | `src/activation-runner.ts` | Generic runner: assembles the prompt, attaches the Linear MCP server (+ GitHub's for codebase-access lanes), posts + refreshes "working on it", makes the Anthropic call (resuming past a paused server-side MCP tool-call loop, up to `maxPauseContinuations`), error-reports |
-| `src/activation-config.ts` | Shared token/content/timing limits, effort, and the pause-continuation cap |
+| `src/activation-config.ts` | Shared token/content/timing limits, effort, the pause-continuation cap, and the attachment pre-load limits (link depth, token budget, upload lifetime) |
+| `src/attachments/attachment-preload.ts` | Attachment pre-load for the lanes that read evidence (`attachmentScope` on the lane config): walks the evidence links, downloads each file, puts it in the request the way a desktop session would (PDF as a document, image as an image, text as text, anything else into the code execution sandbox), uploads each once to the Files API, and writes the manifest Claude reads. See "Attachments" below |
+| `src/attachments/evidence-walker.ts` + `evidence-links.ts` | Which files: follows issue and document links (URLs and mention tags, never bare identifiers) from the project and its documents, or from the epic, plus the `design:asset` issue — up to `maxHops`, across projects |
+| `src/attachments/linear-evidence-source.ts` | The walker's read-only GraphQL lookups and the authenticated file download |
+| `src/attachments/attachment-classifier.ts` + `attachment-budget.ts` | Where each file goes: by content type, then the token budget — over-budget files go to the sandbox, never truncated |
+| `scripts/preview-attachment-preload.ts` | Operator script: runs the real pre-load for a lane and entity and prints the manifest and token counts; `--call` also sends one read-only request in the exact activation shape. Local only, not in CI |
+| `scripts/probe-attachment-preload.ts` | Operator script: the live probe that settled what the API docs don't say (download auth, `countTokens` and file sources, code execution alongside MCP, the sandbox input path). Local only, not in CI |
 | `src/tracker-notifier.ts` | The app's own tracker writes, kept small: post/refresh the "working on it" comment (states when it'll time out, plus a one-line patience quip), delete it after a clean run, and the fail-fast error comment |
 | `src/skills.ts` | Resolves skill names to `skills/<name>/<name>.md` |
 | `src/logger.ts` | Scoped, leveled logging (`LOG_LEVEL`) — every module logs through this instead of `console.*` directly |
 | `src/trace-id.ts` | Mints the per-delivery correlation id threaded through `Logger.child()` |
 | `src/env.ts` | `envOr(name, fallback)` and `requireEnv(name)` — both treat an env var present but empty (the `.env.example` default shape) the same as unset; `requireEnv` fails startup instead of falling back |
 
+## Attachments
+
+Intake and Specification read evidence that is often a file — a screens PDF,
+screenshots, canvas HTML, a brand guide. The tracker connector can only hand
+Claude a file as base64 text, which Claude can't read and which overflowed the
+context window on 2026-10-06 (one PDF, 1.6M tokens). So the runner pre-loads
+those files into the request before the call:
+
+| File type | Reaches Claude as |
+|---|---|
+| PDF | a `document` block — every page as text and as an image |
+| PNG, JPEG, GIF, WebP | an `image` block |
+| text (md, json, html, csv, svg, …) | a `document` block of plain text |
+| anything else (docx, xlsx, pptx, zip, …), or any file over the budget | a `container_upload` into the code execution sandbox, at `$INPUT_DIR/<name>` |
+| a link that isn't an upload (a PR, a prototype) | a manifest line only |
+
+**Which files.** Not every file in the project — a project that runs several
+business-requirements documents accumulates every delivered epic's assets. The
+walker follows the evidence links instead: from the project's content and
+documents (Intake) or the epic (Specification), plus the `design:asset` issue,
+three hops deep, across projects.
+
+**Budget.** 250K tokens of attachments in the prompt, no text file over 100K,
+no more than 20 images (`activation-config.ts`). Anything over goes to the
+sandbox and the manifest says why. The pre-flight ceiling is 600K for system
+prompt, attachments and template together. It adds each file's own measured
+cost to a count of the text, because the counting endpoint refuses file
+sources and has its own request size limit.
+
+**Memory.** Downloads run one at a time, capped at 50 MB per file and 150 MB
+per activation, because every file sits in this process's memory until it is
+uploaded. The task is small (1 GB in the current deployments) and shared by
+every concurrent activation. A file over the cap is listed as not loaded, with
+a note that a smaller export would load.
+
+**Caching.** Each file is uploaded once to the Files API (expiring after a
+day, so nothing is ever deleted) and reused across activations while it has
+six hours left, keyed on a hash of its bytes. The request carries three cache
+breakpoints: the system prompt, the attachment manifest, and the conversation
+tail. The code execution tool is attached only when a file went to the sandbox,
+since preloaded sandbox files are billed even if unused.
+
+Run `scripts/preview-attachment-preload.ts` to see exactly what an activation
+on a given project or epic would be handed.
+
 ## State
 
 Canonical state lives in **Linear** — statuses, and the `ready for intake` /
 `spec:*` / `eval:*` labels. The worker holds only ephemeral state in memory:
-webhook dedupe and per-entity debounce timers. Safe at one instance; back
+webhook dedupe, per-entity debounce timers, and the attachment upload cache
+(a lost cache only costs a re-upload). Safe at one instance; back
 those two maps with a shared store if you need multi-instance or
 crash-survival — the function signatures in `agent-scheduler.ts` don't change.
 

@@ -25,6 +25,7 @@ export const config: AgentLaneConfig = {
   agentFile: "intake-agent.md",
   skills: ["epic-writing", "business-requirements-writing", "tracker-writing"],
   codebaseAccess: false,
+  attachmentScope: "project",
   // Infra-required per engagement, no code-level default — see
   // infrastructure/models/listener-configuration.ts and CLAUDE_MODEL_INTAKE
   // in webhook-listener/.env.example.

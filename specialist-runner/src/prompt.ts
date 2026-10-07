@@ -100,10 +100,10 @@ function describePaths(context: DispatchContext): string {
   return `Within the repository, ${parts.join("; ")}. Write only inside those directories.`;
 }
 
-export function buildUserMessage(context: DispatchContext): string {
+export function buildUserMessage(context: DispatchContext, evidenceManifestPath: string): string {
   const surfaceLabels = context.surfaces.map((surface) => `surface:${surface}`).join(" ");
   if (context.revision) {
-    return buildRevisionMessage(context, context.revision, surfaceLabels);
+    return buildRevisionMessage(context, context.revision, surfaceLabels, evidenceManifestPath);
   }
 
   return `You are the Specialist described in the system prompt. Follow that definition; this message only tells you which story and where.
@@ -113,6 +113,8 @@ Assignment: story ${context.storyId} — "${context.storyTitle}", under epic ${c
 Your story carries the label(s) ${surfaceLabels} — that is your surface, or surfaces if more than one is listed (they all resolve to the same repo and ref). ${describePaths(context)} Every write you make goes there and nowhere else. It is checked out on ${context.storyBranch}; the epic branch is ${context.epicBranch}. Both names come from the tracker, and the branch chain was set up before you were dispatched — verify it, do not repair it.
 
 Using the Linear connector, read ${context.storyId}'s description and its full comment thread, then walk up to ${context.epicId} for the parent epic, its resolved API map, and the linked design issue. The comment thread on ${context.storyId} may carry a question-and-answer exchange between the developer who picked this up and the architect from before you were engaged — read it as part of the story, not as commentary on it.
+
+The epic's evidence files — on the epic, the issues it links to, and the design issue — are already on disk. When a row of the API map needs more than words, start from ${evidenceManifestPath}, which lists each file and where it is. Never fetch an attachment through the Linear connector: it returns a file as base64 text, not as the file.
 
 Then act per your definition: check blocking dependencies, verify the branch chain, read the codebase and its conventions spec, do the story's work, open the PR into ${context.epicBranch}, and post your completion report on ${context.storyId}.
 
@@ -128,7 +130,12 @@ If the branch chain is wrong, a blocking dependency is unmerged, or the story ha
  * its inline comments itself, for the same reason it reads the story and the
  * code itself rather than being told about them.
  */
-function buildRevisionMessage(context: DispatchContext, revision: RevisionContext, surfaceLabels: string): string {
+function buildRevisionMessage(
+  context: DispatchContext,
+  revision: RevisionContext,
+  surfaceLabels: string,
+  evidenceManifestPath: string,
+): string {
   return `You are the Specialist described in the system prompt. This is a revision round, not a fresh build — follow the revision lifecycle in that definition.
 
 Assignment: story ${context.storyId} — "${context.storyTitle}", under epic ${context.epicId}. You already built this story and opened pull request #${revision.pullRequestNumber}. The reviewer-of-record has submitted a review requesting changes, id ${revision.reviewId}. This is revision round ${revision.round} of ${revision.roundCap}.
@@ -136,6 +143,8 @@ Assignment: story ${context.storyId} — "${context.storyTitle}", under epic ${c
 Your story carries the label(s) ${surfaceLabels}. ${describePaths(context)} It is checked out on ${context.storyBranch}, carrying your own earlier commits; the epic branch is ${context.epicBranch}. The branch and the PR both already exist — never create either, and never close or merge the PR.
 
 Read review ${revision.reviewId} on pull request #${revision.pullRequestNumber} yourself: its summary comment and every inline comment, each with the file and line it is anchored to. Read your own completion report on ${context.storyId} and the acceptance-criteria trace in the PR body before you change anything — you will not remember why you made a call three days ago, and the record of it is there.
+
+The epic's evidence files — on the epic, the issues it links to, and the design issue — are already on disk. When a row of the API map needs more than words, start from ${evidenceManifestPath}, which lists each file and where it is. Never fetch an attachment through the Linear connector: it returns a file as base64 text, not as the file.
 
 Then act per the revision lifecycle: size the work first, apply what falls inside this story's scope, reply in the thread each comment was left in, and update the criteria trace with which criteria your changes touched. Leave every checkbox exactly as the reviewer left it.
 

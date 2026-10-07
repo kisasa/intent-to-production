@@ -17,12 +17,16 @@ import { prepareWorkspace } from "./workspace.js";
 import { buildSystemPrompt, buildUserMessage } from "./prompt.js";
 import { mcpServersFromEnv } from "./mcp-servers.js";
 import { postFallbackComment } from "./tracker-fallback.js";
+import { downloadEvidence, EVIDENCE_DOWNLOAD_CONFIG } from "./evidence/evidence-download.js";
+import { createLinearEvidenceClient } from "./evidence/linear-evidence-source.js";
+import { envOr } from "./env.js";
 import { createLogger } from "./logger.js";
 
 const log = createLogger("specialist-runner");
 const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT ?? "/workspace";
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN ?? "";
 const LINEAR_AGENT_API_KEY = process.env.LINEAR_AGENT_API_KEY ?? "";
+const LINEAR_API_URL = envOr("LINEAR_API_URL", "https://api.linear.app/graphql");
 
 async function main(): Promise<void> {
   const context = loadDispatchContext();
@@ -31,17 +35,23 @@ async function main(): Promise<void> {
   const runLog = log.child(`${context.storyId}:${runId.slice(0, 8)}`);
   runLog.info(`starting specialist run (surface(s): ${context.surfaces.join(", ")}) for ${context.storyId} — "${context.storyTitle}"`);
 
-  const { frameworkPath, surfaceRepoPath } = await prepareWorkspace(
-    join(WORKSPACE_ROOT, runId),
-    context,
-    GITHUB_TOKEN,
+  const runRoot = join(WORKSPACE_ROOT, runId);
+  const { frameworkPath, surfaceRepoPath } = await prepareWorkspace(runRoot, context, GITHUB_TOKEN, runLog);
+
+  // Beside the surface checkout, never inside it, so nothing downloaded can
+  // be committed.
+  const evidenceManifestPath = await downloadEvidence(
+    createLinearEvidenceClient(LINEAR_API_URL, LINEAR_AGENT_API_KEY, fetch),
+    context.epicId,
+    join(runRoot, "evidence"),
+    EVIDENCE_DOWNLOAD_CONFIG,
     runLog,
   );
 
   runLog.trace("building system prompt from agent file + skills");
   const { systemPrompt, skills } = await buildSystemPrompt(frameworkPath, surfaceRepoPath, context);
   runLog.info(`skills inlined: ${skills.map((s) => `${s.name} (${s.source})`).join(", ")}`);
-  const userMessage = buildUserMessage(context);
+  const userMessage = buildUserMessage(context, evidenceManifestPath);
 
   runLog.info(
     `invoking Agent SDK — model=${claudeConfig.model} effort=${claudeConfig.effort} maxTurns=${context.maxTurns} ` +
