@@ -200,7 +200,10 @@ entry's state up itself through the tracker.
 The format has one requirement, added for mechanical readability. Each entry
 is its own bullet line. The blocker's bare issue identifier is the first token
 on that line, e.g. `- PROJ-42 — Add refund data model`. Whatever prose
-follows the identifier is free. The identifier's position is the only fixed
+follows the identifier is free. An entry that exists only to keep two stories
+from changing the same code says so after the title, e.g. `- PROJ-42 — Add
+refund data model (sequenced: both change the Refund model)`, so a developer
+can tell a collision edge from a dependency on the blocker's output. The identifier's position is the only fixed
 part. It is what lets a pre-dispatch check confirm every blocker is Done
 without depending on any particular wording after it.
 

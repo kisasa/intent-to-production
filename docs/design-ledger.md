@@ -5462,3 +5462,69 @@ was still base64, and turning it back into a file was left to the specialist's
 improvisation. On disk the Read tool shows PDFs and images natively, and there
 is no token budget to manage, because a file costs nothing until it is
 opened.
+
+## Parallel stories on one surface must not change the same code (2026-10-21)
+
+**The observation.** The question was whether a second developer on the same
+surface would get an engagement's work done faster, and what that would do to
+the design. The timestamps from the second engagement's first three epics
+answered half of it before the design did. One developer already runs several
+specialists on one surface at once: three services stories started within
+forty seconds of each other one evening, and two libs stories in the same
+minute the week before. Every mechanism the development tier has is already
+per story — a branch off the epic branch, a pull request, a reviewer-of-record,
+revision rounds, the `ahead_by` check — and none assumes one human per
+surface. What a second developer adds is not specialist capacity. It adds human
+review and merge throughput, which is the resource the framework says is
+scarce.
+
+The cost moves to collisions. Today, when two parallel pull requests on a
+surface conflict, the person resolving it wrote both stories and reviewed both
+diffs. With two developers, the second to merge resolves a conflict against a
+story they never read, and merge conflict resolution is human-only by rule. The
+same applies to repairs: two parallel specialists may each fix the same broken
+thing on the epic branch, differently, and nothing tells either about the
+other.
+
+And Decompose did not shape for it. It orders stories by what each needs from
+another, and slices by capability and surface. Nothing in it asked whether two
+independent stories on one surface would write the same files. The places they
+most often do — a migration and its model snapshot, dependency-injection or
+route registration, a module's barrel file, a per-surface version file, a
+lockfile — are exactly the places an API map never names.
+
+**Rule.** Two stories on one surface with no dependency path between them must
+not change the same behavior. Decompose works out what each story changes from
+its touchpoints and anchors, reading a pattern-following anchor as a read, and
+checks the shared files the map does not name. Two stories that change the
+same component, endpoint, handler, model or migration are sequenced — a
+Blocking dependencies entry carrying its reason after the title, `(sequenced:
+...)` — or merged when both are small. Two stories that only add an entry to a
+shared file are never sequenced: the conflict is mechanical, and each story's
+scope boundary names the file and the sibling so the reviewer expects it. The
+checkpoint and the summary comment state, per surface, which stories can run at
+the same time and which edges exist only to avoid a collision.
+
+**Why sequencing, and why not more of it.** A collision edge goes in the same
+Blocking dependencies section as any other, so dispatch enforces it
+mechanically and the board shows it, with no parser or label change — prose
+after the identifier was always free. The reason in the entry is what lets a
+developer tell it from a dependency on the blocker's output. The line between
+the two cases is drawn where serializing stops paying: an edge for a shared
+registration line would throw away real parallelism to avoid a thirty-second
+merge. A false edge costs exactly the throughput the rule is for.
+
+**What it does not cover, by decision.** Two developers each working a
+different epic on the same surface. That moves collisions from story pull
+requests onto two epic branches merging into one BRD branch, where they arrive
+later, larger, and on the architect — who already answers every story thread's
+questions and reviews every epic pull request. The architect's read: it
+complicates the whole game and makes the architect an almost guaranteed
+bottleneck. Not pursued; it reopens if an engagement's surfaces outgrow one
+epic in flight at a time and the architect role is shared.
+
+**Also noted, not acted on.** A second developer per surface brings the
+upstream constraints forward. The designer works one area ahead and the
+architect reviews every epic; neither scales with developer count. The second
+engagement already showed a ten-day wait for design on its first area
+transition.
