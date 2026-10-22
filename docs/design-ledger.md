@@ -5462,3 +5462,116 @@ was still base64, and turning it back into a file was left to the specialist's
 improvisation. On disk the Read tool shows PDFs and images natively, and there
 is no token budget to manage, because a file costs nothing until it is
 opened.
+
+## Parallel stories on one surface must not change the same code (2026-10-21)
+
+**The observation.** The question was whether a second developer on the same
+surface would get an engagement's work done faster, and what that would do to
+the design. The timestamps from the second engagement's first three epics
+answered half of it before the design did. One developer already runs several
+specialists on one surface at once: three services stories started within
+forty seconds of each other one evening, and two libs stories in the same
+minute the week before. Every mechanism the development tier has is already
+per story — a branch off the epic branch, a pull request, a reviewer-of-record,
+revision rounds, the `ahead_by` check — and none assumes one human per
+surface. What a second developer adds is not specialist capacity. It adds human
+review and merge throughput, which is the resource the framework says is
+scarce.
+
+The cost moves to collisions. Today, when two parallel pull requests on a
+surface conflict, the person resolving it wrote both stories and reviewed both
+diffs. With two developers, the second to merge resolves a conflict against a
+story they never read, and merge conflict resolution is human-only by rule. The
+same applies to repairs: two parallel specialists may each fix the same broken
+thing on the epic branch, differently, and nothing tells either about the
+other.
+
+And Decompose did not shape for it. It orders stories by what each needs from
+another, and slices by capability and surface. Nothing in it asked whether two
+independent stories on one surface would write the same files. The places they
+most often do — a migration and its model snapshot, dependency-injection or
+route registration, a module's barrel file, a per-surface version file, a
+lockfile — are exactly the places an API map never names.
+
+**Rule.** Two stories on one surface with no dependency path between them must
+not change the same behavior. Decompose works out what each story changes from
+its touchpoints and anchors, reading a pattern-following anchor as a read, and
+checks the shared files the map does not name. Two stories that change the
+same component, endpoint, handler, model or migration are sequenced — a
+Blocking dependencies entry carrying its reason after the title, `(sequenced:
+...)` — or merged when both are small. Two stories that only add an entry to a
+shared file are never sequenced: the conflict is mechanical, and each story's
+scope boundary names the file and the sibling so the reviewer expects it. The
+checkpoint and the summary comment state, per surface, which stories can run at
+the same time and which edges exist only to avoid a collision.
+
+**Why sequencing, and why not more of it.** A collision edge goes in the same
+Blocking dependencies section as any other, so dispatch enforces it
+mechanically and the board shows it, with no parser or label change — prose
+after the identifier was always free. The reason in the entry is what lets a
+developer tell it from a dependency on the blocker's output. The line between
+the two cases is drawn where serializing stops paying: an edge for a shared
+registration line would throw away real parallelism to avoid a thirty-second
+merge. A false edge costs exactly the throughput the rule is for.
+
+**What it does not cover, by decision.** Two developers each working a
+different epic on the same surface. That moves collisions from story pull
+requests onto two epic branches merging into one BRD branch, where they arrive
+later, larger, and on the architect — who already answers every story thread's
+questions and reviews every epic pull request. The architect's read: it
+complicates the whole game and makes the architect an almost guaranteed
+bottleneck. Not pursued; it reopens if an engagement's surfaces outgrow one
+epic in flight at a time and the architect role is shared.
+
+**Also noted, not acted on.** A second developer per surface brings the
+upstream constraints forward. The designer works one area ahead and the
+architect reviews every epic; neither scales with developer count. The second
+engagement already showed a ten-day wait for design on its first area
+transition.
+
+## An epic's title carries its wave (2026-10-22)
+
+**The observation.** A numbering convention had been used and never recorded.
+The first engagement's September epics were titled `#2 Epic: …` through
+`#5 Epic: …`, numbered by hand in the order they were meant to run. Nothing in
+the repository asked for it, so the second engagement's epics carried no
+numbers, and when the architect went looking for the rule it was not in this
+file, either skill, or the history. Only the `Epic: ` / `Story: ` prefix from
+2026-08-06 had been written down.
+
+Reconstructing it surfaced two problems with a plain sequence number. The
+order of work moves: since 2026-09-02 it is the designer's, confirmed at the
+slice checkpoint and free to change at release time, and titles are bodies no
+agent edits, so a reorder would leave a stale number or a human renumbering by
+hand. And epics with no dependency between them have no order at all — the
+architect's point: two things that can be built at the same time are not
+sequential to one another, and a sequence number says they are.
+
+**Rule.** An epic sliced by Intake is titled `Epic <wave>: <area>`. The wave is
+the epic's depth in the dependency graph: no dependencies is wave 1, anything
+else is one wave after the latest wave it depends on. Epics sharing a wave can
+be built at the same time and carry a letter, `Epic 2a: `, `Epic 2b: `,
+assigned in the proposed order of work and never reassigned; a wave of one has
+no letter. Intake computes it from the graph it already builds and shows it in
+the slice map. A standalone epic created outside Intake has no sibling graph
+and keeps `Epic: ` with no number. Stories are unchanged.
+
+**Why the graph and not the order.** It follows the line the framework already
+draws between slicing and sizing. Dependencies are slicing — structural,
+machine-proposable, and changed only by a re-slice that regenerates the epics
+anyway. Order is sizing — human, and expected to move. A number taken from the
+graph stays true through every reorder, so nobody renumbers; a number taken
+from the order would be wrong the first time the designer swapped two areas.
+The letters say only that two epics are different, never which goes first.
+
+**Format.** `Epic 2a:` rather than `#2 Epic:`, the architect's choice: the word
+comes first, so a truncated view still reads as an epic, and the tracker's
+branch name reads `epic-2a-…`.
+
+**One hazard, recorded rather than verified.** The tracker derives an issue's
+branch name from its title, and dispatch finds an epic's branch by the name
+the tracker reports. Retitling an epic after its branch is cut may change that
+name and point dispatch at a branch that does not exist. Wave numbers make a
+retitle rare — it takes a change to the graph — and `epic-writing` says to
+check the branch name if one happens.
+

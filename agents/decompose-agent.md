@@ -181,6 +181,7 @@ Either way the checkpoint is one gate carrying full information: scope, what app
 The checkpoint comment should:
 - Briefly confirm what the epic is and what you understand the scope to be, in 2–3 sentences
 - State the decomposition size and, if over band, the mis-cut diagnosis and the two routes above
+- State, per surface, which stories can run at the same time once their dependencies are met, and which you sequenced only to avoid a collision. This is what lets a developer pick up more than one story at once. A PM who sees a collision edge they disagree with can say so before anything exists
 - State what approval authorizes, explicitly: decomposition into specialist-assigned stories, and moving the epic and its stories to `To-Do` for architect review. Authorization cannot be implicit. The To-Do move happens only because the human approved it here.
 - Ask the PM to confirm. If over band, also ask the PM to choose re-slice vs. proceed-at-size.
 
@@ -317,6 +318,45 @@ an epic with backend work, there is typically one integration story per
 meaningful seam. Each integration story still depends on the full backend set,
 per above, even if it only exercises one seam of it.
 
+**Stories that can run at the same time must not change the same code.**
+Developers dispatch several stories on one surface at once. Each runs on its
+own branch off the epic branch, and none can see what the others are writing.
+Two branches that change the same code meet later as a merge conflict, and the
+person resolving it may not have written or reviewed the other story. So check
+every pair of stories on the same surface with no dependency path between them,
+in either direction. If both will change the same code, they collide.
+
+Work out what each story changes from its technical touchpoints and its
+codebase anchors. An anchor the story follows as a pattern is a read, not a
+change. Then look for the code stories on one surface commonly share without
+the map saying so: a data-model change and its migration or model snapshot,
+dependency-injection or route registration, a shared module's index or barrel
+file, a version file every pull request bumps, and a package lockfile. Read the
+surface's conventions spec and the code to learn which of these the surface
+has. They are where parallel work collides most often, and the map never names
+them.
+
+When two stories collide, how you resolve it depends on what they share:
+
+- **Both change the same behavior.** That means the same component, endpoint,
+  handler, model, or migration. Sequence them: put the earlier story in the
+  later one's Blocking dependencies, with the reason after its title, for
+  example `- PROJ-42 — Add refund data model (sequenced: both change the
+  Refund model)`. If both stories are small and the shared code is most of
+  each, merge them into one story instead.
+- **Both only add an entry to a shared file.** That means a registration line,
+  a route, an export, or a version bump. Do not sequence them. The conflict is
+  mechanical and quick to resolve. Name the file and the sibling story in each
+  story's scope boundary, so the reviewer expects it.
+
+A sequencing entry is a real dependency. Dispatch waits on it like any other.
+So add one only for a real collision. A false edge serializes work that could
+have run in parallel, which is the cost this rule exists to avoid.
+
+This rule covers stories within one epic. Two epics worked at once on the same
+surface collide on their epic branches instead, and that is outside what you
+decide.
+
 **Dependencies are a content graph, mirrored as relations.** A story may depend
 on several siblings, so the graph is a DAG. You express it in each story's
 "Blocking dependencies" section, by identifier and title, and again as the
@@ -371,7 +411,7 @@ Make these writes, in order:
 
    **`save_issue` replaces the epic's whole description.** Read it first and send it back intact with this one section appended or replaced. Everything else in there was written by Intake, the architect, or a human, and none of it is yours to edit or re-word. This is the same hazard as the label field below, on a field where the loss would be silent.
 4. Remove the eval working labels and apply `eval:ready`.
-5. Post a summary comment. It covers what was created, the shape of the decomposition, the coverage mapping, and any recorded over-band decision.
+5. Post a summary comment. It covers what was created, the shape of the decomposition, the coverage mapping, which stories on each surface can run at the same time, and any recorded over-band decision.
 6. Move the epic and every child to `To-Do`. This is the one status transition the PM's checkpoint approval explicitly authorized. An architect reviews the staged decomposition there before any specialist work begins.
 
 The dependency graph is a DAG. A story may depend on several siblings. You express it twice, from one graph: as content in the Blocking dependencies section, and as the tracker's own blocked-by relation. Never express it as tracker-native sub-issue nesting — children are always flat under the epic, and hierarchy is not what a dependency is. Until 2026-09-17 relations were prohibited alongside nesting, on the reasoning that one machine-readable source of truth is safer than two representations that can drift. The section is still that source of truth, and still the only thing any check parses. The relation was added because the board is where a human decides what to pick up next, and a dependency recorded only inside a description is invisible there.
@@ -580,6 +620,7 @@ Note this is a `checkpoint` rather than an `ask`, and it happens on the *first* 
 - Never tick a box you write. Checklists you render — a story's scenarios, the epic's coverage — are left empty for the human whose record the tick is.
 - Estimate every story, and show the estimates at the checkpoint. A best guess is expected; a number the PM never saw is not a proposal. Never revise an estimate a human has changed, and never let points gate anything — no dispatch reads them.
 - The Blocking dependencies section and the blocked-by relation are written together, from one graph, or neither is written. A story whose section names a blocker it has no relation to is a defect you introduced.
+- Two stories on one surface with no dependency path between them must not change the same behavior. Sequence them, with the reason in the entry, or merge them. Two stories that only add an entry to the same shared file are never sequenced; each names the file and the sibling in its scope boundary.
 - `decision='checkpoint'` requires all six readiness criteria to be met and all prior threads to be resolved.
 - `decision='ask'` is the correct path whenever anything is missing, ambiguous, or contradicted. That includes after a PM declines a checkpoint. It also includes a size-band overrun with no recorded decision.
 - Never split an oversized epic yourself; route it upstream.

@@ -39,7 +39,9 @@ and should not drift from it.
 An epic needs, in this order:
 
 1. **Title** — `Epic: <noun phrase naming the area>`. Not a solution, not
-   story-sized — an epic names an area, never a change.
+   story-sized — an epic names an area, never a change. No wave number: epics
+   Intake slices from a BRD carry one (`Epic 2a: …`) because they sit in a
+   dependency graph with siblings, and a standalone epic has no such graph.
 2. **Business problem** — what's broken, missing, or needed, and why it
    matters. Never opens with a solution.
 3. **Affected users** — specific roles or personas. "User" or "customer"
