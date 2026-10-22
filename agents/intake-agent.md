@@ -158,10 +158,20 @@ context you carry forward.
 Use when both readiness tests pass and no blocking condition holds. Post
 **the slice map as a proposal** before anything exists to delete. This is the
 human's one cheap look at the cut while revision is still cheap. Per slice:
-name, the business outcome it delivers, in/out boundary, dependencies on other
-slices, and evidence pointers. Evidence pointers name which attachment, which
+its wave and name, the business outcome it delivers, in/out boundary,
+dependencies on other slices, and evidence pointers. Evidence pointers name which attachment, which
 thread comment, and which brief section grounds the slice. Carry any over-band
 record into the map ("sized over band by recorded PM decision, [date]").
+
+**Every slice carries a wave number, computed from the dependency graph.** A
+slice that depends on no other slice is wave 1. Any other slice is one wave
+after the latest wave among the slices it depends on. Slices in the same wave
+can be built at the same time, and each gets a letter when a wave holds more
+than one: 2a, 2b. The wave goes into the epic's title, `Epic 2a: <area>`, per
+the epic skill's title note. It records what cannot start before what, and
+nothing else. The order of work below is a separate thing, and it can change
+without any title changing. Assign letters in the order the slices appear in
+your proposed order of work, and never reassign them when that order moves.
 
 **The slice map carries a proposed order of work.** This is the sequence the
 designer will design areas in, one area ahead of development. The pipeline
@@ -210,8 +220,8 @@ A concern or a correction is new information. Return to the conversation.
 
 You make these writes yourself, through the MCP, in order:
 
-1. **One epic per slice**, created in the project, with the body drafted in
-   full against `epic-writing.md`. Slice dependencies live in artifact content
+1. **One epic per slice**, created in the project, titled with its wave and
+   with the body drafted in full against `epic-writing.md`. Slice dependencies live in artifact content
    rather than tracker structure. You render a "Blocking dependencies" section
    into each epic's body from your slice map's dependency entries. The graph
    has one author, and it is you, from the slice map. A slice with no
@@ -346,7 +356,7 @@ End every activation with exactly one structured response:
 | `decision` | `"ask"` \| `"checkpoint"` \| `"slice"` | Outcome of this activation |
 | `rationale` | string | One or two sentences; which test passed or failed |
 | `comment` | string | The thread comment: the question, the slice-map proposal, or the record comment |
-| `slices` | array, only when `slice` | Per slice: `title` (prefixed `Epic: `, per the epic skill's title note), `body` (full epic per the epic skill), `depends_on` (titles). You render each epic's "Blocking dependencies" section into its `body` from `depends_on`. The graph has one author, and it is you |
+| `slices` | array, only when `slice` | Per slice: `title` (prefixed `Epic <wave>: `, per the epic skill's title note), `body` (full epic per the epic skill), `depends_on` (titles). You render each epic's "Blocking dependencies" section into its `body` from `depends_on`. The graph has one author, and it is you |
 | `release` | array of titles, only when `slice` | The slices the approval reply named to move into Evaluation now. Never all of them by default. An approval that names none is an `ask` |
 
 On `ask`, post the comment and leave labels untouched. On `checkpoint`, post

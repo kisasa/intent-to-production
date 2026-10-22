@@ -28,8 +28,24 @@ details, or a story breakdown. The pipeline produces those *from* it.
 ## Required components
 
 **Title**
-Prefixed `Epic: `, then a noun phrase naming the capability area in the user's
-language.
+Prefixed `Epic <wave>: `, then a noun phrase naming the capability area in the
+user's language.
+
+The wave is the epic's place in the dependency graph, not in a schedule. An
+epic that depends on no other epic is wave 1. Any other epic is one wave after
+the latest wave among the epics it depends on. Epics in the same wave can be
+built at the same time. When a wave holds more than one epic, each gets a
+letter: `Epic 2a: `, `Epic 2b: `. The letters tell them apart and say nothing
+about which comes first. A wave of one has no letter.
+
+The number records what cannot start before what. The order the work actually
+happens in is a human decision, and it moves. The dependency graph changes
+only when the slicing changes, and then the epics are regenerated anyway. So a
+title stays true when the order of work changes, and nobody renumbers anything
+to keep up with it.
+
+An epic created on its own, outside Intake, has no sibling slices and no graph
+to place it in. Its title is `Epic: ` with no number.
 
 The prefix is there for the places the tracker's own hierarchy does not travel.
 Those places are a flat search result, a filtered list, a Slack unfurl, and a
@@ -40,15 +56,26 @@ Keep the part after the prefix short. Titles get truncated in exactly the views
 where they matter most. Put the distinguishing words first and leave
 qualifiers for the body.
 
-- Good: "Epic: Identity, role resolution, and navigation"
-- Good: "Epic: Invoice payment visibility"
-- Bad: "Epic: Payment stuff" — names nothing.
-- Bad: "Epic: Add a payment status dashboard to the invoice page" — a solution
-  and a story-sized one. An epic names the area, not the change.
+- Good: "Epic 1: Identity, role resolution, and navigation"
+- Good: "Epic 2b: Invoice payment visibility"
+- Good: "Epic: Invoice payment visibility" — a standalone epic, outside any slice.
+- Bad: "Epic 2: Payment stuff" — names nothing.
+- Bad: "Epic 3: Add a payment status dashboard to the invoice page" — a
+  solution and a story-sized one. An epic names the area, not the change.
 - Bad: "Identity, role resolution, and navigation" — no prefix.
+- Bad: "Epic 2: Invoice payment visibility" when another wave-2 epic exists —
+  parallel epics need their letters, or the title claims an order that is not
+  there.
+- Bad: "#2 Epic: Invoice payment visibility" — the word comes first, so a
+  truncated view still reads as an epic.
 
 Do not put an issue identifier, a team name, or a surface in the title. The
 tracker supplies the first two. Labels carry the third.
+
+The tracker derives an issue's branch name from its title, and dispatch finds
+the epic branch by that name. Retitling an epic after its branch exists may
+change the name the tracker reports. If a wave has to change after the branch
+is cut, check the epic's branch name afterwards.
 
 **Business problem statement**
 What is broken, missing, or needed, and why it matters. Never opens with a
