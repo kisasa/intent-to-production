@@ -5665,8 +5665,11 @@ sent ten of that epic's thirty captures to the sandbox, where Claude opens a
 file but never sees it: the same bend to a limit as a cap on attachments. The
 API takes up to 100 images in a request on a 200K-context model, and above 20
 image and document blocks every image must be at most 2000 px a side. The
-budget now sends every image that fits that limit, up to a ceiling of 50 set
-below the API's, and stays at 20 only when too few do. The captures are 1358
+budget now sends every image that fits that limit, up to the API's 100,
+and stays at 20 only when too few do. A ceiling of 50 was tried first: the
+Intake preview on the payments project then sent 22 of its 72 captures to the
+sandbox, and because images are taken newest first, those were the oldest,
+the core form. The captures are 1358
 by 896.
 
 **What the preview showed, 2026-10-23.** Running the pre-load for that epic

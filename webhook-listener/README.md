@@ -228,9 +228,10 @@ sandbox, so every sandbox file goes into one tar archive, uploaded as a single
 file. The manifest gives the command to extract it.
 
 **Budget.** 250K tokens of attachments in the prompt, no text file over 100K,
-and up to 50 images (`activation-config.ts`). Past 20 image and document
-blocks the API rejects any image over 2000 px a side, so a request that large
-carries only the images under that limit, and stays at 20 when too few are.
+and up to 100 images (`activation-config.ts`), the API's limit. Past 20 image
+and document blocks the API rejects any image over 2000 px a side, so a
+request that large carries only the images under that limit, and stays at 20
+when too few are.
 Anything over goes to the sandbox and the manifest says why. The pre-flight
 ceiling is 600K for system prompt, attachments and template together. It adds
 each file's own measured cost to a count of the text, because the counting
