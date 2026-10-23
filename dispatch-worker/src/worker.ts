@@ -22,6 +22,7 @@ import { createRequestPullRequestReviewerActivity } from "./activities/request-p
 import { createResolveSurfacesActivity } from "./activities/resolve-surfaces.js";
 import { createPostSpecialistStartedActivity, createDeleteSpecialistProgressActivity } from "./activities/specialist-progress.js";
 import { createLogger } from "./logger.js";
+import { BUILD_COMMIT } from "./build-info.js";
 import { loadLocalEnvFile } from "./local-env-file.js";
 import { connectToTemporal } from "./temporal-connection.js";
 import { loadWorkerConfig } from "./worker-config.js";
@@ -52,6 +53,7 @@ async function main(): Promise<void> {
   await loadLocalEnvFile();
   const config = loadWorkerConfig();
 
+  log.info(`dispatch-worker build ${BUILD_COMMIT}`);
   log.info(`connecting to Temporal at ${config.temporalHost}, namespace=${config.temporalNamespace}`);
   const connection = await connectToTemporal(config);
 

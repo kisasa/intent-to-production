@@ -5575,3 +5575,170 @@ name and point dispatch at a branch that does not exist. Wave numbers make a
 retitle rare — it takes a change to the graph — and `epic-writing` says to
 check the branch name if one happens.
 
+## A running build is rendered before the map is worked (2026-10-23)
+
+**The observation.** On 2026-10-22 the main design asset in a
+requirements session was a running prototype of a payment form and its list
+view. The skill had no route for it. Step 4 places text as documents and
+binaries as attachments. Its fallback, a URL, is for an attachment that
+fails, and a link to a running build fails step 4's own reachability test:
+no downstream activation can open a URL. Step 4b said to place a full
+prototype "like any other artifact", which sent it back to step 4 with
+nowhere to go.
+
+The run rendered the build instead. The PM fenced it to one path and named
+the few URLs outside it that belonged. Claude drove the build and captured
+one image per state, 72 in all, with a manifest that keyed each image to the
+capability map and marked what was visible but `out` and what was the
+prototype's demo behavior. The set went onto one evidence issue. The marking
+did real work. The build listed cancelled and timed-out terminal attempts as
+sales where the document says nothing is charged, and its list offered an
+action its detail view did not. Unmarked, either reads downstream as a
+requirement.
+
+Two things came out wrong. The set was derived from the map after its rows
+were resolved, so every disagreement it found arrived after the decision it
+bore on. And the evidence issue told downstream readers that Specification
+would re-capture wherever the build had moved. On 2026-10-23 Intake repeated
+that while slicing. No agent can drive a build.
+
+**Rule.** When the evidence includes a running build, the session renders it
+after the map is drafted and before the map is worked. The session fences
+the build, captures every state inside the fence, and sorts every state
+against the map: it supports a row, or no row covers it (a new `confirm` row
+or a demo convention), or it contradicts a row. Then it names the rows no
+state stands behind. A state is evidence for a `confirm` row, never its
+resolution. The `out` and demo-convention marks are structural. The set is
+placed as binary evidence, one evidence issue per area, with the build's URL
+recorded as provenance. With no build, nothing changes, and a document with
+no capture has no gap.
+
+**Why before resolution.** The case against: capturing against a resolved
+map is cheaper, because it skips states already decided `out`, and the room
+can decide from the build directly. But a room looking at a build sees the
+tour someone drives, not every state. A capture fitted to resolved rows can
+only find what the rows already name. Sorting first is what turns an
+uncovered state into a `confirm` row while it can still be decided. For the
+same reason the capture is not taken from a checklist derived from the map,
+which would also find only what the map names. The speed a checklist promised
+comes from the fence and the definition of a state.
+
+**Why per area.** The evidence pre-load sends every attachment on a linked
+issue into each activation that reaches it, and the specialist runner
+downloads the same files. One issue holding every capture puts all of it in
+front of every epic. Split by area, an epic's evidence links only its own
+area.
+
+**What it does not do, by decision.** The set does not satisfy the design
+gate. Specification still waits for the designer's asset for each area. The
+set adds to that asset and changes no decision point for an agent or an
+approver. Once the document is placed, no agent re-captures. An agent that
+wants a state the set lacks asks, and a person adds it from their own
+session. A session with no browser to drive the build has the designer or
+PM supply the screens, and the rule applies unchanged. What counts as a
+state, and the manifest's format, are marked variant.
+
+**What slicing showed about paging, 2026-10-23.** Intake reported that the
+evidence issue held 50 of the 72 captures, and that the 19 October review
+transcript and the first four sets were missing. Every file was attached. The
+tracker returns an issue's attachments 50 at a time, newest first, and the
+connector's issue lookup returns only the first page. The 23 oldest uploads,
+including the transcript, were on the second. Intake's count was an accurate
+report of what it could see. Reading the pre-load walkers for the cause found
+the same defect in the app: both asked for `attachments` without paging, so a
+pre-load of that issue would have stopped at the same 50. The transcript was
+also attached as a file, although step 4 already routes text to a project
+document. As a document it could not have fallen off the page.
+
+A Specification pass the same day showed that the pre-load was not running at
+all. Its activation carried no manifest, although the pre-load writes one
+even when it finds nothing, and the agent drew the epic's design rows from
+the captures' titles and descriptions. So the walker defect explains what an
+activation would have received, not what these ones did.
+
+Two rules follow from that pass. An activation with no manifest has seen no
+attached file, so Intake and Specification now say so and stop instead of
+working from titles; the captures' titles and descriptions were detailed
+enough that the map read as if its rows had been checked against the images.
+And once the pre-load runs, a flat cap of 20 images per request would have
+sent ten of that epic's thirty captures to the sandbox, where Claude opens a
+file but never sees it: the same bend to a limit as a cap on attachments. The
+API takes up to 100 images in a request on a 200K-context model, and above 20
+image and document blocks every image must be at most 2000 px a side. The
+budget now sends every image that fits that limit, up to the API's 100,
+and stays at 20 only when too few do. A ceiling of 50 was tried first: the
+Intake preview on the payments project then sent 22 of its 72 captures to the
+sandbox, and because images are taken newest first, those were the oldest,
+the core form. The captures are 1358
+by 896.
+
+**What the preview showed, 2026-10-23.** Running the pre-load for that epic
+against the live tracker and API confirmed the paging (all 73 files on the
+evidence issue, the oldest included) and the image rule (all 30 captures as
+images, two 2880 by 1800 prototype images held back). It also found two
+faults the unit tests could not. The request was refused: the API takes at
+most 16 files added to the code execution sandbox in one request, and this
+one had 24. Every sandbox file now goes into one tar archive, a single file
+however many it holds, and the manifest says to extract it. And the walk
+pulled in 139 items for one epic. It followed a dependency link into a
+finished epic, then into that epic's stories and their merged pull requests,
+reached its 40-lookup ceiling, and left 29 links unfollowed with only a log
+line to show for it. The walk now skips closed issues, by the state's type
+(completed or canceled) rather than its name, along with everything they
+link to. Filtering on the `Epic` and `Story` title convention was considered
+and rejected: titles are typed by people. A status filter alone would also
+have dropped real evidence. The shared evidence issue holding the
+stabilization analysis was closed, and the payments evidence issue had been
+created closed, because evidence is not work. So an issue labelled
+`evidence` or `design:asset` is followed whatever its state, and the skill
+now labels each evidence issue it creates. Links left at the ceiling are
+named in the manifest.
+
+A cap of 50 attachments per evidence issue was considered and rejected. Nobody
+knows how many states an area will have before it is captured, and the
+document must not bend to the tracker's page size. Splitting by area narrows
+what each epic loads; it is not a fix for this. What a cap would have avoided
+falls to the readers. The walkers in both packages now follow every
+connection they read, attachments, project documents, and the design-issue
+lookup, until the tracker reports no further page. Intake and Specification
+now take the pre-load manifest as the inventory of attachments, not the
+connector's single page; without that line a complete manifest and a
+50-item lookup would disagree and the same report would come back the other
+way.
+
+**Not set.** A size signal. One form with five payment types and a list view
+came to 72 states and about an afternoon of driving. One engagement is one
+data point, and a number waits for a second. Splitting by area gives a count
+per area without extra work.
+
+## A running service names its build (2026-10-23)
+
+**The observation.** On 2026-10-23 a Specification pass ran with no attachment
+manifest. The evidence pre-load, merged on 2026-10-07, writes one on every
+pass, even when it finds nothing, so the listener answering the webhook was
+not running that code. It had been that way for about two weeks. In that time
+every Intake and Specification pass worked without the evidence files, and
+the agent prompts, which ship in the same image, were as old as the code.
+Nothing the pipeline wrote showed it. The ECR workflow builds and pushes an
+image on every merge to `main`, but a push does not restart the service, and
+no output named the code it came from. Part of a day went to reasoning about
+code that was not running.
+
+**Rule.** Every image carries the commit it was built from. The ECR workflows
+pass the checked-out commit as a build argument, and each Dockerfile sets it
+as `BUILD_COMMIT`. The listener logs it at startup, returns it from
+`/version`, and ends every comment it posts on the tracker with it. The
+dispatch worker logs it at startup, and the specialist runner logs it at the
+start of each run. After a deploy, the check is `/version` against the commit
+meant to ship.
+
+**Why the comments carry it.** The tracker is where people watch the pipeline
+work. A build line on the "working on it" comment and on every error comment
+puts the running commit where the person who notices something odd is
+already looking, without opening the logs. The progress comment is deleted
+when a run ends cleanly, so the line is there while it matters.
+
+**Not done.** Nothing checks the running commit against `main` on its own, and
+the deploy itself is still a separate step. Both wait until a stale deploy
+recurs with this line in place.
+

@@ -156,6 +156,13 @@ where the id that survives is whichever reply last reset the timer. Set
 `LOG_LEVEL=trace` and grep one id (e.g. `[decompose:a1b2c3d4]`) to reconstruct
 one request's entire path through the system.
 
+**Which build is running.** The image carries the commit it was built from
+(`BUILD_COMMIT`, set by the ECR workflow; `src/build-info.ts`). The startup
+banner logs it, `GET /version` returns it, and every comment the listener
+posts on the tracker ends with it. After a deploy, check `/version` against
+the commit you meant to ship. A process started outside the image reports
+`unknown`.
+
 ## Files
 
 | File | Role |
@@ -201,21 +208,34 @@ those files into the request before the call:
 | PDF | a `document` block — every page as text and as an image |
 | PNG, JPEG, GIF, WebP | an `image` block |
 | text (md, json, html, csv, svg, …) | a `document` block of plain text |
-| anything else (docx, xlsx, pptx, zip, …), or any file over the budget | a `container_upload` into the code execution sandbox, at `$INPUT_DIR/<name>` |
+| anything else (docx, xlsx, pptx, zip, …), or any file over the budget | a file in the code execution sandbox, packed with the others into one `evidence.tar` that the manifest says to extract |
 | a link that isn't an upload (a PR, a prototype) | a manifest line only |
 
 **Which files.** Not every file in the project — a project that runs several
 business-requirements documents accumulates every delivered epic's assets. The
 walker follows the evidence links instead: from the project's content and
 documents (Intake) or the epic (Specification), plus the `design:asset` issue,
-three hops deep, across projects.
+three hops deep, across projects. Every list it reads (an issue's
+attachments, a project's documents, the design-issue lookup) is followed to
+its last page; the tracker returns 50 at a time. A closed issue (state type
+completed or canceled) is skipped with everything it links to, since it is
+delivered work, unless it carries the `evidence` or `design:asset` label. Links
+still unfollowed when the walk reaches its 40-lookup ceiling are named in the
+manifest.
+
+**The sandbox.** The API refuses a request that adds more than 16 files to the
+sandbox, so every sandbox file goes into one tar archive, uploaded as a single
+file. The manifest gives the command to extract it.
 
 **Budget.** 250K tokens of attachments in the prompt, no text file over 100K,
-no more than 20 images (`activation-config.ts`). Anything over goes to the
-sandbox and the manifest says why. The pre-flight ceiling is 600K for system
-prompt, attachments and template together. It adds each file's own measured
-cost to a count of the text, because the counting endpoint refuses file
-sources and has its own request size limit.
+and up to 100 images (`activation-config.ts`), the API's limit. Past 20 image
+and document blocks the API rejects any image over 2000 px a side, so a
+request that large carries only the images under that limit, and stays at 20
+when too few are.
+Anything over goes to the sandbox and the manifest says why. The pre-flight
+ceiling is 600K for system prompt, attachments and template together. It adds
+each file's own measured cost to a count of the text, because the counting
+endpoint refuses file sources and has its own request size limit.
 
 **Memory.** Downloads run one at a time, capped at 50 MB per file and 150 MB
 per activation, because every file sits in this process's memory until it is

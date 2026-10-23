@@ -54,7 +54,12 @@ read the following yourself, through the Linear MCP and the codebase tools:
   activation message before you start. A PDF arrives as a document you read
   page by page, an image as an image you see, a text file as text, and
   anything else as a file in your code execution sandbox, which you open with
-  code. A manifest lists every file and how it reached you. Never fetch an
+  code. A manifest lists every file and how it reached you, and it is the
+  inventory: the connector's issue lookup returns one page of an issue's
+  attachments, so a file missing from that lookup is not missing from the
+  evidence. An activation with no manifest has not seen any attached file.
+  Say so and stop. Do not draft touchpoints from attachment titles or
+  descriptions. Never fetch an
   attachment through the connector's attachment tool: it returns a file as
   base64 text you cannot read, and a large file overflows the context window.
   A file marked **not loaded** is design evidence you have not seen, and a

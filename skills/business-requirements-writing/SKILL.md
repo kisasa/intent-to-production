@@ -32,6 +32,9 @@ inventing facts.
 Whatever the PM brings: meeting transcripts, stakeholder notes, screenshots
 of current and target states, design assets in whatever form, and prior
 documents. Design assets may be screens, clickable builds, or findings docs.
+A running build is evidence only once it is rendered; see *A running build*
+under the capability map. Many sessions have no design asset at all. That is
+not a gap.
 Read everything before drafting anything. For each image, state what you see
 and what you take it to represent. A screenshot's role may be current state,
 target, or reference. If the role is unclear, ask before using it.
@@ -122,6 +125,54 @@ in a tracker is an invitation to slice around it rather than settle it. The
 structural reason is that a comment thread on one project cannot see another
 project's capability map. Resolving a capability sometimes requires exactly
 that. Intake's gate stays as a backstop. It should now never fire.
+
+#### A running build — render it before you work the map
+
+This applies only when the evidence includes a running build, such as a
+prototype or staging app the PM can point at. Without one, skip it. A document
+with no rendered set is not missing anything.
+
+A URL to a build fails the reachability test in step 4, and screenshots picked
+by eye show only what someone chose to look at. Render the build instead,
+after the map is drafted and before it is worked with the room. If the
+session has no browser to drive it, the designer or PM supplies the screens,
+and everything below applies unchanged:
+
+1. **Fence it.** The PM names the boundary: a path prefix, plus any URLs
+   outside it that belong. For a build given at its root, make a shallow pass
+   of its navigation, propose areas, and let the PM pick. Each area is fenced
+   by its shared path or by what is reachable from its navigation entry. A
+   link that leaves the fence is recorded as an exit, not followed. Before
+   driving the build, ask the designer which parts are live and which
+   behavior is demo convention.
+2. **Capture every state inside the fence**, one image each. Never submit,
+   charge, delete, or sign out against anything that is not mocked.
+3. **Sort every state against the drafted map.** A state supports a row; or
+   no row covers it, which drafts a new `confirm` row or is noted as demo
+   convention; or it contradicts a row, which is raised when that row is
+   worked. Then name the drafted rows no state stands behind. Nothing is
+   dropped for being off the map.
+
+A state the build shows is evidence for a `confirm` row. It never resolves
+one. The build is the designer's proposal, and the PM still decides every row.
+A capture taken after resolution can only decorate decisions already made.
+Nor does the set stand in for the designer's asset for an area. Specification
+still waits for that asset. The set adds to it and changes no decision point
+for any agent or approver.
+
+Write a manifest with one entry per image, keyed by the route and the actions
+that reached the state, and title each image by its key. Each entry names the
+rows it shows. Two marks are structural, because downstream an unmarked image
+reads as target state: anything visible but resolved `out`, and anything that
+is demo convention rather than requirement, such as a mocked decline trigger,
+seeded data, or a section the build labels as placeholder. Record the capture
+date and the source ref once for the set.
+
+*(Variant: what counts as a state. Default: each screen, modal, menu,
+validation message, outcome, empty, loading and error state, locked or
+disabled control, and each role's view. Not value permutations, hovers, or
+animation frames; a narrower width only where the layout changes. Also
+variant: the manifest's columns and format.)*
 
 #### Working the map — one row at a time, with answers offered
 
@@ -277,10 +328,18 @@ creation the same way a placeholder does.
    - **Binary / non-text** (screenshots, zips, images): attach to a dedicated
      **evidence issue** in the project. That is one issue whose job is to hold
      evidence. Attach via the connector's attach capability: base64 for small
-     files, and the prepared-upload path for large ones. Link the issue from
-     the Evidence inventory. Creating that issue is the correct move even
-     though no epics exist yet. Do not treat "no issues exist" as a reason you
-     cannot attach.
+     files, and the prepared-upload path for large ones. Label the issue
+     `evidence`, which keeps it in reach of downstream agents even once it is
+     closed. Link the issue from the Evidence inventory. Creating that issue
+     is the correct move even though no epics exist yet. Do not treat "no
+     issues exist" as a reason you cannot attach.
+   - **A running build**: place its rendered set, never its URL (see *A
+     running build*). Use one evidence issue per area, each holding that
+     area's images and its slice of the manifest. The areas are the
+     designer's where a design order of work is recorded, otherwise the areas
+     chosen for the capture. An epic's evidence then loads its own area, not
+     every capture. Record the build's URL and ref in the inventory as
+     provenance. The fallback below is not a route for a build.
    - **Fallback, only if attachment genuinely fails**: record a durable
      external pointer in the inventory. That is a URL to where the artifact
      lives. A bare in-prose note that evidence "exists but couldn't be
@@ -314,8 +373,9 @@ creation the same way a placeholder does.
 
    A design asset may already exist at this point and cover the whole body of
    work, such as a full prototype or an overall findings doc. That asset is
-   evidence. Place it in step 4 like any other artifact and link it from the
-   Evidence inventory. Do not copy its contents into the design issue.
+   evidence. Place it in step 4 and link it from the Evidence inventory. A
+   running build is placed as its rendered set. Do not copy either into the
+   design issue.
 
    Mark the design issue with the label `design:asset`, or the team's
    equivalent, so the Specification Agent and the designer can find it.
@@ -329,9 +389,14 @@ a document, an evidence issue, or an external URL. Role and authority examples
 are current-state evidence, target reference, and "original is authoritative,
 markdown is a convenience copy." The design issue's entry says what it is for
 and that per-area design arrives on each epic, so nobody reads a thin design
-issue as a gap. This is where a human or a downstream agent first looks. The
-legend tells them what each artifact is and which to trust without opening all
-of them. Do not make the PM ask for it. It is part of a well-formed project.
+issue as a gap. A rendered set's entry gives its area, capture date, and source
+ref, and says its manifest marks what is `out` and what is demo convention. It
+does not promise a re-capture, and it is not the designer's asset for any
+area. No agent can drive a build. An epic that needs a
+state the set lacks asks for it, and a person adds it. This is where a human
+or a downstream agent first looks. The legend tells them what each artifact is
+and which to trust without opening all of them. Do not make the PM ask for
+it. It is part of a well-formed project.
 6. Do **not** apply the `ready for intake` label, and say so. Applying it is
    the PM's act. It is the spend decision that wakes the Intake Agent.
 
@@ -368,6 +433,11 @@ candidate.
 - Never seed the design issue with inferred design specifics. Never propose a
   design order of work yourself. Both are the designer's. Record them only
   when the designer supplies them.
+- Render a running build before working the map, and sort every state
+  against it. A state the build shows is evidence for a row, never its
+  resolution, and the set never stands in for the designer's per-area asset.
+  Mark every image that shows something `out` or demo convention. No agent
+  re-captures after the document is placed.
 - Never apply the intake label.
 - Stop on placeholders and unconfirmed decisions. Neither enters the pipeline.
 - The document's downstream consumers are agents. Write for semantic

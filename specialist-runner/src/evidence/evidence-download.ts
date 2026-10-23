@@ -103,7 +103,12 @@ export function evidenceFilename(
   return `${String(index).padStart(2, "0")}-${named || "attachment"}`;
 }
 
-export function renderEvidenceManifest(dir: string, epicId: string, entries: ManifestEntry[]): string {
+export function renderEvidenceManifest(
+  dir: string,
+  epicId: string,
+  entries: ManifestEntry[],
+  unfollowed: string[] = [],
+): string {
   const lines = [
     `# Evidence files for ${epicId}`,
     "",
@@ -132,6 +137,13 @@ export function renderEvidenceManifest(dir: string, epicId: string, entries: Man
         break;
     }
   });
+  if (unfollowed.length > 0) {
+    lines.push(
+      "",
+      `The evidence walk reached its lookup limit and did not follow ${unfollowed.length} more link(s): ` +
+        `${unfollowed.join(", ")}. Nothing on them was downloaded.`,
+    );
+  }
   lines.push(
     "",
     "If a file you need is NOT DOWNLOADED, or a link you would need to open matters to the story, do not " +
@@ -158,8 +170,9 @@ export async function downloadEvidence(
   const manifestPath = join(dir, MANIFEST_FILENAME);
 
   let found: FoundAttachment[];
+  let unfollowed: string[];
   try {
-    found = await walkEvidence(linear, { kind: "epic", issueId: epicId }, config.walk, log);
+    ({ attachments: found, unfollowed } = await walkEvidence(linear, { kind: "epic", issueId: epicId }, config.walk, log));
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     log.warn(`evidence walk failed for ${epicId}: ${reason}`);
@@ -212,7 +225,7 @@ export async function downloadEvidence(
     }
   }
 
-  await writeFile(manifestPath, renderEvidenceManifest(dir, epicId, entries));
+  await writeFile(manifestPath, renderEvidenceManifest(dir, epicId, entries, unfollowed));
   log.info(
     `evidence for ${epicId}: ${entries.filter((e) => e.status === "saved").length} file(s) saved to ${dir}, ` +
       `${entries.filter((e) => e.status === "link").length} link(s), ` +

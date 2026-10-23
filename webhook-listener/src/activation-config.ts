@@ -132,7 +132,14 @@ export const activationConfig: ActivationConfig = {
       // first call; its pause_turn resumes read it from cache.
       totalTokens: 250_000,
       maxTextFileTokens: 100_000,
-      maxNativeImages: 20,
+      // The API's vision documentation (read 2026-10-23) allows up to 100
+      // images per request on a 200K-context model, and more on others, so
+      // 100 is safe for any lane's model. At 50, Intake on a 72-capture
+      // requirements document lost 22 captures to the sandbox. Past 20 image
+      // and document blocks, every image must be at most 2000 px a side.
+      maxNativeImages: 100,
+      manyImageThreshold: 20,
+      manyImageMaxSide: 2000,
     },
     download: {
       // Bounds on what pre-load holds in this process's memory. The listener

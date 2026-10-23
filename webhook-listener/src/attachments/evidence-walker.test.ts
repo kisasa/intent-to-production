@@ -20,7 +20,7 @@ describe("walkEvidence", () => {
         "PROJ-5": issue("PROJ-5", "", [upload("deep")]),
       },
     });
-    const found = await walkEvidence(linear, { kind: "project", projectId: "proj" }, LIMITS, silentLogger);
+    const { attachments: found } = await walkEvidence(linear, { kind: "project", projectId: "proj" }, LIMITS, silentLogger);
     expect(found.map((f) => [f.id, f.issueIdentifier])).toEqual([
       ["analysis", "PROJ-1"],
       ["template", "PROJ-4"],
@@ -34,7 +34,7 @@ describe("walkEvidence", () => {
       issues: { "uuid-PROJ-6": issue("PROJ-6", "", [upload("screen")]) },
       designIssueIds: { proj: ["uuid-PROJ-6"] },
     });
-    const found = await walkEvidence(linear, { kind: "project", projectId: "proj" }, LIMITS, silentLogger);
+    const { attachments: found } = await walkEvidence(linear, { kind: "project", projectId: "proj" }, LIMITS, silentLogger);
     expect(found.map((f) => f.id)).toEqual(["screen"]);
   });
 
@@ -45,7 +45,7 @@ describe("walkEvidence", () => {
         "PROJ-1": issue("PROJ-1", "", [upload("screens")]),
       },
     });
-    const found = await walkEvidence(linear, { kind: "epic", issueId: "PROJ-10" }, LIMITS, silentLogger);
+    const { attachments: found } = await walkEvidence(linear, { kind: "epic", issueId: "PROJ-10" }, LIMITS, silentLogger);
     expect(found.map((f) => f.id)).toEqual(["area-design", "screens"]);
   });
 
@@ -57,7 +57,7 @@ describe("walkEvidence", () => {
       },
       issues: { "PROJ-1": shared, "00000000-0000-4000-8000-000000000001": shared },
     });
-    const found = await walkEvidence(linear, { kind: "project", projectId: "proj" }, LIMITS, silentLogger);
+    const { attachments: found } = await walkEvidence(linear, { kind: "project", projectId: "proj" }, LIMITS, silentLogger);
     expect(found.map((f) => f.id)).toEqual(["once"]);
   });
 
@@ -67,7 +67,7 @@ describe("walkEvidence", () => {
       documents: { abcdef012345: `Evidence: ${url("PROJ-1")}` },
       issues: { "PROJ-1": issue("PROJ-1", "", [upload("evidence")]) },
     });
-    const found = await walkEvidence(linear, { kind: "project", projectId: "proj" }, LIMITS, silentLogger);
+    const { attachments: found } = await walkEvidence(linear, { kind: "project", projectId: "proj" }, LIMITS, silentLogger);
     expect(found.map((f) => f.id)).toEqual(["evidence"]);
   });
 
@@ -76,7 +76,7 @@ describe("walkEvidence", () => {
       projects: { proj: { content: `${url("PROJ-99")} ${url("PROJ-1")}`, documentContents: [] } },
       issues: { "PROJ-1": issue("PROJ-1", "", [upload("kept")]) },
     });
-    const found = await walkEvidence(linear, { kind: "project", projectId: "proj" }, LIMITS, silentLogger);
+    const { attachments: found } = await walkEvidence(linear, { kind: "project", projectId: "proj" }, LIMITS, silentLogger);
     expect(found.map((f) => f.id)).toEqual(["kept"]);
   });
 
@@ -95,7 +95,54 @@ describe("walkEvidence", () => {
       projects: { proj: { content: Object.keys(issues).map(url).join(" "), documentContents: [] } },
       issues: issues,
     });
-    const found = await walkEvidence(linear, { kind: "project", projectId: "proj" }, { maxHops: 3, maxNodes: 4 }, silentLogger);
+    const { attachments: found } = await walkEvidence(linear, { kind: "project", projectId: "proj" }, { maxHops: 3, maxNodes: 4 }, silentLogger);
     expect(found).toHaveLength(4);
+  });
+
+  it("names the links it did not follow at the ceiling", async () => {
+    const issues = Object.fromEntries(
+      Array.from({ length: 6 }, (_, i) => [`PROJ-${i + 20}`, issue(`PROJ-${i + 20}`, "", [upload(`f${i}`)])]),
+    );
+    const linear = fakeLinear({
+      projects: { proj: { content: Object.keys(issues).map(url).join(" "), documentContents: [] } },
+      issues: issues,
+    });
+    const walk = await walkEvidence(linear, { kind: "project", projectId: "proj" }, { maxHops: 3, maxNodes: 4 }, silentLogger);
+    expect(walk.unfollowed).toEqual(["PROJ-24", "PROJ-25"]);
+  });
+
+  it("skips closed work and everything it links to", async () => {
+    const linear = fakeLinear({
+      issues: {
+        "PROJ-10": issue("PROJ-10", `Depends on ${url("PROJ-11")}. Evidence: ${url("PROJ-13")}`, [upload("own")]),
+        "PROJ-11": { ...issue("PROJ-11", `Stories: ${url("PROJ-12")}`, [upload("pr-link")]), stateType: "completed" },
+        "PROJ-12": issue("PROJ-12", "", [upload("story-pr")]),
+        "PROJ-13": issue("PROJ-13", "", [upload("screen")]),
+      },
+    });
+    const { attachments } = await walkEvidence(linear, { kind: "epic", issueId: "PROJ-10" }, LIMITS, silentLogger);
+    expect(attachments.map((f) => f.id)).toEqual(["own", "screen"]);
+    expect(linear.issueLookups).not.toContain("PROJ-12");
+  });
+
+  it("follows a closed issue labelled as evidence or a design asset", async () => {
+    const linear = fakeLinear({
+      issues: {
+        "PROJ-10": issue("PROJ-10", `Shared: ${url("PROJ-14")}. Design: ${url("PROJ-15")}. Gone: ${url("PROJ-16")}`),
+        "PROJ-14": { ...issue("PROJ-14", "", [upload("analysis")]), stateType: "completed", labels: ["evidence"] },
+        "PROJ-15": { ...issue("PROJ-15", "", [upload("mock")]), stateType: "completed", labels: ["Design:Asset"] },
+        "PROJ-16": { ...issue("PROJ-16", "", [upload("dropped")]), stateType: "canceled", labels: ["bug"] },
+      },
+    });
+    const { attachments } = await walkEvidence(linear, { kind: "epic", issueId: "PROJ-10" }, LIMITS, silentLogger);
+    expect(attachments.map((f) => f.id)).toEqual(["analysis", "mock"]);
+  });
+
+  it("never filters the issue the walk starts from", async () => {
+    const linear = fakeLinear({
+      issues: { "PROJ-10": { ...issue("PROJ-10", "", [upload("own")]), stateType: "completed" } },
+    });
+    const { attachments } = await walkEvidence(linear, { kind: "epic", issueId: "PROJ-10" }, LIMITS, silentLogger);
+    expect(attachments.map((f) => f.id)).toEqual(["own"]);
   });
 });

@@ -62,6 +62,13 @@ attachments lists every file, where it sits, and how it reached you.
 - Never fetch an attachment through the connector's attachment tool. It
   returns a file as base64 text, which you cannot read, and a large file
   overflows the context window before you read a word.
+- The manifest is the inventory of attachments. The connector's issue lookup
+  returns one page of an issue's attachments, so a file missing from that
+  lookup is not missing from the evidence. Count from the manifest before you
+  say a file is absent.
+- An activation with no manifest has not seen any attached file, whatever the
+  connector lists. Say so in your reply and stop. Do not slice from attachment
+  titles or descriptions.
 - A file the manifest marks **not loaded** is evidence you have not seen. Do
   not reason past it. If it bears on the slicing, say so in your reply and ask
   for it.

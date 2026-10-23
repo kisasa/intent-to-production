@@ -28,6 +28,12 @@ RUN npm ci
 COPY webhook-listener/tsconfig.json ./
 COPY webhook-listener/src ./src
 
+# The commit this image was built from (src/build-info.ts), passed in by the
+# ECR workflow. Declared after the dependency install so a new commit does not
+# invalidate that layer.
+ARG BUILD_COMMIT=unknown
+ENV BUILD_COMMIT=$BUILD_COMMIT
+
 # The platform injects env vars (no .env file) and a PORT to bind; 8787 is
 # just the documented default (see src/env.ts's envOr fallback).
 ENV NODE_ENV=production
