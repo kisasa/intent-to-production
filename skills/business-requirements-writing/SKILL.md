@@ -328,10 +328,11 @@ creation the same way a placeholder does.
    - **Binary / non-text** (screenshots, zips, images): attach to a dedicated
      **evidence issue** in the project. That is one issue whose job is to hold
      evidence. Attach via the connector's attach capability: base64 for small
-     files, and the prepared-upload path for large ones. Link the issue from
-     the Evidence inventory. Creating that issue is the correct move even
-     though no epics exist yet. Do not treat "no issues exist" as a reason you
-     cannot attach.
+     files, and the prepared-upload path for large ones. Label the issue
+     `evidence`, which keeps it in reach of downstream agents even once it is
+     closed. Link the issue from the Evidence inventory. Creating that issue
+     is the correct move even though no epics exist yet. Do not treat "no
+     issues exist" as a reason you cannot attach.
    - **A running build**: place its rendered set, never its URL (see *A
      running build*). Use one evidence issue per area, each holding that
      area's images and its slice of the manifest. The areas are the

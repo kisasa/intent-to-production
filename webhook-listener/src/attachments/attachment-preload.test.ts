@@ -54,7 +54,7 @@ describe("attachment preloader", () => {
       "application/pdf",
       "image/png",
       "text/plain",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/x-tar",
     ]);
 
     const manifest = manifestOf(result.blocks as { type: string; text?: string }[]);
@@ -103,8 +103,22 @@ describe("attachment preloader", () => {
     const anthropic = recordingAnthropic();
     const result = await createAttachmentPreloader(linear, CONFIG).preload(anthropic, SCOPE, "model", silentLogger);
     expect(result.blocks.map((b) => b.type)).toEqual(["container_upload", "text"]);
-    expect(anthropic.uploads[0]?.type).toBe("text/html");
+    expect(anthropic.uploads[0]).toEqual({ filename: "evidence.tar", type: "application/x-tar" });
     expect(manifestOf(result.blocks as { type: string; text?: string }[])).toMatch(/per-file limit/);
+  });
+
+  it("sends every sandbox file in one archive, however many there are", async () => {
+    // The API refuses more than 16 files added to the sandbox in one request.
+    const attachments = Array.from({ length: 24 }, (_, i) => ({ id: `z${i}`, title: `Export ${i}`, url: `${UPLOAD}z${i}` }));
+    const files = Object.fromEntries(attachments.map((a, i) => [a.url, file("application/zip", `zip ${i}`)]));
+    const linear = fakeLinear(tracker(attachments, files));
+    const anthropic = recordingAnthropic();
+    const result = await createAttachmentPreloader(linear, CONFIG).preload(anthropic, SCOPE, "model", silentLogger);
+    expect(result.blocks.filter((b) => b.type === "container_upload")).toHaveLength(1);
+    expect(anthropic.uploads).toEqual([{ filename: "evidence.tar", type: "application/x-tar" }]);
+    const manifest = manifestOf(result.blocks as { type: string; text?: string }[]);
+    expect(manifest).toContain('tar -xf "$INPUT_DIR/evidence.tar" -C "$INPUT_DIR"');
+    expect(manifest).toContain("$INPUT_DIR/Export 23.zip");
   });
 
   it("uploads one file attached in two places once", async () => {

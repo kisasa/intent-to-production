@@ -35,6 +35,10 @@ export interface EvidenceIssue {
   description: string;
   projectId: string | null;
   attachments: LinearAttachment[];
+  // The workflow state's type (backlog, unstarted, started, completed,
+  // canceled, triage) and the issue's label names, for the closed-work filter.
+  stateType?: string | null;
+  labels?: string[];
 }
 
 export interface EvidenceProject {
@@ -62,6 +66,31 @@ export interface WalkLimits {
   maxNodes: number;
 }
 
+export interface EvidenceWalk {
+  attachments: FoundAttachment[];
+  // Links still queued when the walk reached its lookup ceiling, by the
+  // reference that named them. The manifest lists them; nothing is dropped
+  // without saying so.
+  unfollowed: string[];
+}
+
+// A closed issue is delivered work (another epic, a story, its merged pull
+// requests), not evidence, and following it fans the walk out across the
+// project. Observed 2026-10-23: one epic's walk went through a finished epic
+// into its stories, collected some thirty merged-PR links, reached the lookup
+// ceiling, and left 29 links unfollowed. Closed means the state's type, so a
+// renamed or added status changes nothing. Evidence and design issues are
+// often closed because they are not work, so those labels keep an issue in
+// the walk whatever its state. The issue the walk starts from is never
+// filtered.
+const CLOSED_STATE_TYPES = new Set(["completed", "canceled"]);
+const ALWAYS_FOLLOWED_LABELS = new Set(["design:asset", "evidence"]);
+
+export function isClosedWork(issue: EvidenceIssue): boolean {
+  if (!issue.stateType || !CLOSED_STATE_TYPES.has(issue.stateType)) return false;
+  return !(issue.labels ?? []).some((l) => ALWAYS_FOLLOWED_LABELS.has(l.toLowerCase()));
+}
+
 export type EvidenceScope = { kind: "project"; projectId: string } | { kind: "epic"; issueId: string };
 
 interface QueuedRef {
@@ -75,11 +104,12 @@ export async function walkEvidence(
   scope: EvidenceScope,
   limits: WalkLimits,
   log: Logger,
-): Promise<FoundAttachment[]> {
+): Promise<EvidenceWalk> {
   const queue: QueuedRef[] = [];
   const seenRefs = new Set<string>();
   const seenIssueIds = new Set<string>();
   const found = new Map<string, FoundAttachment>();
+  const unfollowed: string[] = [];
   let lookups = 0;
 
   function enqueueFrom(markdown: string, depth: number): void {
@@ -128,7 +158,8 @@ export async function walkEvidence(
   while (queue.length > 0) {
     const item = queue.shift() as QueuedRef;
     if (lookups >= limits.maxNodes) {
-      log.warn(`evidence walk stopped at ${limits.maxNodes} lookups; ${queue.length + 1} linked item(s) not followed`);
+      unfollowed.push(item.ref, ...queue.map((q) => q.ref));
+      log.warn(`evidence walk stopped at ${limits.maxNodes} lookups; ${unfollowed.length} linked item(s) not followed`);
       break;
     }
     lookups++;
@@ -149,6 +180,10 @@ export async function walkEvidence(
     // the lookup returns, not on the reference that led here.
     if (seenIssueIds.has(issue.id)) continue;
     seenIssueIds.add(issue.id);
+    if (isClosedWork(issue)) {
+      log.trace(`evidence walk: issue ${issue.identifier} at hop ${item.depth} skipped, closed (${issue.stateType})`);
+      continue;
+    }
     log.trace(
       `evidence walk: issue ${issue.identifier} at hop ${item.depth}, ${issue.attachments.length} attachment(s)`,
     );
@@ -156,5 +191,5 @@ export async function walkEvidence(
     enqueueFrom(issue.description, item.depth + 1);
   }
 
-  return [...found.values()];
+  return { attachments: [...found.values()], unfollowed: unfollowed };
 }

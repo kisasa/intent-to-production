@@ -64,6 +64,9 @@ interface IssueNode {
   description: string | null;
   project: { id: string } | null;
   attachments: Connection<AttachmentNode>;
+  state?: { type: string } | null;
+  // An issue carries a handful of labels; the first page is all of them.
+  labels?: { nodes: { name: string }[] };
 }
 
 // Collects every node of a connection: the page already in hand, then each
@@ -128,7 +131,7 @@ export function createLinearEvidenceClient(apiUrl: string, apiKey: string, fetch
 
     async getIssue(issueIdOrIdentifier: string): Promise<EvidenceIssue | null> {
       const data = await query<{ issue?: IssueNode | null }>(
-        `query($id:String!){ issue(id:$id){ id identifier description project{ id } attachments(first:${PAGE_SIZE}){ nodes{ id title url } ${PAGE_INFO} } } }`,
+        `query($id:String!){ issue(id:$id){ id identifier description project{ id } state{ type } labels(first:${PAGE_SIZE}){ nodes{ name } } attachments(first:${PAGE_SIZE}){ nodes{ id title url } ${PAGE_INFO} } } }`,
         { id: issueIdOrIdentifier },
       );
       if (!data.issue) return null;
@@ -145,6 +148,8 @@ export function createLinearEvidenceClient(apiUrl: string, apiKey: string, fetch
         description: data.issue.description ?? "",
         projectId: data.issue.project?.id ?? null,
         attachments: attachments,
+        stateType: data.issue.state?.type ?? null,
+        labels: data.issue.labels?.nodes.map((l) => l.name) ?? [],
       };
     },
 

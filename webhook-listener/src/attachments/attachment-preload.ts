@@ -31,6 +31,7 @@ import {
 } from "./attachment-classifier.js";
 import { applyAttachmentBudget, type AttachmentBudgetLimits, type BudgetCandidate } from "./attachment-budget.js";
 import { walkEvidence, type EvidenceScope, type FoundAttachment, type WalkLimits } from "./evidence-walker.js";
+import { archiveMemberNames, SANDBOX_ARCHIVE_NAME, tarArchive } from "./sandbox-archive.js";
 import { DownloadTooLargeError, type DownloadedFile, type LinearEvidenceClient } from "./linear-evidence-source.js";
 import type { Logger } from "../logger.js";
 
@@ -115,7 +116,7 @@ function formatBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function renderManifest(entries: ManifestEntry[]): string {
+export function renderManifest(entries: ManifestEntry[], unfollowed: string[] = []): string {
   const lines = [
     "## Attachments for this activation",
     "",
@@ -126,6 +127,14 @@ export function renderManifest(entries: ManifestEntry[]): string {
     "",
   ];
   if (entries.length === 0) lines.push("No attachments were found on the linked evidence.");
+  if (entries.some((e) => e.status === "sandbox")) {
+    lines.push(
+      `Every file below that is in your code execution sandbox arrives inside one archive, ` +
+        `\`$INPUT_DIR/${SANDBOX_ARCHIVE_NAME}\`. Extract it before opening any of them ` +
+        `(\`tar -xf "$INPUT_DIR/${SANDBOX_ARCHIVE_NAME}" -C "$INPUT_DIR"\`); each file is then at the path given.`,
+      "",
+    );
+  }
   entries.forEach((e, i) => {
     const head = `${i + 1}. "${e.found.title}" (on ${e.found.issueIdentifier})`;
     switch (e.status) {
@@ -150,6 +159,13 @@ export function renderManifest(entries: ManifestEntry[]): string {
         break;
     }
   });
+  if (unfollowed.length > 0) {
+    lines.push(
+      "",
+      `The evidence walk reached its lookup limit and did not follow ${unfollowed.length} more link(s): ` +
+        `${unfollowed.join(", ")}. Nothing on them reached you.`,
+    );
+  }
   lines.push(
     "",
     "If an attachment you need is NOT LOADED, or only reached you in the sandbox when its visual content " +
@@ -221,7 +237,7 @@ export function createAttachmentPreloader(
 
   return {
     async preload(anthropic, scope, model, log) {
-      const found = await walkEvidence(linear, scope, config.walk, log);
+      const { attachments: found, unfollowed } = await walkEvidence(linear, scope, config.walk, log);
       log.debug(`attachment pre-load: ${found.length} attachment(s) on the linked evidence`);
 
       // Downloads start right after the walk: the signed upload URLs it
@@ -329,6 +345,7 @@ export function createAttachmentPreloader(
       const countBlocks: Anthropic.ContentBlockParam[] = [];
       let needsCodeExecution = false;
       let attachmentTokens = 0;
+      const sandboxed: { entryIndex: number; loaded: LoadedFile; mime: string; reason: string | null }[] = [];
 
       for (let i = 0; i < loaded.length; i++) {
         const l = loaded[i] as LoadedFile;
@@ -340,17 +357,8 @@ export function createAttachmentPreloader(
 
         try {
           if (decision.kind === "sandbox") {
-            const fileId = await uploadOnce(anthropic, l.hash, l.file.bytes, l.filename, mime, log);
-            blocks.push({ type: "container_upload", file_id: fileId });
-            needsCodeExecution = true;
-            entries[entryIndex] = {
-              status: "sandbox",
-              found: l.found,
-              mime: mime,
-              bytes: l.file.bytes.length,
-              filename: l.filename,
-              reason: decision.demotedBecause,
-            };
+            // Packed with the others after this loop: see sandbox-archive.ts.
+            sandboxed.push({ entryIndex: entryIndex, loaded: l, mime: mime, reason: decision.demotedBecause });
             continue;
           }
 
@@ -381,10 +389,36 @@ export function createAttachmentPreloader(
         }
       }
 
+      if (sandboxed.length > 0) {
+        const names = archiveMemberNames(sandboxed.map((s) => s.loaded.filename));
+        const archive = tarArchive(sandboxed.map((s, i) => ({ name: names[i] as string, bytes: s.loaded.file.bytes })));
+        const archiveHash = createHash("sha256").update(archive).digest("hex");
+        try {
+          const fileId = await uploadOnce(anthropic, archiveHash, archive, SANDBOX_ARCHIVE_NAME, "application/x-tar", log);
+          blocks.push({ type: "container_upload", file_id: fileId });
+          needsCodeExecution = true;
+          sandboxed.forEach((s, i) => {
+            entries[s.entryIndex] = {
+              status: "sandbox",
+              found: s.loaded.found,
+              mime: s.mime,
+              bytes: s.loaded.file.bytes.length,
+              filename: names[i] as string,
+              reason: s.reason,
+            };
+          });
+        } catch (err) {
+          const reason = `upload failed: ${err instanceof Error ? err.message : String(err)}`;
+          sandboxed.forEach((s) => {
+            entries[s.entryIndex] = { status: "failed", found: s.loaded.found, reason: reason };
+          });
+        }
+      }
+
       // The manifest closes the attachment section and carries its cache
       // breakpoint: the files and the manifest are identical across passes on
       // the same evidence, while the activation template after them is not.
-      const manifest = renderManifest(entries);
+      const manifest = renderManifest(entries, unfollowed);
       blocks.push({ type: "text", text: manifest, cache_control: { type: "ephemeral" } });
       countBlocks.push({ type: "text", text: manifest });
 

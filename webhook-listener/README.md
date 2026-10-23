@@ -208,7 +208,7 @@ those files into the request before the call:
 | PDF | a `document` block — every page as text and as an image |
 | PNG, JPEG, GIF, WebP | an `image` block |
 | text (md, json, html, csv, svg, …) | a `document` block of plain text |
-| anything else (docx, xlsx, pptx, zip, …), or any file over the budget | a `container_upload` into the code execution sandbox, at `$INPUT_DIR/<name>` |
+| anything else (docx, xlsx, pptx, zip, …), or any file over the budget | a file in the code execution sandbox, packed with the others into one `evidence.tar` that the manifest says to extract |
 | a link that isn't an upload (a PR, a prototype) | a manifest line only |
 
 **Which files.** Not every file in the project — a project that runs several
@@ -217,7 +217,15 @@ walker follows the evidence links instead: from the project's content and
 documents (Intake) or the epic (Specification), plus the `design:asset` issue,
 three hops deep, across projects. Every list it reads (an issue's
 attachments, a project's documents, the design-issue lookup) is followed to
-its last page; the tracker returns 50 at a time.
+its last page; the tracker returns 50 at a time. A closed issue (state type
+completed or canceled) is skipped with everything it links to, since it is
+delivered work, unless it carries the `evidence` or `design:asset` label. Links
+still unfollowed when the walk reaches its 40-lookup ceiling are named in the
+manifest.
+
+**The sandbox.** The API refuses a request that adds more than 16 files to the
+sandbox, so every sandbox file goes into one tar archive, uploaded as a single
+file. The manifest gives the command to extract it.
 
 **Budget.** 250K tokens of attachments in the prompt, no text file over 100K,
 and up to 50 images (`activation-config.ts`). Past 20 image and document

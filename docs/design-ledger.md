@@ -5669,6 +5669,28 @@ budget now sends every image that fits that limit, up to a ceiling of 50 set
 below the API's, and stays at 20 only when too few do. The captures are 1358
 by 896.
 
+**What the preview showed, 2026-10-23.** Running the pre-load for that epic
+against the live tracker and API confirmed the paging (all 73 files on the
+evidence issue, the oldest included) and the image rule (all 30 captures as
+images, two 2880 by 1800 prototype images held back). It also found two
+faults the unit tests could not. The request was refused: the API takes at
+most 16 files added to the code execution sandbox in one request, and this
+one had 24. Every sandbox file now goes into one tar archive, a single file
+however many it holds, and the manifest says to extract it. And the walk
+pulled in 139 items for one epic. It followed a dependency link into a
+finished epic, then into that epic's stories and their merged pull requests,
+reached its 40-lookup ceiling, and left 29 links unfollowed with only a log
+line to show for it. The walk now skips closed issues, by the state's type
+(completed or canceled) rather than its name, along with everything they
+link to. Filtering on the `Epic` and `Story` title convention was considered
+and rejected: titles are typed by people. A status filter alone would also
+have dropped real evidence. The shared evidence issue holding the
+stabilization analysis was closed, and the payments evidence issue had been
+created closed, because evidence is not work. So an issue labelled
+`evidence` or `design:asset` is followed whatever its state, and the skill
+now labels each evidence issue it creates. Links left at the ceiling are
+named in the manifest.
+
 A cap of 50 attachments per evidence issue was considered and rejected. Nobody
 knows how many states an area will have before it is captured, and the
 document must not bend to the tracker's page size. Splitting by area narrows
