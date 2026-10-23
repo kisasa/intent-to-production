@@ -39,12 +39,53 @@ export class DownloadTooLargeError extends Error {
   }
 }
 
+// The GraphQL API pages every connection, 50 nodes when `first` is not given.
+// A reader that takes the first page as the whole list drops the rest without
+// a trace: an evidence issue with 73 attachments once pre-loaded as 50, and the
+// 23 oldest never reached the activation (docs/design-ledger.md, 2026-10-23).
+// Every connection read here is followed to its last page.
+const PAGE_SIZE = 100;
+const PAGE_INFO = "pageInfo{ hasNextPage endCursor }";
+
+interface Connection<T> {
+  nodes: T[];
+  pageInfo: { hasNextPage: boolean; endCursor: string | null };
+}
+
+interface AttachmentNode {
+  id: string;
+  title: string;
+  url: string;
+}
+
 interface IssueNode {
   id: string;
   identifier: string;
   description: string | null;
   project: { id: string } | null;
-  attachments: { nodes: { id: string; title: string; url: string }[] };
+  attachments: Connection<AttachmentNode>;
+}
+
+// Collects every node of a connection: the page already in hand, then each
+// following page until the API says there is none.
+export async function drainConnection<T>(
+  first: Connection<T>,
+  next: (after: string) => Promise<Connection<T> | null>,
+): Promise<T[]> {
+  const nodes = [...first.nodes];
+  let page = first;
+  while (page.pageInfo.hasNextPage && page.pageInfo.endCursor) {
+    const cursor = page.pageInfo.endCursor;
+    const following = await next(cursor);
+    if (!following) break;
+    // A cursor that does not advance would page forever.
+    if (following.pageInfo.hasNextPage && following.pageInfo.endCursor === cursor) {
+      throw new Error(`Linear pagination did not advance past cursor ${cursor}`);
+    }
+    nodes.push(...following.nodes);
+    page = following;
+  }
+  return nodes;
 }
 
 export function createLinearEvidenceClient(apiUrl: string, apiKey: string, fetchFn: FetchFn): LinearEvidenceClient {
@@ -66,28 +107,44 @@ export function createLinearEvidenceClient(apiUrl: string, apiKey: string, fetch
 
   return {
     async getProject(projectId: string): Promise<EvidenceProject | null> {
-      const data = await query<{
-        project?: { content: string | null; documents: { nodes: { content: string | null }[] } } | null;
-      }>(`query($id:String!){ project(id:$id){ content documents{ nodes{ content } } } }`, { id: projectId });
+      type DocumentConnection = Connection<{ content: string | null }>;
+      const data = await query<{ project?: { content: string | null; documents: DocumentConnection } | null }>(
+        `query($id:String!){ project(id:$id){ content documents(first:${PAGE_SIZE}){ nodes{ content } ${PAGE_INFO} } } }`,
+        { id: projectId },
+      );
       if (!data.project) return null;
+      const documents = await drainConnection(data.project.documents, async (after) => {
+        const more = await query<{ project?: { documents: DocumentConnection } | null }>(
+          `query($id:String!,$after:String!){ project(id:$id){ documents(first:${PAGE_SIZE},after:$after){ nodes{ content } ${PAGE_INFO} } } }`,
+          { id: projectId, after: after },
+        );
+        return more.project?.documents ?? null;
+      });
       return {
         content: data.project.content ?? "",
-        documentContents: data.project.documents.nodes.map((d) => d.content ?? ""),
+        documentContents: documents.map((d) => d.content ?? ""),
       };
     },
 
     async getIssue(issueIdOrIdentifier: string): Promise<EvidenceIssue | null> {
       const data = await query<{ issue?: IssueNode | null }>(
-        `query($id:String!){ issue(id:$id){ id identifier description project{ id } attachments{ nodes{ id title url } } } }`,
+        `query($id:String!){ issue(id:$id){ id identifier description project{ id } attachments(first:${PAGE_SIZE}){ nodes{ id title url } ${PAGE_INFO} } } }`,
         { id: issueIdOrIdentifier },
       );
       if (!data.issue) return null;
+      const attachments = await drainConnection(data.issue.attachments, async (after) => {
+        const more = await query<{ issue?: { attachments: Connection<AttachmentNode> } | null }>(
+          `query($id:String!,$after:String!){ issue(id:$id){ attachments(first:${PAGE_SIZE},after:$after){ nodes{ id title url } ${PAGE_INFO} } } }`,
+          { id: issueIdOrIdentifier, after: after },
+        );
+        return more.issue?.attachments ?? null;
+      });
       return {
         id: data.issue.id,
         identifier: data.issue.identifier,
         description: data.issue.description ?? "",
         projectId: data.issue.project?.id ?? null,
-        attachments: data.issue.attachments.nodes,
+        attachments: attachments,
       };
     },
 
@@ -100,11 +157,16 @@ export function createLinearEvidenceClient(apiUrl: string, apiKey: string, fetch
     },
 
     async findDesignIssueIds(projectId: string): Promise<string[]> {
-      const data = await query<{ issues?: { nodes: { id: string }[] } }>(
-        `query($id:ID!){ issues(filter:{ project:{ id:{ eq:$id } }, labels:{ name:{ eq:"${DESIGN_ASSET_LABEL}" } } }){ nodes{ id } } }`,
-        { id: projectId },
-      );
-      return data.issues?.nodes.map((n) => n.id) ?? [];
+      const page = async (after: string | null) =>
+        (
+          await query<{ issues?: Connection<{ id: string }> }>(
+            `query($id:ID!,$after:String){ issues(first:${PAGE_SIZE},after:$after,filter:{ project:{ id:{ eq:$id } }, labels:{ name:{ eq:"${DESIGN_ASSET_LABEL}" } } }){ nodes{ id } ${PAGE_INFO} } }`,
+            { id: projectId, after: after },
+          )
+        ).issues ?? null;
+      const first = await page(null);
+      if (!first) return [];
+      return (await drainConnection(first, page)).map((n) => n.id);
     },
 
     async download(url: string, maxBytes: number): Promise<DownloadedFile> {

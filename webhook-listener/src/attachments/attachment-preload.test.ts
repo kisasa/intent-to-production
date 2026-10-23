@@ -4,7 +4,7 @@ import { fakeLinear, file, issue, recordingAnthropic, silentLogger, type FakeTra
 
 const CONFIG: AttachmentPreloadConfig = {
   walk: { maxHops: 3, maxNodes: 40 },
-  budget: { totalTokens: 1_000, maxTextFileTokens: 400, maxNativeImages: 20 },
+  budget: { totalTokens: 1_000, maxTextFileTokens: 400, maxNativeImages: 100, manyImageThreshold: 20, manyImageMaxSide: 2000 },
   download: { maxFileBytes: 1_000, maxTotalBytes: 1_500 },
   fileExpirySeconds: 24 * 60 * 60,
   minRemainingFileLifeMs: 6 * 60 * 60 * 1000,

@@ -208,14 +208,18 @@ those files into the request before the call:
 business-requirements documents accumulates every delivered epic's assets. The
 walker follows the evidence links instead: from the project's content and
 documents (Intake) or the epic (Specification), plus the `design:asset` issue,
-three hops deep, across projects.
+three hops deep, across projects. Every list it reads (an issue's
+attachments, a project's documents, the design-issue lookup) is followed to
+its last page; the tracker returns 50 at a time.
 
 **Budget.** 250K tokens of attachments in the prompt, no text file over 100K,
-no more than 20 images (`activation-config.ts`). Anything over goes to the
-sandbox and the manifest says why. The pre-flight ceiling is 600K for system
-prompt, attachments and template together. It adds each file's own measured
-cost to a count of the text, because the counting endpoint refuses file
-sources and has its own request size limit.
+and up to 50 images (`activation-config.ts`). Past 20 image and document
+blocks the API rejects any image over 2000 px a side, so a request that large
+carries only the images under that limit, and stays at 20 when too few are.
+Anything over goes to the sandbox and the manifest says why. The pre-flight
+ceiling is 600K for system prompt, attachments and template together. It adds
+each file's own measured cost to a count of the text, because the counting
+endpoint refuses file sources and has its own request size limit.
 
 **Memory.** Downloads run one at a time, capped at 50 MB per file and 150 MB
 per activation, because every file sits in this process's memory until it is

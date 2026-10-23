@@ -22,7 +22,13 @@
 
 import { createHash } from "node:crypto";
 import Anthropic, { toFile } from "@anthropic-ai/sdk";
-import { classifyAttachment, deriveFilename, normalizeMimeType, type AttachmentKind } from "./attachment-classifier.js";
+import {
+  classifyAttachment,
+  deriveFilename,
+  imageDimensions,
+  normalizeMimeType,
+  type AttachmentKind,
+} from "./attachment-classifier.js";
 import { applyAttachmentBudget, type AttachmentBudgetLimits, type BudgetCandidate } from "./attachment-budget.js";
 import { walkEvidence, type EvidenceScope, type FoundAttachment, type WalkLimits } from "./evidence-walker.js";
 import { DownloadTooLargeError, type DownloadedFile, type LinearEvidenceClient } from "./linear-evidence-source.js";
@@ -299,7 +305,12 @@ export function createAttachmentPreloader(
               model: model,
               messages: [{ role: "user", content: [inlineBlock(l), { type: "text", text: "." }] }],
             });
-            return { key: l.hash, kind: l.kind, tokens: Math.max(0, counted.input_tokens - baseline) };
+            return {
+              key: l.hash,
+              kind: l.kind,
+              tokens: Math.max(0, counted.input_tokens - baseline),
+              dimensions: l.kind === "image" ? imageDimensions(l.file.bytes) : null,
+            };
           } catch (err) {
             unmeasurable.set(
               l.hash,
