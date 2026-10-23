@@ -16,6 +16,7 @@ import { lanes } from "./swim-lanes.js";
 import { createLogger } from "./logger.js";
 import { newTraceId } from "./trace-id.js";
 import { envOr } from "./env.js";
+import { BUILD_COMMIT } from "./build-info.js";
 
 // Choose what HTTP server you want to use.
 import { serve } from "@hono/node-server";
@@ -54,6 +55,8 @@ const dispatch = makeDispatcher({
 const app = new Hono();
 
 app.get("/health", (c) => c.text("ok"));
+// Which commit is running, for checking a deploy took.
+app.get("/version", (c) => c.json({ commit: BUILD_COMMIT }));
 
 app.post("/webhooks/linear", async (c) => {
   // One id per delivery, threaded through parsing, routing, scheduling, and
@@ -102,6 +105,6 @@ app.post("/webhooks/linear", async (c) => {
 });
 
 serve({ fetch: app.fetch, port: port }, (info) => {
-  log.info(`webhook-listener listening on :${info.port}`);
+  log.info(`webhook-listener listening on :${info.port}, build ${BUILD_COMMIT}`);
   log.info(`webhook URL → POST http://<host>:${info.port}/webhooks/linear`);
 });

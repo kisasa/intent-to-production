@@ -138,6 +138,12 @@ COPY src ./src
 # happening to behave the same way.
 ENV NODE_ENV=development
 
+# The commit this image was built from (src/build-info.ts), passed in by the
+# ECR workflow. Declared after the dependency install so a new commit does not
+# invalidate that layer.
+ARG BUILD_COMMIT=unknown
+ENV BUILD_COMMIT=$BUILD_COMMIT
+
 RUN mkdir -p /workspace && chown -R node:node /app /workspace
 USER node
 

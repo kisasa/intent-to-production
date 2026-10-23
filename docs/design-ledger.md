@@ -5685,3 +5685,35 @@ way.
 came to 72 states and about an afternoon of driving. One engagement is one
 data point, and a number waits for a second. Splitting by area gives a count
 per area without extra work.
+
+## A running service names its build (2026-10-23)
+
+**The observation.** On 2026-10-23 a Specification pass ran with no attachment
+manifest. The evidence pre-load, merged on 2026-10-07, writes one on every
+pass, even when it finds nothing, so the listener answering the webhook was
+not running that code. It had been that way for about two weeks. In that time
+every Intake and Specification pass worked without the evidence files, and
+the agent prompts, which ship in the same image, were as old as the code.
+Nothing the pipeline wrote showed it. The ECR workflow builds and pushes an
+image on every merge to `main`, but a push does not restart the service, and
+no output named the code it came from. Part of a day went to reasoning about
+code that was not running.
+
+**Rule.** Every image carries the commit it was built from. The ECR workflows
+pass the checked-out commit as a build argument, and each Dockerfile sets it
+as `BUILD_COMMIT`. The listener logs it at startup, returns it from
+`/version`, and ends every comment it posts on the tracker with it. The
+dispatch worker logs it at startup, and the specialist runner logs it at the
+start of each run. After a deploy, the check is `/version` against the commit
+meant to ship.
+
+**Why the comments carry it.** The tracker is where people watch the pipeline
+work. A build line on the "working on it" comment and on every error comment
+puts the running commit where the person who notices something odd is
+already looking, without opening the logs. The progress comment is deleted
+when a run ends cleanly, so the line is there while it matters.
+
+**Not done.** Nothing checks the running commit against `main` on its own, and
+the deploy itself is still a separate step. Both wait until a stale deploy
+recurs with this line in place.
+

@@ -40,6 +40,7 @@
 import { createLogger } from "./logger.js";
 import { envOr } from "./env.js";
 import type { EntityType } from "./tracker-event.js";
+import { BUILD_COMMIT } from "./build-info.js";
 
 const log = createLogger("tracker-notifier");
 
@@ -103,13 +104,20 @@ export function pickPatienceQuip(): string {
 // original wording promised one global countdown from the very first call
 // while the code underneath was actually resetting the clock on every
 // resume. Worded per-attempt now so the two agree.
+// Every comment the listener posts names the build that posted it, so the
+// tracker shows which code ran an activation (src/build-info.ts).
+function buildLine(): string {
+  return `_Build \`${BUILD_COMMIT}\`._`;
+}
+
 function activationStartedBody(laneName: string, timeoutMinutes: number, quip: string): string {
   return (
     `**${laneName} is working on this** _(automated)_\n\n` +
     `This can take a few minutes — no action needed yet. Each attempt gets up to ${timeoutMinutes} minutes; if the ` +
     `server's own tool-call loop pauses partway through, it resumes automatically with a fresh ${timeoutMinutes}-minute ` +
     `window rather than picking up the old one's clock. I'll leave an error comment if it can't complete.\n\n` +
-    `_${quip}_`
+    `_${quip}_\n\n` +
+    buildLine()
   );
 }
 
@@ -130,7 +138,8 @@ function activationProgressBody(
     `window rather than picking up the old one's clock. I'll leave an error comment if it can't complete.\n\n` +
     `_Still going — ${elapsedMinutes}m elapsed this attempt${attemptNote}, ~${remainingMinutes}m left before this ` +
     `attempt's timeout, connection active._\n\n` +
-    `_${quip}_`
+    `_${quip}_\n\n` +
+    buildLine()
   );
 }
 
@@ -263,7 +272,8 @@ export function createLinearTrackerNotifier(apiKey: string, baseUrl: string = DE
         `**Pipeline error** _(automated)_\n\n` +
         `The agent run for this ${entityType} did not complete.\n\n` +
         `**Error:** ${message}\n\n` +
-        `Check the application logs for the full stack trace. Once resolved, re-trigger by adding a comment or re-applying the triggering label.`;
+        `Check the application logs for the full stack trace. Once resolved, re-trigger by adding a comment or re-applying the triggering label.\n\n` +
+        buildLine();
 
       reqLog.trace(`posting error comment to ${entityType} ${entityId}`);
       try {

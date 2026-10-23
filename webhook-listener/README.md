@@ -156,6 +156,13 @@ where the id that survives is whichever reply last reset the timer. Set
 `LOG_LEVEL=trace` and grep one id (e.g. `[decompose:a1b2c3d4]`) to reconstruct
 one request's entire path through the system.
 
+**Which build is running.** The image carries the commit it was built from
+(`BUILD_COMMIT`, set by the ECR workflow; `src/build-info.ts`). The startup
+banner logs it, `GET /version` returns it, and every comment the listener
+posts on the tracker ends with it. After a deploy, check `/version` against
+the commit you meant to ship. A process started outside the image reports
+`unknown`.
+
 ## Files
 
 | File | Role |

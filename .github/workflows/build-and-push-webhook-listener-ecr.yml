@@ -60,6 +60,13 @@ jobs:
         with:
           ref: ${{ steps.resolve.outputs.sha }}
 
+      # The full commit actually checked out, which a branch or tag input does
+      # not give. Baked into the image as BUILD_COMMIT so the running service
+      # can say which code it is.
+      - name: Record the commit being built
+        id: commit
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       # Static long-lived credentials, not OIDC role assumption — the action
       # reads these from `with:` (its own inputs) and exports them via
       # $GITHUB_ENV so every later step in this job inherits them. Setting
@@ -118,3 +125,5 @@ jobs:
           tags: ${{ steps.tags.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_COMMIT=${{ steps.commit.outputs.sha }}

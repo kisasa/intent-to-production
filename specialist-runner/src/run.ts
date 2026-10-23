@@ -21,6 +21,7 @@ import { downloadEvidence, EVIDENCE_DOWNLOAD_CONFIG } from "./evidence/evidence-
 import { createLinearEvidenceClient } from "./evidence/linear-evidence-source.js";
 import { envOr } from "./env.js";
 import { createLogger } from "./logger.js";
+import { BUILD_COMMIT } from "./build-info.js";
 
 const log = createLogger("specialist-runner");
 const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT ?? "/workspace";
@@ -34,6 +35,7 @@ async function main(): Promise<void> {
   const runId = randomUUID();
   const runLog = log.child(`${context.storyId}:${runId.slice(0, 8)}`);
   runLog.info(`starting specialist run (surface(s): ${context.surfaces.join(", ")}) for ${context.storyId} — "${context.storyTitle}"`);
+  runLog.info(`specialist-runner build ${BUILD_COMMIT}`);
 
   const runRoot = join(WORKSPACE_ROOT, runId);
   const { frameworkPath, surfaceRepoPath } = await prepareWorkspace(runRoot, context, GITHUB_TOKEN, runLog);
