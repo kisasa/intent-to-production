@@ -54,11 +54,13 @@ VPC/subnet/security-group, not `infrastructure/`'s real `network` stack.
    (default `main`) to a feature branch when testing framework changes
    locally.
 
-   To exercise revision rounds, also set `REVIEWER_EMAIL_TO_GITHUB_LOGIN` on
-   `dispatch-worker`, a JSON object mapping your Linear email to your GitHub
-   login (e.g. `{"you@example.com":"your-github-login"}`). Without an entry
-   for whoever moves the story, dispatch still works, but no reviewer is
-   requested and a "request changes" review does nothing.
+   To have the app request you as the PR's reviewer, also set
+   `REVIEWER_EMAIL_TO_GITHUB_LOGIN` on `dispatch-worker`, a JSON object mapping
+   your Linear email to your GitHub login (e.g.
+   `{"you@example.com":"your-github-login"}`). Without an entry for whoever
+   moves the story, dispatch still works, but no reviewer is requested.
+   Revision rounds do not need it: a "request changes" review from any account
+   with write access to the repository starts one.
 
    The per-package `.env.example` files (`webhook-listener/`,
    `dispatch-worker/`, `specialist-runner/`) are unrelated to this compose

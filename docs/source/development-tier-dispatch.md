@@ -26,8 +26,9 @@ Running by hand skips everything the app does around the specialist:
 
 - **No reviewer is requested.** Ask a developer other than yourself to review
   the PR.
-- **No revision rounds.** When a reviewer asks for changes on an app-dispatched
-  PR, the app sends the specialist back to address them, up to three rounds.
+- **No revision rounds.** When a reviewer with write access asks for changes
+  on an app-dispatched PR, the app sends the specialist back to address them,
+  up to three rounds.
   By hand, nothing does that. Run the specialist again yourself (see "Answering
   a review" below), or make the changes directly.
 - **No automatic move back to To-Do.** When an app-dispatched run stops without

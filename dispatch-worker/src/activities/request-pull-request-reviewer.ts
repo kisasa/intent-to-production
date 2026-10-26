@@ -68,10 +68,9 @@ export function createRequestPullRequestReviewerActivity(config: WorkerConfig) {
       log.warn(`reviewer-of-record request failed for ${owner}/${repo}#${prNumber}: ${err instanceof Error ? err.message : String(err)}`);
     }
 
-    // The login is returned even when the request itself failed: the review
-    // request is cosmetic, but matching this person's later reviews is not —
-    // revision rounds key on it, and a reviewer who was never formally
-    // requested can still submit one.
+    // The login is returned even when the request itself failed: it only
+    // tells the workflow whether to say "no reviewer was requested". Revision
+    // rounds no longer key on it — anyone with write access can start one.
     return login;
   };
 }

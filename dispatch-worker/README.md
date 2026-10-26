@@ -61,8 +61,9 @@ dispatch are merged and closed-without-merging. The same poll also notices a
    the specialist's own comment on the story is the record of which one it
    was.
 7. **Request the reviewer-of-record** on the PR (see below). If the mover
-   can't be mapped to a GitHub login, posts a notice on the PR saying revision
-   requests are off for this story.
+   can't be mapped to a GitHub login, posts a notice on the PR saying nobody
+   was asked to review it, and that a "request changes" review from anyone
+   with write access still dispatches the specialist.
 8. **Watch the PR** — polls it (re-reading its current head sha every poll,
    so a force-push can't leave it tracking a stale commit), heartbeating a
    CI/status summary each poll, until one of three things happens:
@@ -74,14 +75,14 @@ dispatch are merged and closed-without-merging. The same poll also notices a
      with `merged: false`. The comment tells the developer to delete the
      story branch before re-dispatching, since step 3 refuses one carrying
      the abandoned attempt's commits.
-   - **A new "request changes" review from the reviewer-of-record** → runs a
-     revision round, then goes back to watching.
+   - **A new "request changes" review from a reviewer with write access** →
+     runs a revision round, then goes back to watching.
 
 ## Revision rounds
 
-When the reviewer-of-record submits a GitHub "request changes" review on the
-open PR, the workflow dispatches the specialist again at the same story,
-branch and PR. `dispatch-story-workflow.ts` sets two constants:
+When a reviewer with write access to the repository submits a GitHub "request
+changes" review on the open PR, the workflow dispatches the specialist again
+at the same story, branch and PR. `dispatch-story-workflow.ts` sets two constants:
 
 - `REVISION_ROUND_CAP = 3` — at most three rounds per PR. Every round needs a
   human to submit a review first, so the loop can't run on its own; reaching
@@ -96,8 +97,20 @@ versioned change (`patched()`) if any dispatch is live.
 **The trigger is an unactioned review, never the review state.** A
 "changes requested" decision stays on the PR until the reviewer clears it,
 so the workflow carries the id of the last review it acted on
-(`afterReviewId`) and only a newer review from the reviewer-of-record's own
-login counts. Keying on the state would re-fire on every poll. Detection is
+(`afterReviewId`) and only a newer review counts. Keying on the state would
+re-fire on every poll.
+
+**Who may ask is the repository's own permission on the review's author, not
+the mover's login.** For each unactioned review the poll reads
+`GET /repos/{owner}/{repo}/collaborators/{login}/permission` and accepts
+`admin` or `write` (GitHub folds `maintain` into `write` and `triage` into
+`read` in that field). A review from anyone below that is ignored, logged once
+per review (not once per poll), and remembered for the rest of the watch; a
+failed permission read is asked again next poll rather than treated as a no.
+The `GITHUB_TOKEN` therefore needs push access to read other users'
+permissions, which the specialist's own account already has. Without the gate
+a drive-by reviewer on a public repository could spend an ECS task and put
+text in front of the specialist. Detection is
 part of the existing poll rather than a GitHub webhook: the workflow is
 already fetching this PR, and GitHub doesn't redeliver a failed webhook, so a
 review submitted while the single-task listener is mid-deploy would be lost.
@@ -120,9 +133,9 @@ in the thread the review was left in.
   open.
 - A round that fails posts the failure on the PR as well as the story (see
   the catch-all below), and the story moves back to To-Do.
-- A mover with no GitHub login mapping means no change request can be
-  attributed to the reviewer-of-record, so revision rounds are off for that
-  PR — which is why step 7 says so on the PR up front.
+- A mover with no GitHub login mapping gets no reviewer request, which step 7
+  says on the PR up front. Revision rounds are unaffected: they are gated on
+  write access, not on the mapping.
 
 ## Two tightened content formats — why they exist
 
@@ -154,7 +167,7 @@ so a mechanical reader can trust them:
 | `SPECIALIST_SECURITY_GROUP_ID` | yes | From `specialist-sandbox`'s `securityGroupId` output |
 | `SPECIALIST_SUBNET_IDS` | yes | Comma-separated (via Terraform's own `Fn.join`, not a JS-side join — see `temporal-workers.ts`); from `network`'s `publicSubnetIds` output |
 | `GITHUB_TOKEN`, `LINEAR_AGENT_API_KEY` | yes (SSM, under the shared `parameter-prefix`) | Same secrets, same mechanism as every other container in this project |
-| `REVIEWER_EMAIL_TO_GITHUB_LOGIN` | yes (from `temporal.reviewer-email-to-github-login` in `cdktf.json`) | Reviewer-of-record's static Linear-email -> GitHub-login table, JSON object string. Unset or missing an entry skips the reviewer request for that dispatch and turns revision rounds off for its PR — see `activities/request-pull-request-reviewer.ts` |
+| `REVIEWER_EMAIL_TO_GITHUB_LOGIN` | yes (from `temporal.reviewer-email-to-github-login` in `cdktf.json`) | Reviewer-of-record's static Linear-email -> GitHub-login table, JSON object string. Unset or missing an entry skips the reviewer request for that dispatch; it does not affect revision rounds — see `activities/request-pull-request-reviewer.ts` |
 | `LINEAR_API_URL` | no (optional) | Default `https://api.linear.app/graphql` |
 | `LOG_LEVEL` | no (optional) | Default `info`. Also passed down to the specialist container |
 | `LOCAL_ENV_FILE`, `AWS_ENDPOINT_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` | no (local only) | The repo-root `docker-compose.yml` sets these to point the worker at LocalStack-emulated ECS — see `src/local-env-file.ts` and `.env.example` |
@@ -176,11 +189,10 @@ under app-driven dispatch.
 
 The request itself is best-effort: a null `mover`, a missing mapping entry,
 or a GitHub error never fails the workflow — the PR already exists and a
-human is going to review it regardless. The login it resolves is also the
-only reviewer whose "request changes" review starts a revision round, so when
-none resolves the workflow posts a notice on the PR saying revision requests
-are off, instead of leaving a developer to find out when their review does
-nothing.
+human is going to review it regardless. When no login resolves, the workflow
+posts a notice on the PR saying nobody was asked to review it, so a PR nobody
+was asked to review is not mistaken for one the pipeline forgot. The login is
+not what starts a revision round: any reviewer with write access can.
 
 ## Never silent — `dispatchStoryWorkflow`'s own catch-all
 
@@ -294,9 +306,10 @@ polling to their terminal state with the right heartbeat sequence, resolving
 immediately when already terminal, and mid-poll cancellation actually
 rejecting the activity. `await-pull-request-outcome.test.ts` also confirms a
 failing CI conclusion on an intermediate poll doesn't end the loop, and
-covers change-request detection: only the reviewer-of-record's own
-"request changes" review counts, only above the watermark, a merge wins over
-a same-poll change request, and nothing is looked for once the cap is spent.
+covers change-request detection: only a "request changes" review from an
+author with write access counts, a refused review is judged once and a failed
+permission read is asked again, only above the watermark, a merge wins over a
+same-poll change request, and nothing is looked for once the cap is spent.
 Each activity takes its own lookups as injected functions
 (`DescribeTaskStatus` / `GetPullRequestState` / `GetChangeRequest`) rather
 than constructing a client internally, specifically so tests can substitute

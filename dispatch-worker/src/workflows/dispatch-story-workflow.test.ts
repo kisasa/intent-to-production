@@ -58,7 +58,6 @@ interface DispatchRecord {
 
 /** What they assert about each `awaitPullRequestOutcome` call. */
 interface WatchRecord {
-  readonly reviewerLogin: string | null;
   readonly afterReviewId: number | null;
   readonly watchForChangeRequests: boolean;
 }
@@ -505,11 +504,13 @@ describe("dispatchStoryWorkflow", () => {
       });
     });
 
-    // Said once, up front. A developer whose "request changes" goes nowhere
-    // would otherwise have nothing anywhere telling them why.
+    // Said once, up front, so a PR nobody was asked to review is not mistaken
+    // for one the pipeline forgot.
     expect(notices).toHaveLength(1);
-    expect(notices[0]).toContain("Revision requests are off for this story");
+    expect(notices[0]).toContain("No reviewer was requested on this PR");
     expect(notices[0]).toContain("Example User");
-    expect(watches[0]?.reviewerLogin).toBeNull();
+    // An unmapped mover no longer turns revision rounds off: the watch is
+    // still on for change requests from anyone with write access.
+    expect(watches[0]?.watchForChangeRequests).toBe(true);
   }, 30_000);
 });

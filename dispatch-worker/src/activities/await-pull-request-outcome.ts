@@ -1,6 +1,6 @@
 /**
  * Long-running activity: polls the PR the specialist opened until it leaves
- * the open state, or until the reviewer-of-record asks for changes.
+ * the open state, or until someone with write access asks for changes.
  *
  * Merge detection collapses the ledger's "trigger CI → wait for the result →
  * gate on human review" into one poll rather than two, on purpose — a red CI
@@ -37,9 +37,19 @@
  * Same `heartbeat()`/`sleep()`-needs-a-real-Context shape as
  * `await-specialist-task.ts`: the pure loop takes injected reader functions
  * so it's testable with `MockActivityEnvironment` without a real GitHub call.
+ *
+ * **Who may ask (2026-10-26): anyone with write access, not only the mover.**
+ * The trigger used to be the reviewer-of-record's own login. A live run showed
+ * what that costs: the architect reviewed a PR that had been requested of the
+ * developer who moved the story, the review was ignored, and nothing on the PR
+ * said so. The question that matters is not whose name is on the review but
+ * whether the author is someone the repository already trusts to change code,
+ * so the gate is the repository's own permission on the author. A reviewer with
+ * read access cannot start a round — otherwise a drive-by reviewer on a public
+ * repository could spend an ECS task and put text in front of the specialist.
  */
 
-import { heartbeat, sleep } from "@temporalio/activity";
+import { heartbeat, log, sleep } from "@temporalio/activity";
 import { githubRequest } from "../github-request.js";
 import { postComment, linearApiUrl } from "../tracker.js";
 import type { WorkerConfig } from "../worker-config.js";
@@ -78,15 +88,14 @@ export type PullRequestWatchResult =
 
 export type GetPullRequestState = (prNumber: number) => Promise<PullRequestState>;
 
-/** Null return means "nothing new from the reviewer-of-record this poll." */
+/** Null return means "nothing new from anyone allowed to ask this poll." */
 export type GetChangeRequest = () => Promise<ChangeRequest | null>;
 
 /**
  * `getChangeRequest` is null when change requests are not being watched at
- * all — either the round cap is spent or no reviewer-of-record login could be
- * resolved. Merge and close still end the watch in both cases; passing null
- * rather than a flag keeps "we are not watching" impossible to confuse with
- * "we are watching and saw nothing."
+ * all — the round cap is spent. Merge and close still end the watch; passing
+ * null rather than a flag keeps "we are not watching" impossible to confuse
+ * with "we are watching and saw nothing."
  */
 export async function awaitPullRequestOutcome(
   prNumber: number,
@@ -151,33 +160,72 @@ export function summarizeCheckRuns(checks: GitHubCheckRunsResponse): string {
 }
 
 /**
- * Picks the reviewer-of-record's newest unactioned "request changes" review.
+ * Whether a review's author may start a revision round. "unknown" is a read
+ * that failed, which is not a verdict: it is asked again next poll, whereas
+ * "may-not" is final for that review.
+ */
+export type ReviewerStanding = "may-request" | "may-not" | "unknown";
+
+export type JudgeReviewer = (login: string) => Promise<ReviewerStanding>;
+
+/**
+ * Maps GitHub's collaborator-permission answer to a standing.
  *
- * Login comparison is case-insensitive: GitHub logins are case-insensitive in
- * practice and the architect-maintained `REVIEWER_EMAIL_TO_GITHUB_LOGIN` table
- * is hand-written, so an entry whose capitalisation differs from the API's
- * would otherwise silently never match — and "silently never fires" is exactly
- * the failure mode this whole path is meant to avoid.
+ * Reads the legacy `permission` field, whose values are admin / write / read /
+ * none, with `maintain` folded into write and `triage` into read — so write
+ * access or higher is exactly `admin` or `write`. A 404 is a login that is not
+ * a collaborator at all. Any other status is the read failing, not the answer.
+ */
+export function standingFromPermission(status: number, permission: string | undefined): ReviewerStanding {
+  if (status === 404) return "may-not";
+  if (status !== 200) return "unknown";
+  return permission === "admin" || permission === "write" ? "may-request" : "may-not";
+}
+
+/**
+ * Picks the newest unactioned "request changes" review whose author may start
+ * a round.
+ *
+ * `refused` carries the ids already judged "may-not". A changes-requested
+ * decision persists on the PR, so a read-only reviewer's review would
+ * otherwise be re-judged — one more GitHub call — on every poll for as long as
+ * the PR is open.
  *
  * Newest by id rather than by `submitted_at`: two reviews submitted in the
  * same second would tie on the timestamp, and the id is what the workflow
- * carries forward as its watermark anyway.
+ * carries forward as its watermark anyway. An older eligible review still
+ * counts when a newer one is refused, so a read-only reviewer cannot shadow a
+ * collaborator's.
  */
-export function pickChangeRequest(
+export async function pickChangeRequest(
   reviews: readonly GitHubReview[],
-  reviewerLogin: string,
   afterReviewId: number | null,
-): GitHubReview | null {
-  const wanted = reviewerLogin.toLowerCase();
-  const candidates = reviews.filter(
-    (review) =>
-      review.state === "CHANGES_REQUESTED" &&
-      review.user !== null &&
-      review.user.login.toLowerCase() === wanted &&
-      (afterReviewId === null || review.id > afterReviewId),
-  );
-  if (candidates.length === 0) return null;
-  return candidates.reduce((newest, review) => (review.id > newest.id ? review : newest));
+  judgeReviewer: JudgeReviewer,
+  refused: Set<number>,
+): Promise<GitHubReview | null> {
+  const candidates = reviews
+    .filter(
+      (review) =>
+        review.state === "CHANGES_REQUESTED" &&
+        review.user !== null &&
+        !refused.has(review.id) &&
+        (afterReviewId === null || review.id > afterReviewId),
+    )
+    .sort((a, b) => b.id - a.id);
+
+  for (const review of candidates) {
+    if (review.user === null) continue;
+    const standing = await judgeReviewer(review.user.login);
+    if (standing === "may-request") return review;
+    if (standing === "may-not") {
+      refused.add(review.id);
+      log.warn(
+        `ignoring "request changes" review ${review.id} by "${review.user.login}": ` +
+          `only reviewers with write access to the repository start a revision round`,
+      );
+    }
+  }
+  return null;
 }
 
 export interface AwaitPullRequestOutcomeInput {
@@ -185,8 +233,6 @@ export interface AwaitPullRequestOutcomeInput {
   readonly repoBase: RepoBase;
   readonly prNumber: number;
   readonly prUrl: string;
-  /** Reviewer-of-record's GitHub login; null when the mover could not be mapped to one. */
-  readonly reviewerLogin: string | null;
   /** Watermark — only a review newer than this counts. Null before the first round. */
   readonly afterReviewId: number | null;
   /** False once the round cap is spent: merge and close still end the watch, a further review does not. */
@@ -220,26 +266,38 @@ export function createAwaitPullRequestOutcomeActivity(config: WorkerConfig) {
       return { merged: false, state: "open", statusSummary: statusSummary };
     };
 
-    const reviewerLogin = input.reviewerLogin;
-    const getChangeRequest: GetChangeRequest | null =
-      input.watchForChangeRequests && reviewerLogin
-        ? async () => {
-            const reviewsResult = await githubRequest<GitHubReview[]>(
-              config.githubToken,
-              "GET",
-              `/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
-            );
-            // A failed read is this poll's problem, not the watch's: the next
-            // poll asks again two minutes later. Throwing here would fail the
-            // activity and lose a merge watch that is otherwise healthy.
-            if (reviewsResult.status !== 200) return null;
+    const judgeReviewer: JudgeReviewer = async (login) => {
+      const permissionResult = await githubRequest<{ permission?: string }>(
+        config.githubToken,
+        "GET",
+        `/repos/${owner}/${repo}/collaborators/${encodeURIComponent(login)}/permission`,
+      );
+      const standing = standingFromPermission(permissionResult.status, permissionResult.json.permission);
+      if (standing === "unknown") {
+        log.warn(`could not read "${login}"'s permission on ${owner}/${repo}: GitHub returned ${permissionResult.status}`);
+      }
+      return standing;
+    };
 
-            const review = pickChangeRequest(reviewsResult.json, reviewerLogin, input.afterReviewId);
-            if (!review) return null;
+    const refused = new Set<number>();
+    const getChangeRequest: GetChangeRequest | null = input.watchForChangeRequests
+      ? async () => {
+          const reviewsResult = await githubRequest<GitHubReview[]>(
+            config.githubToken,
+            "GET",
+            `/repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
+          );
+          // A failed read is this poll's problem, not the watch's: the next
+          // poll asks again two minutes later. Throwing here would fail the
+          // activity and lose a merge watch that is otherwise healthy.
+          if (reviewsResult.status !== 200) return null;
 
-            return { reviewId: review.id, submittedAt: review.submitted_at ?? "" };
-          }
-        : null;
+          const review = await pickChangeRequest(reviewsResult.json, input.afterReviewId, judgeReviewer, refused);
+          if (!review) return null;
+
+          return { reviewId: review.id, submittedAt: review.submitted_at ?? "" };
+        }
+      : null;
 
     const result = await awaitPullRequestOutcome(prNumber, getPullRequestState, getChangeRequest);
 

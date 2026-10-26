@@ -283,7 +283,7 @@ manage.
 | `temporal.cpu` / `.memory` | `512` / `1024` | Task-level Fargate sizing |
 | `temporal.desired-count` | `1` | Not a singleton constraint like the listener's — safe to raise once there's real load to justify it |
 | `temporal.log-retention-days` | `14` | |
-| `temporal.reviewer-email-to-github-login` | `{ "user@example.com": "example-login" }` | Reviewer-of-record's static tracker-email → GitHub-login table, passed through as `REVIEWER_EMAIL_TO_GITHUB_LOGIN`. A context value, not a secret. A mover missing from it gets no reviewer request and no revision rounds on their PRs — see `dispatch-worker/README.md` |
+| `temporal.reviewer-email-to-github-login` | `{ "user@example.com": "example-login" }` | Reviewer-of-record's static tracker-email → GitHub-login table, passed through as `REVIEWER_EMAIL_TO_GITHUB_LOGIN`. A context value, not a secret. A mover missing from it gets no reviewer request on their PRs; revision rounds are unaffected — see `dispatch-worker/README.md` |
 
 ### Model choice
 
