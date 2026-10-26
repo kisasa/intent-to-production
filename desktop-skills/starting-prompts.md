@@ -51,11 +51,52 @@ does and when to use it, one sample opening message to kick it off.
 
 ---
 
+## `review-story-pr`
+
+> **What it does:** reviews the PR a specialist opened for a story, and
+> plans the feedback across the 3 revision rounds the pipeline allows.
+> Correctness comes first, then duplication, then naming. Each round stays
+> small enough for the specialist's 25-turn budget. It drafts the inline
+> comments and the overall comment as a pending review for you to submit,
+> and checks what the specialist pushes back. Once a round checks out, it
+> resolves the threads and ticks the acceptance criteria in the PR body.
+>
+> **When to use it:** a story is In Review and its PR is waiting for you,
+> or a revision round just came back.
+>
+> **When not to:** the PR is human-written, or the feedback is really a
+> change to the story. Adjust the story and re-run it instead.
+
+**Sample opening message:**
+
+> Let's work on accepting PROJ-XXX. We need to be aware of code quality,
+> variable naming and understanding. Generally doing a code review.
+
+**Follow-up messages through the rounds:**
+
+- Plan the rounds, if it doesn't on its own:
+  > Plan the findings across the 3 revision rounds. Correctness first, keep
+  > each round small, and don't aim to fill all 3. Keep room to fix
+  > whatever the specialist gets wrong.
+- Draft a round:
+  > Draft round 1 as a pending review.
+- After you submit it with **Request changes** and the specialist pushes:
+  > Round 1 is back.
+- Record acceptance:
+  > Resolve the threads and tick the criteria once CI passes.
+
+If the skill doesn't pick up the next step from a short message like these,
+that's a bug in the skill. Flag it back as described below.
+
+---
+
 ## Note for whoever's rolling these out
 
-Both skills ask one question at a time and show a full draft before
-creating anything in Linear — nothing gets written without an explicit
-"yes, create this." If either skill starts fabricating an answer it should
+The two creation skills ask one question at a time and show a full draft
+before creating anything in Linear — nothing gets written without an
+explicit "yes, create this." `review-story-pr` likewise shows every review
+draft first, leaves the submit to you, and asks before it resolves a thread
+or ticks a box. If any skill starts fabricating an answer it should
 have asked about instead (a surface, a repo, who's affected), that's a bug
 in the skill, not something to route around by hand — flag it back to
 whoever maintains `desktop-skills/` in `intent-to-production` so the skill
