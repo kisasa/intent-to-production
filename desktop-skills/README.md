@@ -1,6 +1,6 @@
 # Desktop skills
 
-Two skills for a **developer's own Claude Desktop**, not for the automated
+Three skills for a **developer's own Claude Desktop**, not for the automated
 pipeline. Different audience and different distribution than `skills/`:
 
 - `skills/` is the framework's own skill set. Most of it is code-consumed:
@@ -14,7 +14,7 @@ pipeline. Different audience and different distribution than `skills/`:
   feature so every developer's Claude Desktop can load it, and used
   conversationally by a human with the Linear MCP connector attached.
 
-They exist to do, by conversation, the same shaping judgment
+Two of them do, by conversation, the same shaping judgment
 Intake/Specification/Decompose apply automatically — for the two cases
 where a human is creating work outside that automated flow:
 
@@ -28,6 +28,20 @@ Each points back at its contract in `skills/` —
 for an epic — as the actual source of truth for what a well-formed one
 contains, and summarizes that contract rather than re-defining it — if the
 two ever disagree, the `skills/` file wins.
+
+The third works on the other end of the flow: accepting what a specialist
+built.
+
+- [`review-story-pr/SKILL.md`](review-story-pr/SKILL.md) — reviewing a
+  story's PR in revision rounds, then recording acceptance by resolving
+  threads and ticking the criteria trace in the PR body.
+
+Its sources of truth are `agents/specialist.md` ("A revision round") for
+how the specialist answers a review, and `dispatch-worker/README.md`
+("Revision rounds") with `REVISION_ROUND_CAP` and `REVISION_MAX_TURNS` in
+`dispatch-worker/src/workflows/dispatch-story-workflow.ts` for the round
+cap and budget. It also needs GitHub: a GitHub connector where one is
+attached, otherwise an authenticated `gh` CLI.
 
 **Nothing here is enforced by the pipeline's own code.** What is
 code-enforced (the `surface:<name>` label, the surface registry documents,
