@@ -138,7 +138,7 @@ function buildRevisionMessage(
 ): string {
   return `You are the Specialist described in the system prompt. This is a revision round, not a fresh build — follow the revision lifecycle in that definition.
 
-Assignment: story ${context.storyId} — "${context.storyTitle}", under epic ${context.epicId}. You already built this story and opened pull request #${revision.pullRequestNumber}. The reviewer-of-record has submitted a review requesting changes, id ${revision.reviewId}. This is revision round ${revision.round} of ${revision.roundCap}.
+Assignment: story ${context.storyId} — "${context.storyTitle}", under epic ${context.epicId}. You already built this story and opened pull request #${revision.pullRequestNumber}. A reviewer with write access has submitted a review requesting changes, id ${revision.reviewId}. This is revision round ${revision.round} of ${revision.roundCap}.
 
 Your story carries the label(s) ${surfaceLabels}. ${describePaths(context)} It is checked out on ${context.storyBranch}, carrying your own earlier commits; the epic branch is ${context.epicBranch}. The branch and the PR both already exist — never create either, and never close or merge the PR.
 

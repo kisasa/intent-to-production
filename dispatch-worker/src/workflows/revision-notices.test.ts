@@ -57,6 +57,12 @@ describe("revision notices", () => {
     expect(body).toContain("Reviewing and merging this PR are unaffected");
   });
 
+  it("says revision rounds still work for anyone with write access, so an unmapped mover is not read as 'off'", () => {
+    const body = reviewerUnmatchedNotice("Example User");
+    expect(body).toContain("from anyone with write access to this repository still dispatches the specialist");
+    expect(body).not.toContain("are off");
+  });
+
   it("carries the real cause into a failed round and says nothing further will run", () => {
     const body = revisionRoundFailedNotice(2, 3, "RunTask failed to start the specialist: no container instances");
     expect(body).toContain("Revision round 2 of 3 failed");

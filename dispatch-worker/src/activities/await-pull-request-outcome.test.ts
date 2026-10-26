@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { MockActivityEnvironment } from "@temporalio/testing";
-import { awaitPullRequestOutcome, pickChangeRequest, summarizeCheckRuns } from "./await-pull-request-outcome.js";
-import type { GitHubReview } from "./await-pull-request-outcome.js";
+import { awaitPullRequestOutcome, pickChangeRequest, standingFromPermission, summarizeCheckRuns } from "./await-pull-request-outcome.js";
+import type { GitHubReview, JudgeReviewer, ReviewerStanding } from "./await-pull-request-outcome.js";
 
 const PR_NUMBER = 42;
 
@@ -108,6 +108,32 @@ describe("awaitPullRequestOutcome", () => {
   });
 });
 
+describe("standingFromPermission", () => {
+  it("lets admin and write start a round", () => {
+    expect(standingFromPermission(200, "admin")).toBe("may-request");
+    expect(standingFromPermission(200, "write")).toBe("may-request");
+  });
+
+  it("keeps read, none and an unrecognised value out", () => {
+    // GitHub folds `triage` into read and `maintain` into write in this
+    // field, so read and none are the only ways to be below write.
+    expect(standingFromPermission(200, "read")).toBe("may-not");
+    expect(standingFromPermission(200, "none")).toBe("may-not");
+    expect(standingFromPermission(200, undefined)).toBe("may-not");
+  });
+
+  it("treats a login that is not a collaborator as a final no", () => {
+    expect(standingFromPermission(404, undefined)).toBe("may-not");
+  });
+
+  it("treats any other status as a failed read, not a verdict", () => {
+    // Refusing on a 5xx or a rate limit would silence a collaborator's
+    // review for as long as the PR stays open; "unknown" asks again.
+    expect(standingFromPermission(403, undefined)).toBe("unknown");
+    expect(standingFromPermission(502, undefined)).toBe("unknown");
+  });
+});
+
 describe("pickChangeRequest", () => {
   function review(overrides: Partial<GitHubReview> = {}): GitHubReview {
     return {
@@ -120,42 +146,87 @@ describe("pickChangeRequest", () => {
     };
   }
 
-  it("picks the reviewer-of-record's change request", () => {
-    expect(pickChangeRequest([review()], "example-reviewer", null)?.id).toBe(500);
+  /** Judges by login so each test can say who has write access in one line. */
+  function judge(standings: Record<string, ReviewerStanding>) {
+    return vi.fn(async (login: string): Promise<ReviewerStanding> => standings[login] ?? "may-not");
+  }
+
+  // `pickChangeRequest` logs through the activity context when it refuses a
+  // review, so every call runs inside one.
+  async function pick(
+    reviews: GitHubReview[],
+    afterReviewId: number | null,
+    judgeReviewer: JudgeReviewer,
+    refused = new Set<number>(),
+  ): Promise<GitHubReview | null> {
+    // `env.run` loses the return type through its generics.
+    return (await new MockActivityEnvironment().run(pickChangeRequest, reviews, afterReviewId, judgeReviewer, refused)) as GitHubReview | null;
+  }
+
+  it("picks a change request from any reviewer with write access, not only the story's mover", async () => {
+    const judgeReviewer = judge({ "example-reviewer": "may-request" });
+    expect((await pick([review()], null, judgeReviewer))?.id).toBe(500);
   });
 
-  it("ignores reviews from anyone else", () => {
-    // Otherwise any passer-by could spend an ECS task rewriting someone
-    // else's story, and "one named human owns this review" stops holding.
-    expect(pickChangeRequest([review({ user: { login: "someone-else" } })], "example-reviewer", null)).toBeNull();
+  it("ignores a review from someone without write access", async () => {
+    // Otherwise any passer-by on a public repository could spend an ECS task
+    // and put their own text in front of the specialist.
+    const judgeReviewer = judge({ "example-reviewer": "may-not" });
+    expect(await pick([review()], null, judgeReviewer)).toBeNull();
   });
 
-  it("ignores approvals and plain comments from the same reviewer", () => {
+  it("remembers a refusal, so a persistent changes-requested state is judged once", async () => {
+    // GitHub keeps the decision on the PR, so the same refused review comes
+    // back in every poll's list.
+    const judgeReviewer = judge({ "example-reviewer": "may-not" });
+    const refused = new Set<number>();
+    await pick([review()], null, judgeReviewer, refused);
+    await pick([review()], null, judgeReviewer, refused);
+    expect(judgeReviewer).toHaveBeenCalledTimes(1);
+    expect(refused.has(500)).toBe(true);
+  });
+
+  it("asks again next poll when the permission read failed", async () => {
+    const judgeReviewer = judge({ "example-reviewer": "unknown" });
+    const refused = new Set<number>();
+    expect(await pick([review()], null, judgeReviewer, refused)).toBeNull();
+    expect(refused.has(500)).toBe(false);
+    await pick([review()], null, judgeReviewer, refused);
+    expect(judgeReviewer).toHaveBeenCalledTimes(2);
+  });
+
+  it("lets an older collaborator review through when a newer one is refused", async () => {
+    const reviews = [review({ id: 501, user: { login: "drive-by" } }), review({ id: 500 })];
+    const judgeReviewer = judge({ "example-reviewer": "may-request", "drive-by": "may-not" });
+    expect((await pick(reviews, null, judgeReviewer))?.id).toBe(500);
+  });
+
+  it("ignores approvals and plain comments", async () => {
     const reviews = [review({ id: 501, state: "APPROVED" }), review({ id: 502, state: "COMMENTED" })];
-    expect(pickChangeRequest(reviews, "example-reviewer", null)).toBeNull();
+    const judgeReviewer = judge({ "example-reviewer": "may-request" });
+    expect(await pick(reviews, null, judgeReviewer)).toBeNull();
+    expect(judgeReviewer).not.toHaveBeenCalled();
   });
 
-  it("ignores a review at or below the watermark", () => {
+  it("ignores a review at or below the watermark", async () => {
     // The decisive case: "changes requested" persists until the reviewer
     // clears it, so without the watermark the same review would re-fire on
     // every poll and dispatch a round each time.
-    expect(pickChangeRequest([review({ id: 500 })], "example-reviewer", 500)).toBeNull();
-    expect(pickChangeRequest([review({ id: 501 })], "example-reviewer", 500)?.id).toBe(501);
+    const judgeReviewer = judge({ "example-reviewer": "may-request" });
+    expect(await pick([review({ id: 500 })], 500, judgeReviewer)).toBeNull();
+    expect((await pick([review({ id: 501 })], 500, judgeReviewer))?.id).toBe(501);
   });
 
-  it("takes the newest when several are unactioned", () => {
+  it("takes the newest when several are unactioned", async () => {
     const reviews = [review({ id: 503 }), review({ id: 501 }), review({ id: 502 })];
-    expect(pickChangeRequest(reviews, "example-reviewer", null)?.id).toBe(503);
+    const judgeReviewer = judge({ "example-reviewer": "may-request" });
+    expect((await pick(reviews, null, judgeReviewer))?.id).toBe(503);
   });
 
-  it("matches logins case-insensitively", () => {
-    // The mapping table is hand-maintained, so capitalisation that differs
-    // from GitHub's would otherwise silently disable revisions.
-    expect(pickChangeRequest([review({ user: { login: "Example-Reviewer" } })], "example-reviewer", null)?.id).toBe(500);
-  });
-
-  it("tolerates a review whose author is gone", () => {
-    expect(pickChangeRequest([review({ user: null })], "example-reviewer", null)).toBeNull();
+  it("tolerates a review whose author is gone", async () => {
+    const judgeReviewer = judge({});
+    expect(await pick([review({ user: null })], null, judgeReviewer)).toBeNull();
+    expect(judgeReviewer).not.toHaveBeenCalled();
   });
 });
 

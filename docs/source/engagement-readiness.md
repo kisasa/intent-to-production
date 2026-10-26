@@ -107,14 +107,17 @@ surface the engagement will touch:
   that. A stack outside those three cannot be built or tested in the sandbox
   at all, and CI is then the only check. Make sure it is there.
 - **The GitHub token** (`GITHUB_TOKEN` for `dispatch-worker` and the
-  sandbox) can read the repo, create branches, and open pull requests.
+  sandbox) can read the repo, create branches, and open pull requests. It also
+  needs push access to the repository, because `dispatch-worker` reads other
+  users' collaborator permission to decide whose "request changes" review may
+  start a revision round.
 - **A reviewer mapping.** `REVIEWER_EMAIL_TO_GITHUB_LOGIN` in
   `dispatch-worker`'s environment maps each developer's Linear email to
   their GitHub login, so the person who moves a story becomes the PR's
-  requested reviewer. The mapping is also how a "request changes" review is
-  recognized as the reviewer-of-record's, so an unmapped developer still gets
-  a PR, but nobody is asked to review it and revision rounds are off for that
-  story. The PR says so when it opens.
+  requested reviewer. An unmapped developer still gets a PR, but nobody is
+  asked to review it; the PR says so when it opens. Revision rounds do not
+  depend on the mapping: a "request changes" review from anyone with write
+  access to the repository starts one.
 
 ## 4. The requirements session
 

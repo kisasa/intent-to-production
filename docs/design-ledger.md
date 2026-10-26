@@ -5742,3 +5742,46 @@ when a run ends cleanly, so the line is there while it matters.
 the deploy itself is still a separate step. Both wait until a stale deploy
 recurs with this line in place.
 
+## Anyone with write access can send the specialist back (2026-10-26)
+
+**The observation.** On 2026-10-26 an architect submitted a "request changes"
+review on a story PR whose reviewer had been requested of the developer who
+moved the story. The workflow was healthy and watching the PR, and the round
+never started: the poll accepted only a review authored by the mover's mapped
+login, and the architect was someone else. Nothing on the PR said so. The
+developer was unreachable that day, so the only ways forward were a by-hand
+specialist run or waiting. This is the silent failure "The reviewer mapping
+stopped being cosmetic" (2026-09-19) set out to remove, arriving by a path that
+entry did not cover: the mover was mapped, so the unmapped-mover notice never
+fired.
+
+**Rule.** A "request changes" review starts a revision round when its author
+has write access to the repository (`admin` or `write` from the collaborator
+permission endpoint, which folds `maintain` into `write` and `triage` into
+`read`), whoever moved the story. The watermark is unchanged: only a review
+newer than the last one acted on counts, and a refused review is remembered so
+a persistent changes-requested state costs one permission read, not one per
+poll. A failed permission read is asked again next poll; it is not a refusal.
+
+**What this reverses.** The 2026-09-19 entry considered accepting any
+write-access reviewer and turned it down because it "dissolves the
+reviewer-of-record property." That property is kept where it matters: the mover
+is still requested as reviewer, and still the person the review and merge are
+addressed to. What it never needed to protect was the right to *start a round*.
+The question the gate answers is whether the author is trusted to change code in
+this repository, and the repository already records that. A named login was a
+proxy for it, and the proxy was wrong the first time someone else reviewed.
+
+**Why write access and not anyone.** A round spends an ECS task and puts the
+review's text in front of the specialist. On a public repository, a login-free
+rule would let any GitHub account do both. The permission check is one extra
+read per new review and closes that.
+
+**What follows.** `REVIEWER_EMAIL_TO_GITHUB_LOGIN` goes back to being cosmetic:
+a missing entry costs the reviewer request and nothing else, and its notice on
+the PR now says so. The GitHub token needs push access to read other users'
+permissions, which the specialist's account already has. A running dispatch
+picks the change up when its worker restarts onto the new image, because the
+watch is an activity retried with its recorded input; no workflow history
+changes shape.
+

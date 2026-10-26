@@ -40,8 +40,7 @@ import {
 } from "./revision-notices.js";
 
 /**
- * How many times a reviewer-of-record can send the specialist back around on
- * one PR. Chosen by the architect (2026-09-19), and a diagnostic more than a
+ * How many times reviewers can send the specialist back around on one PR. Chosen by the architect (2026-09-19), and a diagnostic more than a
  * cost guard: every round needs a human to sit down and submit a review
  * first, so the loop cannot run away on its own. Reaching the cap is
  * evidence the *story* was mis-shaped rather than the code being wrong —
@@ -182,10 +181,9 @@ export async function dispatchStoryWorkflow(input: DispatchStoryWorkflowInput): 
 
     const reviewerLogin = await requestPullRequestReviewer(repoBase, pr.number, input.mover);
     if (!reviewerLogin) {
-      // Said once, now, rather than discovered later by a developer whose
-      // "request changes" review went nowhere. A missing mapping entry used
-      // to be purely cosmetic; keying revision rounds on it made it
-      // load-bearing, and an unmapped reviewer silently disables them.
+      // Said once, now, so a PR nobody was asked to review is not mistaken for
+      // one the pipeline forgot. Revision rounds do not depend on this: any
+      // reviewer with write access can start one.
       await postPullRequestNotice(repoBase, pr.number, reviewerUnmatchedNotice(input.mover ? input.mover.name : null));
     }
 
@@ -201,7 +199,6 @@ export async function dispatchStoryWorkflow(input: DispatchStoryWorkflowInput): 
         repoBase: repoBase,
         prNumber: pr.number,
         prUrl: pr.url,
-        reviewerLogin: reviewerLogin,
         afterReviewId: afterReviewId,
         watchForChangeRequests: revisionRound < REVISION_ROUND_CAP,
       });

@@ -49,8 +49,10 @@ export function revisionRoundsExhaustedNotice(cap: number): string {
 
 /**
  * Posted once, when the PR opens, if the story's mover could not be resolved
- * to a GitHub login. Without it the revision loop is silently off: the
- * developer requests changes, nothing happens, and nothing says why.
+ * to a GitHub login. Without it a PR that nobody was asked to review looks
+ * like one the pipeline forgot. It says what still works, too: a "request
+ * changes" review from anyone with write access dispatches the specialist, so
+ * a missing mapping costs the reviewer request and nothing else.
  *
  * Names the person, not their email. The mapping is keyed by email and the
  * worker's own log line carries it, but this comment lands in the target
@@ -59,10 +61,11 @@ export function revisionRoundsExhaustedNotice(cap: number): string {
 export function reviewerUnmatchedNotice(moverName: string | null): string {
   const who = moverName ? `"${moverName}"` : "whoever moved this story to In Progress";
   return (
-    `**Revision requests are off for this story** _(automated)_\n\n` +
-    `${who} could not be matched to a GitHub login, so a "request changes" review here cannot be attributed to the ` +
-    `reviewer-of-record and will not dispatch the specialist. Adding the mapping to \`REVIEWER_EMAIL_TO_GITHUB_LOGIN\` ` +
-    `turns this on for future stories. Reviewing and merging this PR are unaffected.`
+    `**No reviewer was requested on this PR** _(automated)_\n\n` +
+    `${who} could not be matched to a GitHub login, so nobody was asked to review it. A "request changes" review ` +
+    `from anyone with write access to this repository still dispatches the specialist. Adding the mapping to ` +
+    `\`REVIEWER_EMAIL_TO_GITHUB_LOGIN\` requests the mover automatically on future stories. Reviewing and merging ` +
+    `this PR are unaffected.`
   );
 }
 

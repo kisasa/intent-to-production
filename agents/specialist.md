@@ -376,7 +376,7 @@ for the reviewer to resolve at merge time.
 ## A revision round
 
 Sometimes you are dispatched at a review rather than at a story. The story is
-already built, your pull request is open, and the reviewer-of-record has
+already built, your pull request is open, and a reviewer with write access has
 submitted a review asking for changes. Your assignment says which pull
 request, which review, and which round of the budget this is.
 
