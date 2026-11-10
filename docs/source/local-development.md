@@ -6,6 +6,10 @@ and a local Temporal server. A story entering `In Progress` starts a real
 Temporal workflow, which launches a real `specialist-runner` container on
 your Docker engine.
 
+By default it runs the published images
+(`ghcr.io/kisasa/intent-to-production/…`), so nothing is built on your
+machine. To run your own changes, see "Running your own changes" below.
+
 **What's real, what's local:**
 
 | Piece | Local dev |
@@ -34,11 +38,10 @@ your Docker engine.
    (gitignored — never commit your filled-in copy), key by key, so it only
    names what it sets.
 
-   One non-secret value must be set too: `FRAMEWORK_REPO` on
-   `dispatch-worker`. It names the framework repo (`org/name`) the
-   specialist reads its agent definition and skills from — your fork or
-   copy — and `docker-compose.yml` ships a placeholder. Set `FRAMEWORK_REF`
-   alongside it (default `main`) to a branch when testing framework changes.
+   `FRAMEWORK_REPO` on `dispatch-worker` names the repository (`org/name`)
+   the specialist clones its agent definition and skills from. It defaults to
+   this project's own; set it to your fork only if you have changed them, with
+   `FRAMEWORK_REF` (default `main`) naming the branch.
 
    `dispatch-worker` passes its own `ANTHROPIC_API_KEY`, `GITHUB_TOKEN`,
    `LINEAR_AGENT_API_KEY`, `FRAMEWORK_REPO`, `FRAMEWORK_REF`, `CLAUDE_MODEL`
@@ -63,13 +66,15 @@ your Docker engine.
 2. **Bring up the stack:**
 
    ```bash
-   docker compose up --build
+   docker compose up
    ```
 
-   This also builds the specialist image (`specialist-runner:local`) through
-   the `specialist-runner` service, which only builds it and exits —
-   `docker compose ps` shows it `Exited (0)`, and `dispatch-worker` waits for
-   that before starting.
+   This pulls the three images at `ITP_VERSION` (default `latest`, the
+   newest release; `main` for the newest commit, or a release such as
+   `0.1.0`). The `specialist-runner` service only pulls the specialist image
+   and exits — `docker compose ps` shows it `Exited (0)`, and
+   `dispatch-worker` waits for that before starting. `docker compose pull`
+   fetches a newer image under the same tag.
 
 3. **Tunnel a real Linear webhook in:**
 
@@ -111,14 +116,24 @@ what the lane matches. Watch it happen:
   it. Exited specialists are kept for their logs; clear them with
   `docker container prune --filter label=itp.role=specialist`.
 
+## Running your own changes
+
+`docker-compose.build.yml` builds all three images from your checkout and
+tags them `:local`. Naming any compose file stops `docker compose` from
+merging the override on its own, so name all three:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml -f docker-compose.override.yml up --build
+```
+
 ## Why `specialist-runner` isn't a running service
 
 It's ephemeral by design — one container per dispatch, started by
 `dispatch-worker`, never a long-running process. The worker runs whatever
-`specialist-runner:local` is in the local image cache; it does not rebuild
-it. After any change under `specialist-runner/`, run
-`docker compose build specialist-runner` (or `up --build` again) before
-triggering another dispatch, or the old image runs.
+image `SPECIALIST_IMAGE` names from the local image cache, pulling it only
+if it is missing. When building locally, it does not rebuild it either: after
+any change under `specialist-runner/`, run the build command above again
+before triggering another dispatch, or the old image runs.
 
 ## The Docker socket
 
@@ -131,8 +146,8 @@ launcher").
 
 ## What this does NOT do
 
-- No live-reload — each service rebuilds from its Dockerfile on
-  `docker compose up --build`. No volume-mounted source, no `nodemon`.
+- No live-reload — with the build file, each service rebuilds from its
+  Dockerfile on `up --build`. No volume-mounted source, no `nodemon`.
 - No mocked Linear/GitHub/Anthropic — a real workspace, real repo, and real
   API keys are required to drive anything past `webhook-listener` accepting a
   webhook.

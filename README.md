@@ -78,31 +78,95 @@ them, is in the design ledger.
 | `docs/source/` | The Markdown the PDFs above are rendered from — edit here, then run `scripts/build-docs-pdf.py`. |
 | `CONTRIBUTING.md` | The checks that must pass, and the rule that nothing here references a private artifact. |
 
+## Get started
+
+Run the whole pipeline on your own machine: the listener, the worker, a local
+Temporal server, and specialist containers on your Docker engine. It needs no
+cloud, but Linear, GitHub and Claude are always the real services.
+
+**You need:**
+
+- Docker Desktop, or another Docker engine with Compose.
+- A Linear workspace you can configure (a sandbox one is fine), with a
+  separate user for the pipeline's bot and an API key for it.
+- A GitHub token that can push branches and open pull requests on the
+  repository the specialists will work in.
+- An Anthropic API key.
+- [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/),
+  or any tunnel, so Linear's webhooks can reach your machine.
+
+**Steps:**
+
+1. Clone the repository and copy the override file. Your secrets go in
+   `docker-compose.override.yml`, which git ignores:
+
+   ```bash
+   git clone https://github.com/kisasa/intent-to-production.git
+   cd intent-to-production
+   cp docker-compose.override.yml.example docker-compose.override.yml
+   ```
+
+2. Set up the Linear team: the statuses, the labels and the bot user listed in
+   `docs/engagement-readiness.pdf`, section 2. The bot user's API key is
+   `LINEAR_AGENT_API_KEY` and its user id is `AGENT_USER_ID`.
+
+3. Open a tunnel to the port the listener will use, and keep it running:
+
+   ```bash
+   cloudflared tunnel --url http://localhost:8787
+   ```
+
+4. In Linear, under Settings → API → Webhooks, create a webhook pointing at
+   `https://<your tunnel>/webhooks/linear` and sending Issues, Projects and
+   Comments. Its signing secret is `LINEAR_WEBHOOK_SECRET`.
+
+5. Fill in `docker-compose.override.yml`: the Linear values from steps 2 and
+   4, your GitHub token and your Anthropic key.
+
+6. Start everything:
+
+   ```bash
+   docker compose up
+   ```
+
+   This pulls the published images, starts Temporal, and starts the
+   listener and the worker. If a required value is missing, the worker stops
+   at startup and names it.
+
+7. Check that Linear can reach you: `https://<your tunnel>/health` answers
+   `ok`. The Temporal UI is at `http://localhost:8080`.
+
+From here, `docs/engagement-readiness.pdf` takes you from an empty workspace
+to the first requirements document, and `docs/local-development.pdf` covers
+dispatching a story to a specialist and watching it run, including the
+surface registry and repository setup a dispatch needs. To run your own
+changes rather than the published images, see "Running your own changes"
+there.
+
 ## Published images
 
 Each release publishes the three runnable packages as multi-architecture
-(amd64 and arm64) images to the GitHub Container Registry, under the account
-that hosts this repository:
+(amd64 and arm64) images to the GitHub Container Registry:
 
 | Image | Package |
 |---|---|
-| `ghcr.io/<owner>/intent-to-production/webhook-listener` | `webhook-listener/` |
-| `ghcr.io/<owner>/intent-to-production/dispatch-worker` | `dispatch-worker/` |
-| `ghcr.io/<owner>/intent-to-production/specialist-runner` | `specialist-runner/` |
+| `ghcr.io/kisasa/intent-to-production/webhook-listener` | `webhook-listener/` |
+| `ghcr.io/kisasa/intent-to-production/dispatch-worker` | `dispatch-worker/` |
+| `ghcr.io/kisasa/intent-to-production/specialist-runner` | `specialist-runner/` |
 
 A release tag `v1.2.3` publishes `1.2.3`, `1.2` and `latest`. Every push to
 `main` publishes `main` and `sha-<first 12 characters of the commit>`. The three
 images are one release: run the same version of each, because the worker and
 the specialist agree on the environment one hands the other. The framework
-ships no deployment; how you run these images is yours to decide.
+ships no deployment; how you run these images is yours to decide. A fork
+publishes the same images under its own owner.
 
 ## Start here
 
 If you are setting up an engagement, read `docs/engagement-readiness.pdf`.
 If you are changing an agent or a skill, read the relevant sections of
 `docs/design-ledger.md` first — most of what looks arbitrary has a recorded
-reason. If you are running the software, start with
-`docs/local-development.pdf`.
+reason. If you are running the software, start with "Get started" above.
 
 ---
 

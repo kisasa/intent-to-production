@@ -150,9 +150,15 @@ const RULES = [
      * Authorship credit in `README.md` and the project's own branding are
      * deliberate and allowed. A repo coordinate, email address, ARN or
      * namespace built from the same word is not.
+     *
+     * The one coordinate allowed is this project's own public home,
+     * `kisasa/intent-to-production` exactly: getting started pulls the
+     * published images from it and the specialist reads its agent files from
+     * it, so the docs and compose file have to name it. Any other repository
+     * under the org, or a name merely starting the same way, is still a find.
      */
     label: "kisasa used as a coordinate rather than as authorship",
-    pattern: /(?:github|gitlab)\/kisasa|kisasa\/[a-z]|["']kisasa["']/gi,
+    pattern: /(?:github|gitlab)\/kisasa|kisasa\/(?!intent-to-production(?![\w-]))[a-z]|["']kisasa["']/gi,
   },
   {
     /**

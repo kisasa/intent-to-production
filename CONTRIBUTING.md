@@ -75,8 +75,11 @@ definitions or skills.** This is a hard rule with no exemptions and no
   identifiers, Temporal namespaces, secret paths, or anything else naming a
   real environment.
 
-The framework's own repository name (`intent-to-production`) is not a private
-reference, and neither is deliberate authorship credit in `README.md`. Everything
+The framework's own repository (`intent-to-production`, and its full
+coordinate `kisasa/intent-to-production`, which the published images and the
+getting-started steps name) is not a private reference, and neither is
+deliberate authorship credit in `README.md`. Any other repository under the
+same owner is. Everything
 else on the list is.
 
 ### Placeholders to use instead

@@ -23,8 +23,9 @@ services:
       GITHUB_TOKEN: ""
       LINEAR_AGENT_API_KEY: ""
       ANTHROPIC_API_KEY: ""
-      # Your fork or copy of this framework, as org/name.
-      FRAMEWORK_REPO: ""
-      FRAMEWORK_REF: main
+      # Optional — only if you changed the agent definitions or skills: your
+      # fork, as org/name, and the branch to read them from.
+      # FRAMEWORK_REPO: your-org/intent-to-production
+      # FRAMEWORK_REF: main
       # Optional — e.g. {"you@example.com":"your-github-login"}
       REVIEWER_EMAIL_TO_GITHUB_LOGIN: ""

@@ -1,6 +1,12 @@
 # The whole pipeline on one machine — see docs/local-development.md for the
 # walkthrough, the tunnel step, and named limitations.
 #
+# Runs the published images (ghcr.io/kisasa/intent-to-production/…) at
+# ITP_VERSION, default `latest`, the newest release. Set ITP_VERSION to a
+# release (`0.1.0`) or `main` to pin one; `docker compose pull` fetches a
+# newer image under the same tag. To run your own changes instead, add
+# docker-compose.build.yml, which builds all three from this checkout.
+#
 # Every env var each service needs is listed explicitly below — one file to
 # see the whole shape. Non-secret values (the local Temporal connection, the
 # specialist image) are real, working defaults. Secrets (Anthropic, GitHub,
@@ -17,7 +23,7 @@
 #   - dispatch-worker: the development tier's Temporal worker. It launches
 #     each specialist as its own container on this machine's Docker engine,
 #     through the mounted socket.
-#   - specialist-runner: only builds the image dispatch-worker launches.
+#   - specialist-runner: only pulls the image dispatch-worker launches.
 #
 # Linear, GitHub and Anthropic stay real and external; nothing here emulates
 # them. A tunnel (cloudflared or similar) is how a real Linear webhook
@@ -65,21 +71,18 @@ services:
     ports:
       - "8080:8080"
 
-  # Builds the specialist image and exits. Nothing runs the specialist as a
+  # Pulls the specialist image and exits. Nothing runs the specialist as a
   # compose service: dispatch-worker launches one container per dispatch,
-  # through the Docker engine, from this image. Listing it here is what makes
-  # `docker compose up --build` build it.
+  # through the Docker engine, from this image. The launcher would pull it on
+  # the first dispatch anyway; listing it here moves that wait, and any pull
+  # failure, to `docker compose up` where you are watching.
   specialist-runner:
-    build:
-      context: ./specialist-runner
-    image: specialist-runner:local
+    image: ghcr.io/kisasa/intent-to-production/specialist-runner:${ITP_VERSION:-latest}
     entrypoint: ["true"]
     restart: "no"
 
   webhook-listener:
-    build:
-      context: .
-      dockerfile: webhook-listener/Dockerfile
+    image: ghcr.io/kisasa/intent-to-production/webhook-listener:${ITP_VERSION:-latest}
     environment:
       PORT: "8787"
       DEBOUNCE_MS: "15000"
@@ -108,8 +111,7 @@ services:
       - temporal
 
   dispatch-worker:
-    build:
-      context: ./dispatch-worker
+    image: ghcr.io/kisasa/intent-to-production/dispatch-worker:${ITP_VERSION:-latest}
     environment:
       TEMPORAL_HOST: temporal:7233
       TEMPORAL_NAMESPACE: default
@@ -128,16 +130,17 @@ services:
       # to run per dispatch, and which of this service's own variables the
       # specialist also gets. The per-dispatch variables (STORY_ID and the
       # rest) are added by the worker itself.
-      SPECIALIST_IMAGE: specialist-runner:local
+      SPECIALIST_IMAGE: ghcr.io/kisasa/intent-to-production/specialist-runner:${ITP_VERSION:-latest}
       SPECIALIST_FORWARD_ENV: ANTHROPIC_API_KEY,GITHUB_TOKEN,LINEAR_AGENT_API_KEY,FRAMEWORK_REPO,FRAMEWORK_REF,CLAUDE_MODEL,CLAUDE_EFFORT
       ANTHROPIC_API_KEY: ""
       CLAUDE_MODEL: claude-opus-5-5
       CLAUDE_EFFORT: high
-      # The framework clone the specialist reads its agent and skill files
-      # from. A placeholder on purpose: set your fork in
-      # docker-compose.override.yml, and point FRAMEWORK_REF at a branch when
-      # testing framework changes.
-      FRAMEWORK_REPO: example-org/intent-to-production
+      # The framework repository the specialist clones its agent and skill
+      # files from. Point it at your fork in docker-compose.override.yml if
+      # you have changed them, and FRAMEWORK_REF at a branch when testing a
+      # change. When ITP_VERSION pins a release, pin FRAMEWORK_REF to the
+      # same tag (`v0.1.0`) so the agent files match the code running them.
+      FRAMEWORK_REPO: kisasa/intent-to-production
       FRAMEWORK_REF: main
     # Root, because the engine socket is owned by root on most hosts and the
     # image's own user cannot open it. Access to that socket is root on the
