@@ -1,0 +1,123 @@
+name: Publish images
+
+# Publishes the framework's three images to the GitHub Container Registry,
+# under this repository's own namespace:
+#
+#   ghcr.io/<owner>/<repo>/webhook-listener
+#   ghcr.io/<owner>/<repo>/dispatch-worker
+#   ghcr.io/<owner>/<repo>/specialist-runner
+#
+# The namespace is derived from the repository rather than written down, so a
+# fork publishes to its own without editing this file.
+#
+# A version tag (`v1.2.3`) publishes `1.2.3`, `1.2` and `latest`. A push to
+# main publishes `main` and `sha-<12 chars>`, never `latest`, so `latest`
+# always means a release while a deployment that wants unreleased code can
+# still pin one commit. A pre-release tag (`v1.2.3-rc.1`) publishes only its
+# own version.
+#
+# All three images are built on every run and carry the same tags, even when
+# only one package changed. They are one release: dispatch-worker hands the
+# specialist its environment and the two must agree, so a deployment pins one
+# version for all three rather than matching versions across images by hand.
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  # From the Actions tab, to republish main or a tag without a new commit.
+  # The job's guard below refuses any other ref.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+# Two runs for the same ref would race to the same tags. Runs for different
+# refs (main and a release tag pushed together) don't, so they may overlap.
+concurrency:
+  group: publish-images-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    # Publishing from a feature branch through workflow_dispatch would push a
+    # tag named after that branch into the public namespace.
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    strategy:
+      # One image failing should not cancel the others mid-push; the run still
+      # fails, and a re-run republishes all three to the same tags.
+      fail-fast: false
+      matrix:
+        include:
+          # Repo-root context: the listener reads agents/ and skills/ from the
+          # repository at runtime, so its Dockerfile copies them in.
+          - image: webhook-listener
+            context: .
+            dockerfile: webhook-listener/Dockerfile
+          - image: dispatch-worker
+            context: dispatch-worker
+            dockerfile: dispatch-worker/Dockerfile
+          # Its own directory only: the specialist clones agents/ and skills/
+          # at runtime from FRAMEWORK_REPO instead of carrying them.
+          - image: specialist-runner
+            context: specialist-runner
+            dockerfile: specialist-runner/Dockerfile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Registry paths must be lowercase; an owner name need not be.
+      - name: Resolve the image name
+        id: name
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}/${{ matrix.image }}" >> "$GITHUB_OUTPUT"
+
+      - name: Compute tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        env:
+          DOCKER_METADATA_SHORT_SHA_LENGTH: "12"
+        with:
+          images: ${{ steps.name.outputs.image }}
+          flavor: |
+            latest=false
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-') }}
+            type=raw,value=main,enable={{is_default_branch}}
+            type=sha,prefix=sha-,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=${{ matrix.image }}
+
+      # arm64 alongside amd64 so the images run natively on Apple Silicon,
+      # which is where most people will first run the pipeline locally.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Scoped per image, or the three matrix legs overwrite one cache.
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          build-args: |
+            BUILD_COMMIT=${{ github.sha }}

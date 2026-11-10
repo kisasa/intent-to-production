@@ -33,6 +33,24 @@ output the same basename in the same folder. The design ledger is the one
 Markdown file that stays in `docs/` itself: it is a working record read by
 people and agents alike and changes every session.
 
+## Releasing
+
+Push a version tag on a commit already on `main`:
+
+```bash
+git tag v1.2.3 && git push origin v1.2.3
+```
+
+`.github/workflows/publish-images.yml` builds all three images and publishes
+them to the GitHub Container Registry. A tag with a pre-release suffix
+(`v1.2.3-rc.1`) publishes only its own version and leaves `latest` alone.
+
+The registry creates each package as private the first time it is pushed, and
+the workflow's token cannot change that. After the first publish to a new
+owner, whether this repository's or a fork's, someone with admin rights on
+that owner opens each of the three packages' settings once and sets their
+visibility to public.
+
 
 ## No Private References
 

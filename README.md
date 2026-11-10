@@ -78,6 +78,24 @@ them, is in the design ledger.
 | `docs/source/` | The Markdown the PDFs above are rendered from — edit here, then run `scripts/build-docs-pdf.py`. |
 | `CONTRIBUTING.md` | The checks that must pass, and the rule that nothing here references a private artifact. |
 
+## Published images
+
+Each release publishes the three runnable packages as multi-architecture
+(amd64 and arm64) images to the GitHub Container Registry, under the account
+that hosts this repository:
+
+| Image | Package |
+|---|---|
+| `ghcr.io/<owner>/intent-to-production/webhook-listener` | `webhook-listener/` |
+| `ghcr.io/<owner>/intent-to-production/dispatch-worker` | `dispatch-worker/` |
+| `ghcr.io/<owner>/intent-to-production/specialist-runner` | `specialist-runner/` |
+
+A release tag `v1.2.3` publishes `1.2.3`, `1.2` and `latest`. Every push to
+`main` publishes `main` and `sha-<first 12 characters of the commit>`. The three
+images are one release: run the same version of each, because the worker and
+the specialist agree on the environment one hands the other. The framework
+ships no deployment; how you run these images is yours to decide.
+
 ## Start here
 
 If you are setting up an engagement, read `docs/engagement-readiness.pdf`.

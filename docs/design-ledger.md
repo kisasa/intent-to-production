@@ -5837,3 +5837,14 @@ root-equivalent access to that host, and locally the worker runs as root so it
 can open the socket. LocalStack needed the same mount, so nothing got worse on a
 development machine; anywhere else it is a reason to supply a different
 launcher.
+
+**What replaced the ECR workflows.** One workflow,
+`.github/workflows/publish-images.yml`, publishes all three images to the
+GitHub Container Registry under this repository's own namespace, so a fork
+publishes to its own without edits. A version tag publishes `1.2.3`, `1.2` and
+`latest`; a push to `main` publishes `main` and `sha-<12 chars>` but never
+`latest`, so `latest` always means a release. The three images always carry
+the same tags, even when only one package changed: the worker hands the
+specialist its environment, so a deployment that mixed versions could break
+without anything saying why. They are built for amd64 and arm64, because the
+first place most people run the pipeline is their own laptop.
