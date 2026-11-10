@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Hosts the Temporal workflow that dispatches a story to a specialist: checks blocking dependencies, resolves the story's surface(s) to a common repo base, creates the story branch, calls ecs:RunTask against the specialist-sandbox task definition, and waits for the resulting pull request to merge or close. Runs inside the temporal-workers ECS service.",
+  "description": "Hosts the Temporal workflow that dispatches a story to a specialist: checks blocking dependencies, resolves the story's surface(s) to a common repo base, creates the story branch, launches the specialist container through a pluggable launcher (Docker by default), and waits for the resulting pull request to merge or close.",
   "scripts": {
     "build:bundle": "node scripts/build-workflow-bundle.mjs",
     "start": "node --import tsx src/worker.ts",
@@ -15,8 +15,7 @@
     "@temporalio/activity": "^1.21.1",
     "@temporalio/client": "^1.21.1",
     "@temporalio/worker": "^1.21.1",
-    "@temporalio/workflow": "^1.21.1",
-    "@aws-sdk/client-ecs": "^3.1103.0"
+    "@temporalio/workflow": "^1.21.1"
   },
   "devDependencies": {
     "@temporalio/testing": "^1.21.1",

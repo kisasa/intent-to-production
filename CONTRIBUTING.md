@@ -12,26 +12,18 @@ proposing a change to an agent definition or a skill.
 node scripts/check-no-private-references.mjs   # must pass; see below
 ```
 
-Each package (`webhook-listener/`, `dispatch-worker/`, `specialist-runner/`,
-`infrastructure/`) has its own `npm run typecheck` and `npm run test:unit`. Run
-both for whatever you touched.
-
-The first three also run on every pull request that touches them
+Each package (`webhook-listener/`, `dispatch-worker/`, `specialist-runner/`)
+has its own `npm run typecheck` and `npm run test:unit`. Run both for whatever
+you touched. They also run on every pull request that touches them
 (`.github/workflows/unit-tests.yml`), so running them locally is for your own
-loop rather than for the gate. `infrastructure/` is not in that workflow yet —
-its typecheck needs generated provider bindings first — so that one is still
-yours to run.
+loop rather than for the gate.
 
 The repository-root `scripts/` are operator tools rather than application code,
 so they carry their own tests beside them. Run the one you touched:
 
 ```bash
 node --test 'scripts/*.test.mjs'          # also gated in CI, with the private-references check
-python3 scripts/new-deployment.test.py    # local only
 ```
-
-The Python suite covers its AWS calls with `botocore`'s `Stubber`; those cases
-skip without `boto3` installed and the rest run regardless.
 
 Human-facing documents under `docs/` ship as PDFs; the Markdown they are
 rendered from lives in `docs/source/`. If you edit a source, re-run
@@ -41,14 +33,24 @@ output the same basename in the same folder. The design ledger is the one
 Markdown file that stays in `docs/` itself: it is a working record read by
 people and agents alike and changes every session.
 
-`infrastructure/` needs two extra steps on a fresh clone: copy
-`infrastructure/cdktf.example.json` to `cdktf.json` and fill in your own values,
-then run `npx cdktn get` with Terraform installed to generate the provider
-bindings. Neither the real config nor the generated bindings are in the
-repository, so the package will not typecheck until both exist. Standing up a
-further deployment once one exists is `python3 scripts/new-deployment.py`
-rather than another copy of the template — see `infrastructure/README.md`,
-"Configuration".
+## Releasing
+
+Push a version tag on a commit already on `main`:
+
+```bash
+git tag v1.2.3 && git push origin v1.2.3
+```
+
+`.github/workflows/publish-images.yml` builds all three images and publishes
+them to the GitHub Container Registry. A tag with a pre-release suffix
+(`v1.2.3-rc.1`) publishes only its own version and leaves `latest` alone.
+
+The registry creates each package as private the first time it is pushed, and
+the workflow's token cannot change that. After the first publish to a new
+owner, whether this repository's or a fork's, someone with admin rights on
+that owner opens each of the three packages' settings once and sets their
+visibility to public.
+
 
 ## No Private References
 
@@ -69,11 +71,15 @@ definitions or skills.** This is a hard rule with no exemptions and no
   architect, the designer, the PM, the developer, the reviewer — never as
   "she" or "he". A pronoun names nobody, but to anyone who knows the team it
   identifies them, and the roles are what carry meaning here anyway.
-- **Deployed infrastructure identity** — account ids, cluster and task ARNs,
-  Temporal namespaces, SSM paths, or anything else naming a real environment.
+- **Deployed infrastructure identity** — cloud account ids, resource
+  identifiers, Temporal namespaces, secret paths, or anything else naming a
+  real environment.
 
-The framework's own repository name (`intent-to-production`) is not a private
-reference, and neither is deliberate authorship credit in `README.md`. Everything
+The framework's own repository (`intent-to-production`, and its full
+coordinate `kisasa/intent-to-production`, which the published images and the
+getting-started steps name) is not a private reference, and neither is
+deliberate authorship credit in `README.md`. Any other repository under the
+same owner is. Everything
 else on the list is.
 
 ### Placeholders to use instead
@@ -91,9 +97,10 @@ Use these, consistently, so examples read as obviously synthetic:
 | Environment identity | `example-*` (e.g. `example-specialist-prod`) |
 
 Deployment-specific configuration does not belong here at all, even with
-placeholder values swapped in. `infrastructure/cdktf.json` is gitignored for
-exactly this reason, with a committed template beside it; anything else that
-names one deployment should follow the same shape.
+placeholder values swapped in. The framework ships no deployment: how and
+where it runs is each operator's own repository. Local secrets follow the same
+shape — `docker-compose.override.yml` is gitignored, with a committed
+`.example` beside it.
 
 ### Provenance without the anchor
 

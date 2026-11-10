@@ -1,0 +1,28 @@
+# Builds all three images from this checkout instead of pulling the published
+# ones, for running your own changes. Naming any -f file stops compose from
+# merging docker-compose.override.yml on its own, so list all three:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml \
+#     -f docker-compose.override.yml up --build
+#
+# The local tags keep a build from shadowing a published tag of the same name
+# in your image cache.
+
+services:
+  specialist-runner:
+    build:
+      context: ./specialist-runner
+    image: specialist-runner:local
+
+  webhook-listener:
+    build:
+      context: .
+      dockerfile: webhook-listener/Dockerfile
+    image: webhook-listener:local
+
+  dispatch-worker:
+    build:
+      context: ./dispatch-worker
+    image: dispatch-worker:local
+    environment:
+      SPECIALIST_IMAGE: specialist-runner:local

@@ -9,9 +9,9 @@ markdown: the PDF at `docs/engagement-readiness.pdf` is the version to hand
 to a team, and `scripts/build-docs-pdf.py` regenerates it.
 
 This is a checklist for the architect setting the engagement up, with the PM
-and the designer in the room for the parts that are theirs. Deploying the
-framework itself — listener, workers, sandbox — is covered by
-`docs/local-development.pdf` and `infrastructure/README.md`; this document
+and the designer in the room for the parts that are theirs. Running the
+framework itself — listener, workers, specialist containers — is covered by
+`docs/local-development.pdf` and each package's README; this document
 assumes that is done.
 
 ---

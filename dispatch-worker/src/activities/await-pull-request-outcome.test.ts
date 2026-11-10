@@ -169,7 +169,7 @@ describe("pickChangeRequest", () => {
   });
 
   it("ignores a review from someone without write access", async () => {
-    // Otherwise any passer-by on a public repository could spend an ECS task
+    // Otherwise any passer-by on a public repository could spend a specialist run
     // and put their own text in front of the specialist.
     const judgeReviewer = judge({ "example-reviewer": "may-not" });
     expect(await pick([review()], null, judgeReviewer)).toBeNull();

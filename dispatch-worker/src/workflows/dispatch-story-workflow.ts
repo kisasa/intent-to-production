@@ -20,7 +20,7 @@
  * "In Progress" long after its own dispatch had already stopped, and the
  * next move is always the developer's to make, not a workflow's to wait on.
  *
- * Runs in Temporal's deterministic workflow sandbox: no fetch, no AWS SDK, no
+ * Runs in Temporal's deterministic workflow sandbox: no fetch, no launcher, no
  * filesystem here — every real IO call goes through `proxyActivities`, which
  * only imports `interface.ts`'s types, never the real implementations.
  */
@@ -62,7 +62,7 @@ const REVISION_MAX_TURNS = 25;
 
 // Domain-specific reason for a non-default retry policy (the SDK default is
 // generous — up to 100 attempts): these six all call external, rate-limited
-// APIs (Linear, GitHub, AWS ECS). A persistent failure after 3 attempts
+// APIs (Linear, GitHub, the specialist launcher). A persistent failure after 3 attempts
 // should surface as a failed workflow rather than hammer those APIs for
 // the better part of a day. Permanent errors (an unsupported host, a
 // missing surface record) skip retries entirely — see each activity's own use of
@@ -147,7 +147,7 @@ export async function dispatchStoryWorkflow(input: DispatchStoryWorkflowInput): 
       storyBranch: input.storyBranch,
     });
 
-    const taskArn = await dispatchSpecialist({
+    const specialistHandle = await dispatchSpecialist({
       storyId: input.storyId,
       storyTitle: input.storyTitle,
       epicId: input.epicId,
@@ -161,7 +161,7 @@ export async function dispatchStoryWorkflow(input: DispatchStoryWorkflowInput): 
     });
 
     const progressCommentId = await postSpecialistStarted(input.storyId);
-    await awaitSpecialistTask(taskArn, progressCommentId);
+    await awaitSpecialistTask(specialistHandle, progressCommentId);
     if (progressCommentId) {
       await deleteSpecialistProgressComment(progressCommentId);
     }
@@ -232,7 +232,7 @@ export async function dispatchStoryWorkflow(input: DispatchStoryWorkflowInput): 
         revisionRoundStartedNotice(revisionRound, REVISION_ROUND_CAP),
       );
 
-      const revisionTaskArn = await dispatchSpecialist({
+      const revisionSpecialistHandle = await dispatchSpecialist({
         storyId: input.storyId,
         storyTitle: input.storyTitle,
         epicId: input.epicId,
@@ -252,7 +252,7 @@ export async function dispatchStoryWorkflow(input: DispatchStoryWorkflowInput): 
       });
 
       const revisionProgressCommentId = await postSpecialistStarted(input.storyId);
-      await awaitSpecialistTask(revisionTaskArn, revisionProgressCommentId);
+      await awaitSpecialistTask(revisionSpecialistHandle, revisionProgressCommentId);
       if (revisionProgressCommentId) {
         await deleteSpecialistProgressComment(revisionProgressCommentId);
       }

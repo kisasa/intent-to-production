@@ -4,7 +4,7 @@
  * Workflow code runs in Temporal's deterministic sandbox and must never
  * import the real (non-deterministic) activity implementations directly;
  * this file exists so the workflow gets full type-checking on activity calls
- * without pulling any real code (fetch, the AWS SDK, Node's child_process)
+ * without pulling any real code (fetch, a launcher's platform client, Node's http)
  * into the workflow bundle. `worker.ts` is the only module that imports the
  * real implementations and binds them to these same names.
  */
@@ -21,9 +21,10 @@ export interface DispatchActivities {
   checkDependencies(storyId: string): Promise<DependencyCheckResult>;
   resolveSurfaces(epicId: string, surfaces: Surface[]): Promise<ResolvedTarget>;
   createStoryBranch(input: CreateStoryBranchInput): Promise<void>;
+  /** Returns the launcher's opaque handle for the specialist it started. */
   dispatchSpecialist(input: DispatchSpecialistInput): Promise<string>;
   postSpecialistStarted(storyId: string): Promise<string | null>;
-  awaitSpecialistTask(taskArn: string, progressCommentId: string | null): Promise<void>;
+  awaitSpecialistTask(handle: string, progressCommentId: string | null): Promise<void>;
   deleteSpecialistProgressComment(commentId: string): Promise<void>;
   findPullRequest(repoBase: RepoBase, headBranch: string, baseBranch: string): Promise<PullRequestReference | null>;
   /** Returns the reviewer-of-record's GitHub login, or null when the mover could not be mapped to one. */

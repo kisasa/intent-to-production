@@ -5785,3 +5785,66 @@ picks the change up when its worker restarts onto the new image, because the
 watch is an activity retried with its recorded input; no workflow history
 changes shape.
 
+
+## The framework assumes no cloud (2026-11-10)
+
+**The observation.** On 2026-11-03 an issue asked for the container images to
+be published somewhere public, because a private registry made adoption
+harder. Answering it showed the problem was wider than the registry. The
+framework repository carried one operator's deployment: the CDK Terrain stacks,
+the script that derives a new deployment from an old one, and three workflows
+that pushed images to that operator's private ECR with that repository's
+secrets. The infrastructure stacks would only take an image from ECR, so a
+public image would not have helped anyone deploy. And `dispatch-worker` could
+only start a specialist through `ecs:RunTask`, so even the local stack had to
+emulate ECS with LocalStack, which since its 2026-03 licensing change needs an
+account and token just to run.
+
+**Rule.** The framework assumes no cloud and ships no deployment. How and where
+it runs is each operator's own repository, and no operator's gets special
+treatment, including the one that maintains the framework. The deployment code
+moved out with its history.
+
+**The launcher seam.** The only cloud-specific code in the application was the
+specialist launch, so that is where the seam went.
+`dispatch-worker/src/launchers/specialist-launcher.ts` is the whole contract:
+`launch` starts one container with the dispatch's environment and returns an
+opaque handle, and `describe` says whether it has stopped. The framework ships
+one implementation, a Docker launcher that talks to the Docker Engine API over
+its socket. An operator elsewhere writes their own launcher and an entry file
+calling `runWorker` (`src/run-worker.ts`), in an image built `FROM` the
+published one. Every activity and the workflow stay as published.
+
+**Why the activities kept their names and signatures.** `dispatchSpecialist`
+still returns a string and `awaitSpecialistTask` still takes one, so no
+workflow history changes shape and a dispatch already running is unaffected by
+the change. The string was always opaque to the workflow; it is called a
+handle now instead of a task ARN.
+
+**Where the specialist's credentials come from.** A task definition used to
+carry them. With Docker the worker is the one place they are configured:
+`SPECIALIST_FORWARD_ENV` names which of its own variables every specialist also
+gets, and a named variable that is unset stops the worker at startup instead
+of failing every specialist at launch.
+
+**Two choices in the Docker launcher.** Exited containers are kept, labelled
+`itp.role=specialist`, because `docker logs` is the only record of a run that
+never reached the tracker. A container removed by hand counts as stopped, or
+the wait would poll it for the rest of its four-hour timeout.
+
+**The cost.** Mounting the engine socket into the worker gives it
+root-equivalent access to that host, and locally the worker runs as root so it
+can open the socket. LocalStack needed the same mount, so nothing got worse on a
+development machine; anywhere else it is a reason to supply a different
+launcher.
+
+**What replaced the ECR workflows.** One workflow,
+`.github/workflows/publish-images.yml`, publishes all three images to the
+GitHub Container Registry under this repository's own namespace, so a fork
+publishes to its own without edits. A version tag publishes `1.2.3`, `1.2` and
+`latest`; a push to `main` publishes `main` and `sha-<12 chars>` but never
+`latest`, so `latest` always means a release. The three images always carry
+the same tags, even when only one package changed: the worker hands the
+specialist its environment, so a deployment that mixed versions could break
+without anything saying why. They are built for amd64 and arm64, because the
+first place most people run the pipeline is their own laptop.

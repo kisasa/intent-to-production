@@ -29,7 +29,7 @@ COPY webhook-listener/tsconfig.json ./
 COPY webhook-listener/src ./src
 
 # The commit this image was built from (src/build-info.ts), passed in by the
-# ECR workflow. Declared after the dependency install so a new commit does not
+# publish workflow (.github/workflows/publish-images.yml). Declared after the dependency install so a new commit does not
 # invalidate that layer.
 ARG BUILD_COMMIT=unknown
 ENV BUILD_COMMIT=$BUILD_COMMIT

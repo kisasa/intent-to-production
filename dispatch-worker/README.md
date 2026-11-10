@@ -1,10 +1,9 @@
 # dispatch-worker
 
-Hosts the Temporal workflow that dispatches a story to a specialist. Runs
-inside the `temporal-workers` ECS service
-[`infrastructure/`](../infrastructure) registers, and launches the
-specialist as a one-shot task against the `specialist-sandbox` task
-definition. The workflow is started by `webhook-listener`'s
+Hosts the Temporal workflow that dispatches a story to a specialist, and
+launches the specialist as a one-shot container through a launcher — Docker
+by default, or one an operator supplies (see "Specialist launcher" below).
+The workflow is started by `webhook-listener`'s
 `specialist-dispatch` lane (`webhook-listener/src/dispatch-trigger.ts`) when a
 story enters `In Progress` — the tracker's literal name for the state the
 framework calls In-Process.
@@ -41,14 +40,15 @@ dispatch are merged and closed-without-merging. The same poll also notices a
    work from an abandoned attempt, and the activity refuses it, naming the
    branch deletion as the remedy. A re-dispatch is a fresh start. It never
    rebases, re-parents, or deletes a branch.
-4. **Dispatch the specialist** — `ecs:RunTask` against the specialist-sandbox
-   task definition, container overrides matching
+4. **Dispatch the specialist** — starts its container through the worker's
+   launcher, with an environment matching
    [`specialist-runner`](../specialist-runner)'s documented
    `dispatch-context.ts` contract, plus this worker's own `LOG_LEVEL`
-   propagated down as one more override — the specialist's verbosity follows
+   propagated down as one more variable — the specialist's verbosity follows
    whatever this worker was configured with, no separate setting to keep in
    sync.
-5. **Wait for it** — polls the ECS task until it stops (long-running
+5. **Wait for it** — polls the container, through the launcher, until it
+   stops (long-running
    activity, heartbeats every poll — a specialist run can take a long time).
 6. **Check for a PR — this is the outcome check.** Mechanically, via GitHub's
    own head/base filter, not a label and not the specialist's free-prose "PR
@@ -109,8 +109,8 @@ per review (not once per poll), and remembered for the rest of the watch; a
 failed permission read is asked again next poll rather than treated as a no.
 The `GITHUB_TOKEN` therefore needs push access to read other users'
 permissions, which the specialist's own account already has. Without the gate
-a drive-by reviewer on a public repository could spend an ECS task and put
-text in front of the specialist. Detection is
+a drive-by reviewer on a public repository could spend a specialist run and
+put text in front of the specialist. Detection is
 part of the existing poll rather than a GitHub webhook: the workflow is
 already fetching this PR, and GitHub doesn't redeliver a failed webhook, so a
 review submitted while the single-task listener is mid-deploy would be lost.
@@ -157,24 +157,50 @@ so a mechanical reader can trust them:
 
 ## Env vars
 
-| Var | Wired into infra today? | Meaning |
+| Var | Required? | Meaning |
 |---|---|---|
-| `TEMPORAL_HOST`, `TEMPORAL_NAMESPACE`, `TEMPORAL_TASK_QUEUE`, `TEMPORAL_API_KEY` | yes | Connection to the namespace `infrastructure/constructs/temporal-namespace.ts` creates. `TEMPORAL_API_KEY` is optional: a local dev server has no namespace auth |
-| `TEMPORAL_TLS` | no (optional) | Defaults on. Only the literal `false` turns it off, for a local dev server |
-| `SPECIALIST_CLUSTER_ARN` | yes | From `specialist-sandbox`'s `clusterArn` output |
-| `SPECIALIST_TASK_DEFINITION_ARN` | yes | From `specialist-sandbox`'s `taskDefinitionArn` output |
-| `SPECIALIST_CONTAINER_NAME` | yes | From `specialist-sandbox`'s `taskDefinitionFamily` output — identical to the container name by construction (`specialist-task.ts` derives both from `formatName(config.name)`) |
-| `SPECIALIST_SECURITY_GROUP_ID` | yes | From `specialist-sandbox`'s `securityGroupId` output |
-| `SPECIALIST_SUBNET_IDS` | yes | Comma-separated (via Terraform's own `Fn.join`, not a JS-side join — see `temporal-workers.ts`); from `network`'s `publicSubnetIds` output |
-| `GITHUB_TOKEN`, `LINEAR_AGENT_API_KEY` | yes (SSM, under the shared `parameter-prefix`) | Same secrets, same mechanism as every other container in this project |
-| `REVIEWER_EMAIL_TO_GITHUB_LOGIN` | yes (from `temporal.reviewer-email-to-github-login` in `cdktf.json`) | Reviewer-of-record's static Linear-email -> GitHub-login table, JSON object string. Unset or missing an entry skips the reviewer request for that dispatch; it does not affect revision rounds — see `activities/request-pull-request-reviewer.ts` |
-| `LINEAR_API_URL` | no (optional) | Default `https://api.linear.app/graphql` |
-| `LOG_LEVEL` | no (optional) | Default `info`. Also passed down to the specialist container |
-| `LOCAL_ENV_FILE`, `AWS_ENDPOINT_URL`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` | no (local only) | The repo-root `docker-compose.yml` sets these to point the worker at LocalStack-emulated ECS — see `src/local-env-file.ts` and `.env.example` |
+| `TEMPORAL_HOST`, `TEMPORAL_NAMESPACE`, `TEMPORAL_TASK_QUEUE` | yes | The Temporal server and namespace to poll, and the queue `webhook-listener` starts workflows on |
+| `TEMPORAL_API_KEY` | no | For a namespace that requires one, such as Temporal Cloud. A local dev server has no namespace auth |
+| `TEMPORAL_TLS` | no | Defaults on. Only the literal `false` turns it off, for a local dev server |
+| `GITHUB_TOKEN`, `LINEAR_AGENT_API_KEY` | yes | Used directly by the activities (branches, PRs, tracker reads and writes) |
+| `REVIEWER_EMAIL_TO_GITHUB_LOGIN` | no | Reviewer-of-record's static Linear-email -> GitHub-login table, JSON object string. Unset or missing an entry skips the reviewer request for that dispatch; it does not affect revision rounds — see `activities/request-pull-request-reviewer.ts` |
+| `LINEAR_API_URL` | no | Default `https://api.linear.app/graphql` |
+| `LOG_LEVEL` | no | Default `info`. Also passed down to the specialist container |
 
-The worker's task role carries the `ecs:RunTask`/`ecs:DescribeTasks`/
-`iam:PassRole` permission it needs to dispatch against `specialist-sandbox`
-(see `constructs/temporal-worker-service.ts`'s `dispatchTarget` config).
+The Docker launcher's own variables (`worker.ts` only — a custom entry file
+configures its launcher however it likes):
+
+| Var | Required? | Meaning |
+|---|---|---|
+| `SPECIALIST_IMAGE` | yes | Image each dispatch runs. Pulled once if the engine does not have it |
+| `SPECIALIST_FORWARD_ENV` | no | Comma-separated names of this worker's own variables every specialist also gets — typically `ANTHROPIC_API_KEY,GITHUB_TOKEN,LINEAR_AGENT_API_KEY,FRAMEWORK_REPO,FRAMEWORK_REF,CLAUDE_MODEL,CLAUDE_EFFORT`. A named variable that is unset stops the worker at startup |
+| `DOCKER_SOCKET_PATH` | no | Default `/var/run/docker.sock` |
+| `SPECIALIST_DOCKER_NETWORK` | no | A user-defined network to attach each specialist to. Default: the engine's default bridge |
+
+## Specialist launcher
+
+The framework assumes nothing about where a specialist container runs.
+`src/launchers/specialist-launcher.ts` is the whole contract: `launch` starts
+one container with the dispatch's environment and returns an opaque handle,
+and `describe` says whether the container behind a handle has stopped. The
+workflow only ever carries the handle, so it never changes with the launcher.
+
+`src/worker.ts` runs the worker with the Docker launcher
+(`src/launchers/docker-launcher.ts`), which talks to the Docker Engine API over
+its socket. It labels each container `itp.role=specialist` and
+`itp.story=<id>`, and leaves exited containers in place, since `docker logs`
+is the only record of a run that never reached the tracker. Clear them with
+`docker container prune --filter label=itp.role=specialist`.
+
+Mounting the engine socket into the worker gives it root-equivalent access to
+that host. Run it where that is acceptable.
+
+To run specialists somewhere else — a cloud container service, a Kubernetes
+Job — write a `SpecialistLauncher` for that platform and an entry file that
+builds it and calls `runWorker(config, launcher)` from `src/run-worker.ts`.
+Build an image `FROM` the published dispatch-worker image that adds those two
+files and points `CMD` at the new entry file. Every activity and the workflow
+stay exactly as published.
 
 ## Reviewer-of-record
 
@@ -337,11 +363,11 @@ Temporal's default retry policy is generous (up to 100 attempts), and
 retrying a config problem would just re-fetch and re-post the same failure on
 every attempt. The short activities also get a domain-specific
 `retry: { maximumAttempts: 3 }` in the workflow's `proxyActivities` call, so
-a persistent failure against Linear/GitHub/AWS surfaces as a failed workflow
+a persistent failure against Linear, GitHub or the launcher surfaces as a failed workflow
 rather than hammering those APIs for hours. `awaitPullRequestOutcome` gets
 its own, much longer `startToCloseTimeout` (14 days, vs.
 `awaitSpecialistTask`'s 4 hours) — a PR can sit unreviewed for days in a way
-an ECS task never sits unfinished.
+a specialist run never sits unfinished.
 
 ## Working with it
 
@@ -351,18 +377,22 @@ npm run typecheck
 npm run test:unit
 ```
 
+The Docker launcher also has an opt-in test against a real engine, which
+pulls `busybox:1.36` and runs two short-lived containers:
+
+```bash
+ITP_DOCKER_TESTS=1 npx vitest run src/launchers/docker-launcher.integration.test.ts
+```
+
 ```bash
 npm run build:bundle       # writes dist/workflow-bundle.js
 docker build -f Dockerfile .
 ```
 
-No live workflow execution against real Temporal Cloud is possible from
-this repo alone — that needs real credentials and a real story/epic/branch
-chain against live tracker and GitHub state. The workflow tests above are
-real Temporal execution, just against a local test server and mocked
-activities. A real (if local) end-to-end run — this worker, a local
-Temporal server, and a real `ecs:RunTask` call against LocalStack that
-actually launches a `specialist-runner` container — is possible via the
-repo-root `docker-compose.yml`; see
+The workflow tests above are real Temporal execution, just against a local
+test server and mocked activities. A real end-to-end run — this worker, a
+local Temporal server, and a real `specialist-runner` container launched on
+your Docker engine against a real story — is the repo-root
+`docker-compose.yml`; see
 [`docs/local-development.pdf`](../docs/local-development.pdf) (source:
 [`docs/source/local-development.md`](../docs/source/local-development.md)).

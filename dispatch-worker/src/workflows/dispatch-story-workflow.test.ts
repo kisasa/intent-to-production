@@ -74,7 +74,7 @@ function happyPathUpToPullRequest(dispatches?: DispatchRecord[]) {
     createStoryBranch: async () => {},
     dispatchSpecialist: async (input: DispatchRecord) => {
       dispatches?.push(input);
-      return "arn:aws:ecs:us-east-1:123:task/example-specialist-prod/abc123";
+      return "specialist-container-abc123";
     },
     postSpecialistStarted: async () => "comment-1",
     awaitSpecialistTask: async () => {},
@@ -148,7 +148,7 @@ describe("dispatchStoryWorkflow", () => {
         checkDependencies: async () => ({ ready: true, blockedBy: [] }),
         resolveSurfaces: async () => TARGET,
         createStoryBranch: async () => {},
-        dispatchSpecialist: async () => "arn:aws:ecs:us-east-1:123:task/example-specialist-prod/abc123",
+        dispatchSpecialist: async () => "specialist-container-abc123",
         postSpecialistStarted: async () => "comment-1",
         awaitSpecialistTask: async () => {},
         deleteSpecialistProgressComment: async () => {},
@@ -199,7 +199,7 @@ describe("dispatchStoryWorkflow", () => {
         },
         dispatchSpecialist: async () => {
           calls.push("dispatchSpecialist");
-          return "arn:aws:ecs:us-east-1:123:task/example-specialist-prod/abc123";
+          return "specialist-container-abc123";
         },
         postSpecialistStarted: async () => {
           calls.push("postSpecialistStarted");

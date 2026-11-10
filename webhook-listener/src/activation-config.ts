@@ -21,8 +21,7 @@ export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 const EFFORT_LEVELS: Effort[] = ["low", "medium", "high", "xhigh", "max"];
 
 /**
- * Infra-tunable per engagement — see infrastructure/models/listener-
- * configuration.ts and CLAUDE_EFFORT in webhook-listener/.env.example.
+ * Tunable per deployment — see CLAUDE_EFFORT in webhook-listener/.env.example.
  * Required rather than defaulted: an unset or invalid value fails the
  * container at startup rather than silently running some other effort.
  * Mirrors specialist-runner/src/claude-config.ts's own validation.

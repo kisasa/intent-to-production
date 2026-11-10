@@ -2,12 +2,12 @@
 
 Runs **the Specialist** — one generic developer definition
 (`agents/specialist.md`) — against one story, in whichever surface(s) that
-story is labelled with, inside the `specialist-sandbox` ECS task
-[`infrastructure/`](../infrastructure) registers. The automated replacement
+story is labelled with, in a one-shot container that `dispatch-worker`'s
+launcher starts per dispatch. The automated replacement
 for the human half of
 [`docs/development-tier-dispatch.pdf`](../docs/development-tier-dispatch.pdf) —
 same specialist definition, same MCP-driven orientation and hand-back, just
-triggered by a `RunTask` call instead of a developer pasting a prompt into
+triggered by a dispatch instead of a developer pasting a prompt into
 Claude Code.
 
 What the specialist may write in is set by `SURFACES`, a comma-separated
@@ -18,8 +18,9 @@ patterns, test levels — is that surface's own `CONVENTIONS.md`, not this
 package's concern.
 
 **This doesn't execute the integration or E2E tests it writes.** The
-specialist writes tests and opens a PR; Fargate can't run a privileged
-docker-compose stack, so a running-stack suite can't execute here. The
+specialist writes tests and opens a PR; this container is not assumed to be
+able to run a privileged docker-compose stack, so a running-stack suite can't
+execute here. The
 decided design has a GitHub Actions workflow, triggered by the epic's own PR
 into the BRD branch, stand up docker-compose and run them. That workflow is
 deliberately parked: humans stand the BRD branch up after each epic's stories
@@ -65,31 +66,30 @@ and frontend are separate GitHub repos that both need checking out.
 
 `src/dispatch-context.ts` validates all of these at startup and fails fast
 naming whatever's missing. Most come from `dispatch-worker/src/activities/
-dispatch-specialist.ts`'s per-dispatch `RunTask` container overrides;
-`FRAMEWORK_REPO`/`FRAMEWORK_REF` don't — they're baked into the specialist
-sandbox's own task definition instead (`infrastructure/stacks/
-specialist-sandbox.ts`, from `specialist-sandbox.framework-repo`/
-`.framework-ref` in `cdktf.json`), since which agents/skills repo and ref a
+dispatch-specialist.ts`'s per-dispatch environment; `FRAMEWORK_REPO`/
+`FRAMEWORK_REF` don't — the launcher supplies them from its own configuration
+(the Docker launcher forwards `dispatch-worker`'s own values through
+`SPECIALIST_FORWARD_ENV`), since which agents/skills repo and ref a
 specialist run uses is a deployment-level setting, not something that varies
 per story:
 
 | Var | Required | Meaning | Set by |
 |---|---|---|---|
-| `STORY_ID`, `STORY_TITLE` | yes | The story | `dispatch-specialist.ts` (`RunTask` override) |
-| `EPIC_ID` | yes | Parent epic | `dispatch-specialist.ts` (`RunTask` override) |
-| `SURFACES` | yes | Comma-separated `surface:<name>` label(s) the story carries, e.g. `backend` or `web,e2e` | `dispatch-specialist.ts` (`RunTask` override) |
-| `SURFACE_REPO` | yes | `org/name` on GitHub — the one repo this run writes to | `dispatch-specialist.ts` (`RunTask` override) |
-| `SURFACE_PATHS` | no | Comma-separated directory per surface, same order as `SURFACES` (`/` for the root), from the surface registry. Defaults to `/` for each | `dispatch-specialist.ts` (`RunTask` override) |
-| `SURFACE_SKILLS` | no | Comma-separated mandatory skills from the registry; resolved surface-repo `.claude/skills/` first, then the framework catalog, and inlined into the system prompt. A name that resolves nowhere fails the run before it starts | `dispatch-specialist.ts` (`RunTask` override) |
-| `STORY_BRANCH`, `EPIC_BRANCH` | yes | Branch names the tracker already assigned | `dispatch-specialist.ts` (`RunTask` override) |
-| `MAX_TURNS` | yes | Hard cap on Agent SDK turns — a session doesn't time out on its own. A first build gets `webhook-listener`'s `resolveMaxTurns` budget; a revision round gets a fixed 25 | `dispatch-specialist.ts` (`RunTask` override) |
-| `REVISION_ROUND`, `REVISION_ROUND_CAP`, `PULL_REQUEST_NUMBER`, `REVIEW_ID` | revision rounds only | Set together or not at all; a partial set fails at startup. Their presence is the only thing that makes a run a revision round rather than a first build | `dispatch-specialist.ts` (`RunTask` override) |
-| `FRAMEWORK_REPO` | yes | `org/name` on GitHub for the framework (agents/skills) repo | `specialist-sandbox.ts` (task definition) |
-| `FRAMEWORK_REF` | yes | Git ref of the framework repo to clone | `specialist-sandbox.ts` (task definition) |
+| `STORY_ID`, `STORY_TITLE` | yes | The story | `dispatch-specialist.ts` (per dispatch) |
+| `EPIC_ID` | yes | Parent epic | `dispatch-specialist.ts` (per dispatch) |
+| `SURFACES` | yes | Comma-separated `surface:<name>` label(s) the story carries, e.g. `backend` or `web,e2e` | `dispatch-specialist.ts` (per dispatch) |
+| `SURFACE_REPO` | yes | `org/name` on GitHub — the one repo this run writes to | `dispatch-specialist.ts` (per dispatch) |
+| `SURFACE_PATHS` | no | Comma-separated directory per surface, same order as `SURFACES` (`/` for the root), from the surface registry. Defaults to `/` for each | `dispatch-specialist.ts` (per dispatch) |
+| `SURFACE_SKILLS` | no | Comma-separated mandatory skills from the registry; resolved surface-repo `.claude/skills/` first, then the framework catalog, and inlined into the system prompt. A name that resolves nowhere fails the run before it starts | `dispatch-specialist.ts` (per dispatch) |
+| `STORY_BRANCH`, `EPIC_BRANCH` | yes | Branch names the tracker already assigned | `dispatch-specialist.ts` (per dispatch) |
+| `MAX_TURNS` | yes | Hard cap on Agent SDK turns — a session doesn't time out on its own. A first build gets `webhook-listener`'s `resolveMaxTurns` budget; a revision round gets a fixed 25 | `dispatch-specialist.ts` (per dispatch) |
+| `REVISION_ROUND`, `REVISION_ROUND_CAP`, `PULL_REQUEST_NUMBER`, `REVIEW_ID` | revision rounds only | Set together or not at all; a partial set fails at startup. Their presence is the only thing that makes a run a revision round rather than a first build | `dispatch-specialist.ts` (per dispatch) |
+| `FRAMEWORK_REPO` | yes | `org/name` on GitHub for the framework (agents/skills) repo | the launcher's configuration |
+| `FRAMEWORK_REF` | yes | Git ref of the framework repo to clone | the launcher's configuration |
 
-Plus the secrets every container in this project reads the same way (SSM,
-injected by the ECS agent — see `infrastructure/README.md`):
-`ANTHROPIC_API_KEY`, `LINEAR_AGENT_API_KEY`, `GITHUB_TOKEN`. Optional URL
+Plus, from the launcher's configuration the same way, the credentials
+`ANTHROPIC_API_KEY`, `LINEAR_AGENT_API_KEY` and `GITHUB_TOKEN`, and the model
+`CLAUDE_MODEL` and `CLAUDE_EFFORT` (both required, no default). Optional URL
 overrides: `LINEAR_MCP_URL`, `GITHUB_MCP_URL`, `LINEAR_API_URL` (used by the
 fallback-comment path and the evidence download). `WORKSPACE_ROOT` (default
 `/workspace`) sets where the two repos are cloned.
@@ -113,8 +113,7 @@ packages share no library.
 `LOG_LEVEL` is set too, but it isn't part of `dispatch-context.ts`'s own
 contract above — `src/logger.ts` reads it independently, same as every other
 package's logger. `dispatch-specialist.ts` propagates `dispatch-worker`'s own
-configured `LOG_LEVEL` (docker-compose locally, the ECS task definition in
-prod) down as a container override on every dispatch, so this runner's
+configured `LOG_LEVEL` down in the environment of every dispatch, so this runner's
 verbosity follows the worker that launched it without a second setting to
 keep in sync.
 
@@ -203,8 +202,8 @@ resulting lock files committed — a change in that repository, not this one.
   because the surfaces in front of this framework use them. A surface built on
   anything else needs the image extended; the two build args cover a version
   change, not a new ecosystem.
-- **No Docker, deliberately, and not coming.** Fargate offers no privileged
-  mode and no socket mount, which is why integration and E2E execution live in
+- **No Docker, deliberately, and not coming.** The specialist cannot assume
+  whatever launches it grants privileged mode or a socket mount, which is why integration and E2E execution live in
   GitHub Actions (design ledger, "Integration and E2E run in GitHub Actions").
   A criterion that needs a running stack cannot be closed in this sandbox at
   any toolchain level — it needs a CI check or a human at a terminal.

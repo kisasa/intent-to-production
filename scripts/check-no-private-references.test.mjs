@@ -86,6 +86,15 @@ test("allows SPDX licence identifiers in a generated lock file", () => {
   assert.ok(flags('      "resolved": "https://github.com/kisasa/private-pkg"', "dispatch-worker/package-lock.json"));
 });
 
+test("allows the project's own repository and image path, and nothing else under the org", () => {
+  assert.ok(!flags("image: ghcr.io/kisasa/intent-to-production/dispatch-worker:latest", "docker-compose.yml"));
+  assert.ok(!flags("FRAMEWORK_REPO: kisasa/intent-to-production", "docker-compose.yml"));
+  assert.ok(!flags("git clone https://github.com/kisasa/intent-to-production.git", "README.md"));
+  assert.ok(flags("image: ghcr.io/kisasa/itp-deployment/worker:1.0.0", "docker-compose.yml"));
+  assert.ok(flags("FRAMEWORK_REPO: kisasa/intent-to-production-fork", "docker-compose.yml"));
+  assert.ok(flags("https://github.com/kisasa/intent-to-productionx", "README.md"));
+});
+
 test("allows authorship credit in markdown, but not the same domain in code", () => {
   assert.ok(!flags("Built by [Kisasa](https://kisasa.io)", "README.md"));
   assert.ok(flags('const host = "kisasa.io";', "src/config.ts"));

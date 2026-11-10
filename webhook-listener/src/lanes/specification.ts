@@ -14,8 +14,7 @@ export const config: AgentLaneConfig = {
   skills: ["api-map-writing", "epic-writing", "tracker-writing"],
   codebaseAccess: true,
   attachmentScope: "epic",
-  // Infra-required per engagement, no code-level default — see
-  // infrastructure/models/listener-configuration.ts and
+  // Required per deployment, no code-level default — see
   // CLAUDE_MODEL_SPECIFICATION in webhook-listener/.env.example.
   model: requireEnv("CLAUDE_MODEL_SPECIFICATION"),
   templates: {

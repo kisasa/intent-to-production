@@ -5,11 +5,6 @@ const REQUIRED_VARS = {
   TEMPORAL_HOST: "prod.abcde.tmprl.cloud:7233",
   TEMPORAL_NAMESPACE: "prod.abcde",
   TEMPORAL_TASK_QUEUE: "dispatch-task-queue",
-  SPECIALIST_CLUSTER_ARN: "arn:aws:ecs:us-east-1:123:cluster/example-specialist-prod",
-  SPECIALIST_TASK_DEFINITION_ARN: "arn:aws:ecs:us-east-1:123:task-definition/specialist-prod:1",
-  SPECIALIST_CONTAINER_NAME: "specialist-prod",
-  SPECIALIST_SECURITY_GROUP_ID: "sg-0123456789abcdef0",
-  SPECIALIST_SUBNET_IDS: "subnet-aaa, subnet-bbb",
   GITHUB_TOKEN: "gh-token",
   LINEAR_AGENT_API_KEY: "linear-key",
 };
@@ -31,7 +26,7 @@ describe("loadWorkerConfig", () => {
     vi.unstubAllEnvs();
   });
 
-  it("loads a complete config, splitting and trimming subnet ids", () => {
+  it("loads a complete config", () => {
     stubAll({ TEMPORAL_API_KEY: "temporal-key" });
     expect(loadWorkerConfig()).toEqual({
       temporalHost: "prod.abcde.tmprl.cloud:7233",
@@ -39,11 +34,6 @@ describe("loadWorkerConfig", () => {
       temporalTaskQueue: "dispatch-task-queue",
       temporalApiKey: "temporal-key",
       temporalTls: true,
-      specialistClusterArn: "arn:aws:ecs:us-east-1:123:cluster/example-specialist-prod",
-      specialistTaskDefinitionArn: "arn:aws:ecs:us-east-1:123:task-definition/specialist-prod:1",
-      specialistContainerName: "specialist-prod",
-      specialistSecurityGroupId: "sg-0123456789abcdef0",
-      specialistSubnetIds: ["subnet-aaa", "subnet-bbb"],
       githubToken: "gh-token",
       linearAgentApiKey: "linear-key",
       reviewerEmailToGithubLogin: new Map(),
@@ -52,8 +42,8 @@ describe("loadWorkerConfig", () => {
   });
 
   it("throws naming the missing var", () => {
-    stubAll({ SPECIALIST_CLUSTER_ARN: undefined });
-    expect(() => loadWorkerConfig()).toThrow(/SPECIALIST_CLUSTER_ARN/);
+    stubAll({ GITHUB_TOKEN: undefined });
+    expect(() => loadWorkerConfig()).toThrow(/GITHUB_TOKEN/);
   });
 
   it("leaves temporalApiKey undefined when not set — a real state, not a missing-config error", () => {
