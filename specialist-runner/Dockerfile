@@ -39,9 +39,9 @@ RUN npx --yes playwright@latest install-deps chromium
 # check on your own green" was false, since there was no green to be
 # independent of.
 #
-# Docker is deliberately still absent and is not coming: Fargate offers no
-# privileged mode and no socket mount, which is why integration and E2E
-# execution live in GitHub Actions (design ledger, "Integration and E2E run in
+# Docker is deliberately still absent and is not coming: the specialist cannot
+# assume whatever launches it grants privileged mode or a socket mount, which
+# is why integration and E2E execution live in GitHub Actions (design ledger, "Integration and E2E run in
 # GitHub Actions"). These toolchains close the unit-test gap only.
 
 # curl is a build dependency of the .NET install below, and is kept rather
@@ -117,9 +117,10 @@ RUN npm ci
 COPY tsconfig.json ./
 COPY src ./src
 
-# The platform injects every env var below — most as an ECS RunTask override,
-# FRAMEWORK_REPO/FRAMEWORK_REF from the task definition itself instead — see
-# src/dispatch-context.ts for the required ones (no defaults; all of them fail
+# The launcher supplies every env var below — the per-dispatch ones from
+# dispatch-worker's dispatch-specialist.ts, the rest (credentials,
+# FRAMEWORK_REPO/FRAMEWORK_REF, the model) from the launcher's own
+# configuration — see src/dispatch-context.ts for the required ones (no defaults; all of them fail
 # fast if unset) and README.md for the full list. No .env file.
 #
 # NODE_ENV=development, deliberately not production despite matching
@@ -139,7 +140,7 @@ COPY src ./src
 ENV NODE_ENV=development
 
 # The commit this image was built from (src/build-info.ts), passed in by the
-# ECR workflow. Declared after the dependency install so a new commit does not
+# image build workflow. Declared after the dependency install so a new commit does not
 # invalidate that layer.
 ARG BUILD_COMMIT=unknown
 ENV BUILD_COMMIT=$BUILD_COMMIT

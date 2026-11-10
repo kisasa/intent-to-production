@@ -13,15 +13,28 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { MockActivityEnvironment } from "@temporalio/testing";
+import type { SpecialistStatus } from "../launchers/specialist-launcher.js";
 import { awaitSpecialistTask } from "./await-specialist-task.js";
 
-const TASK_ARN = "arn:aws:ecs:us-east-1:123:task/example-specialist-prod/abc123";
+const HANDLE = "specialist-container-abc123";
+
+const running = (detail: string): SpecialistStatus => ({ stopped: false, detail: detail });
+const STOPPED: SpecialistStatus = { stopped: true, detail: "exited (exit code 0)" };
+
+/** Answers each poll with the next status in order. */
+function inOrder(statuses: SpecialistStatus[]): () => Promise<SpecialistStatus> {
+  let call = 0;
+  return async () => {
+    const status = statuses[call++];
+    if (!status) throw new Error("polled past the last status");
+    return status;
+  };
+}
 
 describe("awaitSpecialistTask", () => {
-  it("polls until STOPPED, heartbeating every intermediate status", async () => {
-    const statuses = ["PROVISIONING", "RUNNING", "RUNNING", "STOPPED"];
-    let call = 0;
-    const describeTaskStatus = vi.fn(async () => statuses[call++]);
+  it("polls until stopped, heartbeating every intermediate status", async () => {
+    const statuses = [running("created"), running("running"), running("running"), STOPPED];
+    const describeSpecialist = vi.fn(inOrder(statuses));
 
     const env = new MockActivityEnvironment();
     const heartbeats: unknown[] = [];
@@ -31,80 +44,67 @@ describe("awaitSpecialistTask", () => {
     // doesn't time-skip activity-context sleep the way
     // TestWorkflowEnvironment.createTimeSkipping() does for workflow time),
     // so this keeps the test fast without changing what's being verified.
-    await env.run(awaitSpecialistTask, TASK_ARN, describeTaskStatus, null, 1);
+    await env.run(awaitSpecialistTask, HANDLE, describeSpecialist, null, 1);
 
-    expect(describeTaskStatus).toHaveBeenCalledTimes(4);
-    expect(describeTaskStatus).toHaveBeenNthCalledWith(1, TASK_ARN);
-    expect(heartbeats).toEqual(["PROVISIONING", "RUNNING", "RUNNING"]);
+    expect(describeSpecialist).toHaveBeenCalledTimes(4);
+    expect(describeSpecialist).toHaveBeenNthCalledWith(1, HANDLE);
+    expect(heartbeats).toEqual(["created", "running", "running"]);
   });
 
-  it("resolves without heartbeating when the task is already STOPPED", async () => {
-    const describeTaskStatus = vi.fn(async () => "STOPPED");
+  it("resolves without heartbeating when the container has already stopped", async () => {
+    const describeSpecialist = vi.fn(async () => STOPPED);
     const env = new MockActivityEnvironment();
     const heartbeats: unknown[] = [];
     env.on("heartbeat", (details: unknown) => heartbeats.push(details));
 
-    await env.run(awaitSpecialistTask, TASK_ARN, describeTaskStatus, null, 1);
+    await env.run(awaitSpecialistTask, HANDLE, describeSpecialist, null, 1);
 
-    expect(describeTaskStatus).toHaveBeenCalledTimes(1);
+    expect(describeSpecialist).toHaveBeenCalledTimes(1);
     expect(heartbeats).toEqual([]);
   });
 
-  it("heartbeats 'unknown' when ECS returns no status for the task", async () => {
-    const describeTaskStatus = vi.fn().mockResolvedValueOnce(undefined).mockResolvedValueOnce("STOPPED");
-    const env = new MockActivityEnvironment();
-    const heartbeats: unknown[] = [];
-    env.on("heartbeat", (details: unknown) => heartbeats.push(details));
-
-    await env.run(awaitSpecialistTask, TASK_ARN, describeTaskStatus, null, 1);
-
-    expect(heartbeats).toEqual(["unknown"]);
-  });
-
   it("rejects when the activity is cancelled mid-poll", async () => {
-    const describeTaskStatus = vi.fn(async () => "RUNNING");
+    const describeSpecialist = vi.fn(async () => running("running"));
     const env = new MockActivityEnvironment();
 
-    const runPromise = env.run(awaitSpecialistTask, TASK_ARN, describeTaskStatus, null, 50);
+    const runPromise = env.run(awaitSpecialistTask, HANDLE, describeSpecialist, null, 50);
     setTimeout(() => env.cancel(), 10);
 
     await expect(runPromise).rejects.toThrow();
   });
 
   it("never calls updateProgress when null — no progress comment to keep current", async () => {
-    const describeTaskStatus = vi.fn().mockResolvedValueOnce("RUNNING").mockResolvedValueOnce("STOPPED");
+    const describeSpecialist = vi.fn().mockResolvedValueOnce(running("running")).mockResolvedValueOnce(STOPPED);
     const env = new MockActivityEnvironment();
 
-    await env.run(awaitSpecialistTask, TASK_ARN, describeTaskStatus, null, 1, 1);
+    await env.run(awaitSpecialistTask, HANDLE, describeSpecialist, null, 1, 1);
 
-    expect(describeTaskStatus).toHaveBeenCalledTimes(2);
+    expect(describeSpecialist).toHaveBeenCalledTimes(2);
   });
 
   it("does not call updateProgress before the progress interval has elapsed", async () => {
-    const statuses = ["RUNNING", "RUNNING", "STOPPED"];
-    let call = 0;
-    const describeTaskStatus = vi.fn(async () => statuses[call++]);
+    const statuses = [running("running"), running("running"), STOPPED];
+    const describeSpecialist = vi.fn(inOrder(statuses));
     const updateProgress = vi.fn(async () => {});
     const env = new MockActivityEnvironment();
 
     // A progress interval far longer than this short run could possibly
     // take — confirms the check is a real elapsed-time gate, not "every poll."
-    await env.run(awaitSpecialistTask, TASK_ARN, describeTaskStatus, updateProgress, 1, 60_000);
+    await env.run(awaitSpecialistTask, HANDLE, describeSpecialist, updateProgress, 1, 60_000);
 
     expect(updateProgress).not.toHaveBeenCalled();
   });
 
   it("calls updateProgress once the progress interval has elapsed", async () => {
-    const statuses = Array(10).fill("RUNNING").concat("STOPPED");
-    let call = 0;
-    const describeTaskStatus = vi.fn(async () => statuses[call++]);
+    const statuses: SpecialistStatus[] = [...Array<SpecialistStatus>(10).fill(running("running")), STOPPED];
+    const describeSpecialist = vi.fn(inOrder(statuses));
     const updateProgress = vi.fn(async () => {});
     const env = new MockActivityEnvironment();
 
     // pollIntervalMs=15 against a 1ms progress interval — real wall-clock
     // time elapses between polls (see the first test's own note), so by the
     // second poll the progress interval has certainly elapsed.
-    await env.run(awaitSpecialistTask, TASK_ARN, describeTaskStatus, updateProgress, 15, 1);
+    await env.run(awaitSpecialistTask, HANDLE, describeSpecialist, updateProgress, 15, 1);
 
     expect(updateProgress).toHaveBeenCalled();
   });

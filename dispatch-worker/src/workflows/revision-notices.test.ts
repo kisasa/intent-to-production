@@ -64,9 +64,9 @@ describe("revision notices", () => {
   });
 
   it("carries the real cause into a failed round and says nothing further will run", () => {
-    const body = revisionRoundFailedNotice(2, 3, "RunTask failed to start the specialist: no container instances");
+    const body = revisionRoundFailedNotice(2, 3, "Docker could not create the specialist container: 500 no space left on device");
     expect(body).toContain("Revision round 2 of 3 failed");
-    expect(body).toContain("no container instances");
+    expect(body).toContain("no space left on device");
     expect(body).toContain("moved back to Todo");
   });
 });

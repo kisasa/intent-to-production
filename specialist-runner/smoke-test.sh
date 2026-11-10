@@ -71,7 +71,7 @@ expect_contains "git present"                   'git --version' 'git version'
 expect_contains "curl present"                  'curl --version' 'curl '
 
 echo
-echo "Docker stays absent (Fargate offers no privileged mode; see README)"
+echo "Docker stays absent (no launcher is assumed to grant privileged mode; see README)"
 expect_status "docker is not installed" 'command -v docker' 'fails'
 
 echo

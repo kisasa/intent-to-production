@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { buildContainerOverrides } from "./dispatch-specialist.js";
+import { buildSpecialistEnvironment } from "./dispatch-specialist.js";
 
-describe("buildContainerOverrides", () => {
+describe("buildSpecialistEnvironment", () => {
   it("matches specialist-runner's dispatch-context.ts contract exactly, plus a propagated LOG_LEVEL", () => {
-    const overrides = buildContainerOverrides(
+    const environment = buildSpecialistEnvironment(
       {
         storyId: "PROJ-101",
         storyTitle: "Add refund endpoint",
@@ -19,7 +19,7 @@ describe("buildContainerOverrides", () => {
       "debug",
     );
 
-    expect(overrides).toEqual([
+    expect(environment).toEqual([
       { name: "STORY_ID", value: "PROJ-101" },
       { name: "STORY_TITLE", value: "Add refund endpoint" },
       { name: "EPIC_ID", value: "PROJ-10" },
@@ -35,7 +35,7 @@ describe("buildContainerOverrides", () => {
   });
 
   it("comma-joins more than one surface", () => {
-    const overrides = buildContainerOverrides(
+    const environment = buildSpecialistEnvironment(
       {
         storyId: "PROJ-101",
         storyTitle: "Add refund flow",
@@ -51,6 +51,6 @@ describe("buildContainerOverrides", () => {
       "info",
     );
 
-    expect(overrides).toContainEqual({ name: "SURFACES", value: "web,e2e" });
+    expect(environment).toContainEqual({ name: "SURFACES", value: "web,e2e" });
   });
 });

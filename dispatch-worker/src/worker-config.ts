@@ -1,12 +1,11 @@
 /**
- * Everything this worker process needs at startup, read once. All of it flows
- * from `infrastructure/stacks/temporal-workers.ts`'s container environment:
- * the Temporal connection vars (TEMPORAL_HOST, TEMPORAL_NAMESPACE,
- * TEMPORAL_TASK_QUEUE, TEMPORAL_API_KEY) and the specialist-sandbox
- * dispatch-target vars (SPECIALIST_*, wired from `specialist-sandbox-stack-
- * output.ts`'s clusterArn/taskDefinitionArn/securityGroupId plus `network`'s
- * publicSubnetIds). This worker fails fast at startup naming whichever var is
- * missing, rather than partway through a dispatch.
+ * Everything this worker process needs at startup that is not about how a
+ * specialist container is run, read once: the Temporal connection, the
+ * GitHub and Linear credentials its activities call with, and the
+ * reviewer-of-record table. How the specialist is launched is the
+ * launcher's own configuration (`launchers/`), so this holds nothing
+ * platform-specific. Fails fast at startup naming whichever var is missing,
+ * rather than partway through a dispatch.
  */
 
 import { envOr } from "./env.js";
@@ -72,22 +71,6 @@ export interface WorkerConfig {
    */
   readonly temporalTls: boolean;
 
-  /** ARN of the specialist-sandbox ECS cluster to RunTask against. */
-  readonly specialistClusterArn: string;
-  /** ARN of the specialist-sandbox task definition (family or full ARN). */
-  readonly specialistTaskDefinitionArn: string;
-
-  /**
-   * The container name inside that task definition — `specialist-task.ts`
-   * names it `specialist-${environmentName}` (e.g. `specialist-prod`), a
-   * deployment-specific value RunTask's container overrides must match
-   * exactly, so it's config here rather than a guessed constant.
-   */
-  readonly specialistContainerName: string;
-  readonly specialistSecurityGroupId: string;
-  /** Comma-separated subnet ids — the network stack's public subnets. */
-  readonly specialistSubnetIds: string[];
-
   readonly githubToken: string;
   readonly linearAgentApiKey: string;
 
@@ -97,10 +80,9 @@ export interface WorkerConfig {
   /**
    * This process's own log level (`logger.ts` already reads `LOG_LEVEL`
    * directly for its own logging) — surfaced here too so
-   * `dispatch-specialist.ts` can pass it through as a RunTask container
-   * override, propagating whatever this worker was configured with down to
-   * the specialist container it launches, rather than the specialist
-   * needing its own separate `LOG_LEVEL` wired in. Defaults to "info",
+   * `dispatch-specialist.ts` can pass it into the specialist's environment,
+   * rather than the specialist needing its own separate `LOG_LEVEL` wired
+   * in. Defaults to "info",
    * matching every other logger in this codebase.
    */
   readonly logLevel: string;
@@ -113,15 +95,6 @@ export function loadWorkerConfig(): WorkerConfig {
     temporalTaskQueue: requireEnv("TEMPORAL_TASK_QUEUE"),
     temporalApiKey: process.env.TEMPORAL_API_KEY || undefined,
     temporalTls: process.env.TEMPORAL_TLS !== "false",
-
-    specialistClusterArn: requireEnv("SPECIALIST_CLUSTER_ARN"),
-    specialistTaskDefinitionArn: requireEnv("SPECIALIST_TASK_DEFINITION_ARN"),
-    specialistContainerName: requireEnv("SPECIALIST_CONTAINER_NAME"),
-    specialistSecurityGroupId: requireEnv("SPECIALIST_SECURITY_GROUP_ID"),
-    specialistSubnetIds: requireEnv("SPECIALIST_SUBNET_IDS")
-      .split(",")
-      .map((id) => id.trim())
-      .filter((id) => id.length > 0),
 
     githubToken: requireEnv("GITHUB_TOKEN"),
     linearAgentApiKey: requireEnv("LINEAR_AGENT_API_KEY"),

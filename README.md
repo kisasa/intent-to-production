@@ -70,9 +70,9 @@ them, is in the design ledger.
 | `skills/` | Team-forked templates the agents load: what a well-formed requirements doc, epic, API map, and story look like, the house prose standard, and the architect's conventions interview. |
 | `desktop-skills/` | Skills a developer runs in their own Claude session for work that enters outside the normal path — an ad-hoc story or epic. |
 | `webhook-listener/` | The app that receives tracker webhooks, routes on labels and status, and wakes the shaping agents. |
-| `dispatch-worker/` | The Temporal worker that turns a story's status move into a specialist run: dependency check, branch, sandbox dispatch, PR watch. |
-| `specialist-runner/` | The program that runs inside the specialist sandbox — a Claude Agent SDK session against a cloned surface repo. |
-| `infrastructure/` | CDK Terrain stacks for the listener, the sandbox, and the Temporal workers. |
+| `dispatch-worker/` | The Temporal worker that turns a story's status move into a specialist run: dependency check, branch, container launch, PR watch. |
+| `specialist-runner/` | The program each specialist container runs — a Claude Agent SDK session against a cloned surface repo. |
+| `docker-compose.yml` | The whole pipeline on one machine: the listener, the worker, a local Temporal server, and specialist containers on your Docker engine. |
 | `docs/local-development.pdf` | Bringing the whole thing up locally. |
 | `docs/development-tier-dispatch.pdf` | The manual fallback for dispatching a specialist without the app. |
 | `docs/source/` | The Markdown the PDFs above are rendered from — edit here, then run `scripts/build-docs-pdf.py`. |

@@ -13,8 +13,8 @@ export function envOr(name: string, fallback: string): string {
 
 /**
  * The required counterpart to envOr, for values with no code-level default —
- * an infra-supplied setting (e.g. the model/effort baked into the specialist-
- * sandbox task definition) where guessing a fallback would silently mask a
+ * a deployment-supplied setting (e.g. the model/effort the launcher passes
+ * in) where guessing a fallback would silently mask a
  * missing deployment config. Same module-load-only convention as envOr.
  */
 export function requireEnv(name: string): string {

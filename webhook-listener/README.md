@@ -83,13 +83,16 @@ updates subscription off.
 
 ## Run it locally
 
-For the deployed environment — an always-on Fargate service behind a load
-balancer, with env vars sourced from SSM — see
-[infrastructure/](../infrastructure/README.md). Everything below is local.
+However you deploy it, run **exactly one instance**, always on. The
+scheduler's dedupe set and debounce timers live in process memory
+(`agent-scheduler.ts`), so a second instance would split that state and fire
+agents twice. An activation also keeps running for up to 30 minutes after the
+webhook's HTTP response has returned, which rules out platforms that freeze or
+stop a process once its request is answered. Everything below is local.
 
-To run this service alongside `dispatch-worker`, a local Temporal server,
-and a LocalStack-emulated ECS — the whole dispatch loop, not just this one
-service — see [`docs/local-development.pdf`](../docs/local-development.pdf)
+To run this service alongside `dispatch-worker`, a local Temporal server, and
+real specialist containers on your Docker engine — the whole dispatch loop,
+not just this one service — see [`docs/local-development.pdf`](../docs/local-development.pdf)
 instead (source: [`docs/source/local-development.md`](../docs/source/local-development.md)).
 What follows here is this service in isolation.
 
@@ -157,7 +160,7 @@ where the id that survives is whichever reply last reset the timer. Set
 one request's entire path through the system.
 
 **Which build is running.** The image carries the commit it was built from
-(`BUILD_COMMIT`, set by the ECR workflow; `src/build-info.ts`). The startup
+(`BUILD_COMMIT`, set by the image build workflow; `src/build-info.ts`). The startup
 banner logs it, `GET /version` returns it, and every comment the listener
 posts on the tracker ends with it. After a deploy, check `/version` against
 the commit you meant to ship. A process started outside the image reports

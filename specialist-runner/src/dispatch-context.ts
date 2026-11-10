@@ -1,10 +1,8 @@
 /**
  * The contract between this runner and whatever dispatches it —
- * `dispatch-worker/src/activities/dispatch-specialist.ts` calls `ecs:RunTask`
- * with these as container overrides. Fails fast, naming the missing var,
- * rather than partway through a run — same discipline as
- * `infrastructure/models/context.ts`'s `requireX` helpers, just over env vars
- * instead of a JSON context tree.
+ * `dispatch-worker/src/activities/dispatch-specialist.ts` builds these as the
+ * container's environment, and the worker's launcher starts it. Fails fast,
+ * naming the missing var, rather than partway through a run.
  */
 
 // A surface is a place work happens — a repo, or a project inside one. The
@@ -78,7 +76,7 @@ export interface RevisionContext {
 function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
-    throw new Error(`Missing required env var ${name} — the dispatching worker must set this as a RunTask override`);
+    throw new Error(`Missing required env var ${name} — the dispatching worker must set this in the specialist's environment`);
   }
   return value;
 }

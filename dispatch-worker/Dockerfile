@@ -26,15 +26,14 @@ COPY scripts ./scripts
 RUN npm run build:bundle
 
 # The commit this image was built from (src/build-info.ts), passed in by the
-# ECR workflow. Declared after the dependency install so a new commit does not
+# image build workflow. Declared after the dependency install so a new commit does not
 # invalidate that layer.
 ARG BUILD_COMMIT=unknown
 ENV BUILD_COMMIT=$BUILD_COMMIT
 
-# The platform injects every env var below as this ECS service's container
-# environment — see src/worker-config.ts for the required ones and
-# README.md for the full list, including which are not yet wired into
-# infrastructure/stacks/temporal-workers.ts.
+# Every env var is supplied by whatever runs this container — see
+# src/worker-config.ts and src/launchers/docker-launcher.ts for the required
+# ones and README.md for the full list.
 ENV NODE_ENV=production
 
 RUN chown -R node:node /app

@@ -1,36 +1,27 @@
-# Local dev stack — see docs/local-development.pdf for the full bring-up
-# walkthrough, the cloudflared tunnel step, and named limitations.
+# The whole pipeline on one machine — see docs/local-development.md for the
+# walkthrough, the tunnel step, and named limitations.
 #
-# Every env var each service needs is listed explicitly below, right here —
-# one file to see the whole shape, rather than hunting across four scattered
-# .env files. Non-secret values (Temporal connection info for this stack,
-# AWS/LocalStack placeholder creds) are real, working defaults, set directly.
-# Secrets (Anthropic/GitHub/Linear keys, the LocalStack auth token) are left
-# empty here on purpose — this file is git-tracked. Copy
+# Every env var each service needs is listed explicitly below — one file to
+# see the whole shape. Non-secret values (the local Temporal connection, the
+# specialist image) are real, working defaults. Secrets (Anthropic, GitHub,
+# Linear) are left empty on purpose, since this file is tracked: copy
 # docker-compose.override.yml.example to docker-compose.override.yml
-# (gitignored, auto-merged by `docker compose` if present) and put your real
-# values there; Compose merges `environment:` maps key-by-key, so the
-# override only needs to name the keys it's actually setting.
+# (gitignored, merged automatically by `docker compose`) and put your real
+# values there. Compose merges `environment:` maps key by key, so the
+# override only names the keys it sets.
 #
-# Brings up this framework's own services (webhook-listener, dispatch-
-# worker) plus enough of Temporal and AWS to actually exercise the whole
-# dispatch loop:
-#   - temporal / temporal-ui / postgresql: standard local Temporal dev
-#     server (temporalio/auto-setup), not Temporal Cloud.
-#   - localstack / localstack-bootstrap: emulates just enough ECS for
-#     dispatch-worker's real ecs:RunTask/DescribeTasks calls to work,
-#     unmodified — dispatch-specialist.ts/await-specialist-task.ts need no
-#     code change, the installed AWS SDK already respects AWS_ENDPOINT_URL.
+# What runs:
+#   - postgresql / temporal / temporal-ui: a local Temporal server
+#     (temporalio/auto-setup).
+#   - webhook-listener: the shaping tier, receiving the tracker's webhooks.
+#   - dispatch-worker: the development tier's Temporal worker. It launches
+#     each specialist as its own container on this machine's Docker engine,
+#     through the mounted socket.
+#   - specialist-runner: only builds the image dispatch-worker launches.
 #
-# specialist-runner is deliberately NOT a service here — it's launched by
-# LocalStack's own Fargate emulation (via the local Docker engine) when
-# dispatch-worker calls RunTask, the same way ECS launches it in prod. Build
-# it once, by hand, before triggering a dispatch:
-#   docker build -f specialist-runner/Dockerfile -t specialist-runner:local specialist-runner
-#
-# Linear, GitHub, and Anthropic stay real and external — nothing here
-# emulates them. A cloudflared tunnel (or similar) is still how a real
-# Linear webhook reaches the composed webhook-listener.
+# Linear, GitHub and Anthropic stay real and external; nothing here emulates
+# them. A tunnel (cloudflared or similar) is how a real Linear webhook
+# reaches the composed webhook-listener.
 
 services:
   postgresql:
@@ -74,62 +65,16 @@ services:
     ports:
       - "8080:8080"
 
-  localstack:
-    image: localstack/localstack:latest
-    environment:
-      SERVICES: ec2,ecs
-      # Required as of LocalStack's 2026-03 licensing change — the free,
-      # separately-distributed Community image was discontinued; the single
-      # remaining image now requires an account + token even for the
-      # permanent free (non-commercial) tier. Sign up at
-      # https://app.localstack.cloud and set this in
-      # docker-compose.override.yml — there is no way around this from code.
-      LOCALSTACK_AUTH_TOKEN: ""
-    ports:
-      - "4566:4566"
-    volumes:
-      # LocalStack's own requirement for Fargate-via-local-Docker — not
-      # something dispatch-worker's container needs itself.
-      - /var/run/docker.sock:/var/run/docker.sock
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-
-  localstack-bootstrap:
-    image: amazon/aws-cli:latest
-    depends_on:
-      localstack:
-        condition: service_healthy
-    entrypoint: ["sh", "/bootstrap.sh"]
-    environment:
-      AWS_ENDPOINT_URL: http://localstack:4566
-      AWS_ACCESS_KEY_ID: test
-      AWS_SECRET_ACCESS_KEY: test
-      AWS_REGION: us-east-1
-      BOOTSTRAP_OUTPUT_FILE: /bootstrap-output/localstack.env
-      # The specialist's own credentials — baked into the task definition
-      # this script registers, mirroring what specialist-task.ts does in
-      # production via ECS `secrets`. Without them the launched container
-      # gets only dispatch-specialist.ts's per-story overrides and fails
-      # fast on the first missing one.
-      ANTHROPIC_API_KEY: ""
-      LINEAR_AGENT_API_KEY: ""
-      GITHUB_TOKEN: ""
-      # dispatch-context.ts requires both — no fallback. Placeholder here on
-      # purpose: the framework clone's coordinates are yours, not this file's.
-      # Set the real org/name in docker-compose.override.yml, the same way
-      # every credential above is set, and point FRAMEWORK_REF at a feature
-      # branch when testing framework changes locally.
-      FRAMEWORK_REPO: example-org/intent-to-production
-      FRAMEWORK_REF: main
-    volumes:
-      - ./scripts/localstack-bootstrap.sh:/bootstrap.sh:ro
-      # A host bind mount, not a named volume: env_file (below, on
-      # dispatch-worker) reads from the host filesystem at container-start
-      # time, not from inside another container's volume.
-      - ./local:/bootstrap-output
+  # Builds the specialist image and exits. Nothing runs the specialist as a
+  # compose service: dispatch-worker launches one container per dispatch,
+  # through the Docker engine, from this image. Listing it here is what makes
+  # `docker compose up --build` build it.
+  specialist-runner:
+    build:
+      context: ./specialist-runner
+    image: specialist-runner:local
+    entrypoint: ["true"]
+    restart: "no"
 
   webhook-listener:
     build:
@@ -179,28 +124,31 @@ services:
       # Reviewer-of-record's static email->GitHub-login table (JSON object
       # string). Optional — unset just skips requesting a reviewer.
       REVIEWER_EMAIL_TO_GITHUB_LOGIN: ""
-      # LocalStack, not real AWS — the installed AWS SDK respects
-      # AWS_ENDPOINT_URL natively, no code change needed for this.
-      AWS_ENDPOINT_URL: http://localstack:4566
-      AWS_ACCESS_KEY_ID: test
-      AWS_SECRET_ACCESS_KEY: test
-      AWS_REGION: us-east-1
-      # Read directly inside the container at process start
-      # (local-env-file.ts), not via an env var set here: docker-compose's
-      # own env resolution happens at container *creation* time, which is
-      # before localstack-bootstrap runs, so it can never see the
-      # SPECIALIST_* values that script writes (SPECIALIST_CLUSTER_ARN,
-      # SPECIALIST_TASK_DEFINITION_ARN, SPECIALIST_CONTAINER_NAME,
-      # SPECIALIST_SECURITY_GROUP_ID, SPECIALIST_SUBNET_IDS) within the
-      # same `docker compose up` — confirmed by hitting exactly this
-      # failure, not assumed.
-      LOCAL_ENV_FILE: /bootstrap-output/localstack.env
+      # The Docker launcher (src/launchers/docker-launcher.ts): which image
+      # to run per dispatch, and which of this service's own variables the
+      # specialist also gets. The per-dispatch variables (STORY_ID and the
+      # rest) are added by the worker itself.
+      SPECIALIST_IMAGE: specialist-runner:local
+      SPECIALIST_FORWARD_ENV: ANTHROPIC_API_KEY,GITHUB_TOKEN,LINEAR_AGENT_API_KEY,FRAMEWORK_REPO,FRAMEWORK_REF,CLAUDE_MODEL,CLAUDE_EFFORT
+      ANTHROPIC_API_KEY: ""
+      CLAUDE_MODEL: claude-opus-5-5
+      CLAUDE_EFFORT: high
+      # The framework clone the specialist reads its agent and skill files
+      # from. A placeholder on purpose: set your fork in
+      # docker-compose.override.yml, and point FRAMEWORK_REF at a branch when
+      # testing framework changes.
+      FRAMEWORK_REPO: example-org/intent-to-production
+      FRAMEWORK_REF: main
+    # Root, because the engine socket is owned by root on most hosts and the
+    # image's own user cannot open it. Access to that socket is root on the
+    # host either way, so this widens nothing that mounting it had not already.
+    user: root
     volumes:
-      - ./local:/bootstrap-output:ro
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       temporal:
         condition: service_started
-      localstack-bootstrap:
+      specialist-runner:
         condition: service_completed_successfully
 
 volumes:

@@ -1,22 +1,18 @@
 /**
- * Calls `ecs:RunTask` against the specialist-sandbox task definition — the
- * caller that infra piece was built without ("nothing calls it yet"). The
- * story-derived container overrides mirror `specialist-runner/src/dispatch-
- * context.ts`'s documented contract exactly: whatever this activity doesn't
- * set, that runner will fail fast on at startup, naming the missing var.
- * `SURFACES` carries every surface label the story carries, comma-joined —
- * the specialist itself is one generic definition now (`agents/
- * specialist.md`), so what it needs to know is which surface(s) it may
- * write in, not a type name selecting which file to load. `LOG_LEVEL` is the
- * one override outside that contract — dispatch-context.ts never requires
- * it, but propagating this worker's own configured level down means the
- * specialist's verbosity follows wherever this worker's `LOG_LEVEL` is set
- * (docker-compose, the ECS task definition, ...) without a second setting to
- * keep in sync.
+ * Starts the specialist for one story through whichever launcher this worker
+ * was built with (`launchers/specialist-launcher.ts`). The per-dispatch
+ * environment mirrors `specialist-runner/src/dispatch-context.ts`'s
+ * documented contract exactly: whatever this activity doesn't set, that
+ * runner fails fast on at startup, naming the missing var. `SURFACES`
+ * carries every surface label the story carries, comma-joined — the
+ * specialist itself is one generic definition (`agents/specialist.md`), so
+ * what it needs to know is which surface(s) it may write in. `LOG_LEVEL` is
+ * the one variable outside that contract: propagating this worker's own
+ * level means the specialist's verbosity follows wherever the worker's is
+ * set, without a second setting to keep in sync.
  */
 
-import { ECSClient, RunTaskCommand } from "@aws-sdk/client-ecs";
-import type { WorkerConfig } from "../worker-config.js";
+import type { SpecialistEnvVar, SpecialistLauncher } from "../launchers/specialist-launcher.js";
 import type { RepoBase } from "./resolve-surfaces.js";
 import type { Surface } from "./types.js";
 
@@ -52,22 +48,16 @@ export interface RevisionAssignment {
   readonly reviewId: number;
 }
 
-export function buildContainerOverrides(input: DispatchSpecialistInput, logLevel: string) {
+export function buildSpecialistEnvironment(input: DispatchSpecialistInput, logLevel: string): SpecialistEnvVar[] {
   // Names match specialist-runner/src/dispatch-context.ts's required vars
   // exactly — SURFACE_REPO is "org/name", not the full repoBase (the
   // specialist clones over HTTPS with its own GITHUB_TOKEN; it doesn't need
-  // the host or ref, which only this activity and its own FRAMEWORK_REF
-  // default care about). LOG_LEVEL isn't part of that required contract —
-  // specialist-runner's own logger.ts reads it independently, same as this
-  // worker's own — but propagating this worker's configured level down
-  // means the specialist's verbosity follows dispatch-worker's own
-  // LOG_LEVEL without a second, separately-maintained setting.
-  // Revision vars are appended only on a revision round, so a first build's
+  // the host or ref). Revision vars are appended only on a revision round, so a first build's
   // environment is byte-identical to what it was before revisions existed —
   // the runner treats their absence as "this is a fresh build", which is the
   // one signal distinguishing the two modes.
   const revision = input.revision;
-  const revisionOverrides = revision
+  const revisionEnvironment: SpecialistEnvVar[] = revision
     ? [
         { name: "REVISION_ROUND", value: String(revision.round) },
         { name: "REVISION_ROUND_CAP", value: String(revision.roundCap) },
@@ -77,7 +67,7 @@ export function buildContainerOverrides(input: DispatchSpecialistInput, logLevel
     : [];
 
   return [
-    ...revisionOverrides,
+    ...revisionEnvironment,
     { name: "STORY_ID", value: input.storyId },
     { name: "STORY_TITLE", value: input.storyTitle },
     { name: "EPIC_ID", value: input.epicId },
@@ -92,44 +82,8 @@ export function buildContainerOverrides(input: DispatchSpecialistInput, logLevel
   ];
 }
 
-export function createDispatchSpecialistActivity(config: WorkerConfig) {
-  const client = new ECSClient({});
-
+export function createDispatchSpecialistActivity(launcher: SpecialistLauncher, logLevel: string) {
   return async function dispatchSpecialist(input: DispatchSpecialistInput): Promise<string> {
-    const result = await client.send(
-      new RunTaskCommand({
-        cluster: config.specialistClusterArn,
-        taskDefinition: config.specialistTaskDefinitionArn,
-        launchType: "FARGATE",
-        count: 1,
-        networkConfiguration: {
-          awsvpcConfiguration: {
-            subnets: config.specialistSubnetIds,
-            securityGroups: [config.specialistSecurityGroupId],
-            assignPublicIp: "ENABLED",
-          },
-        },
-        overrides: {
-          containerOverrides: [
-            {
-              name: config.specialistContainerName,
-              environment: buildContainerOverrides(input, config.logLevel),
-            },
-          ],
-        },
-      }),
-    );
-
-    const failure = result.failures?.[0];
-    if (failure) {
-      throw new Error(`RunTask failed to start the specialist: ${failure.reason ?? "unknown reason"}`);
-    }
-
-    const taskArn = result.tasks?.[0]?.taskArn;
-    if (!taskArn) {
-      throw new Error("RunTask returned no task and no failure — unexpected ECS response shape");
-    }
-
-    return taskArn;
+    return launcher.launch({ storyId: input.storyId, environment: buildSpecialistEnvironment(input, logLevel) });
   };
 }

@@ -6,8 +6,7 @@ export default defineConfig({
     include: ["src/**/*.test.ts"],
 
     // activation-config.ts requires CLAUDE_EFFORT at module load (see
-    // env.ts's requireEnv) — real deployments get it from infra
-    // (infrastructure/models/listener-configuration.ts), but
+    // env.ts's requireEnv) — a real deployment sets it, but
     // activation-runner.test.ts imports that module transitively just by
     // importing activation-runner.ts. This is test-fixture wiring, not a
     // code-level default — the source has none.

@@ -15,8 +15,8 @@
  * already fetching this exact PR every couple of minutes, so it costs one
  * more request on a call that is going out anyway; and GitHub does not
  * automatically redeliver a failed webhook, while the listener is a
- * single Fargate task whose deploys stop the old one before starting the new
- * one. A review submitted during a deploy would be dropped silently, which
+ * singleton whose restart leaves a gap with nothing listening. A review
+ * submitted during that gap would be dropped silently, which
  * is the one outcome the development tier's "never silent" rule exists to
  * prevent. A webhook becomes worth building when something needs reacting to
  * *outside* a live workflow — the epic→BRD PR, or CI after a story merges.
@@ -46,7 +46,8 @@
  * whether the author is someone the repository already trusts to change code,
  * so the gate is the repository's own permission on the author. A reviewer with
  * read access cannot start a round — otherwise a drive-by reviewer on a public
- * repository could spend an ECS task and put text in front of the specialist.
+ * repository could spend a specialist run and put text in front of the
+ * specialist.
  */
 
 import { heartbeat, log, sleep } from "@temporalio/activity";
@@ -74,7 +75,8 @@ export interface PullRequestState {
  * reads the story and the codebase itself: handing an agent a pre-digested
  * copy of something it could read at the source is how a stale or lossy
  * summary becomes the thing it builds against. It also keeps an unbounded
- * blob of reviewer prose out of the ECS task overrides, which RunTask caps.
+ * blob of reviewer prose out of the specialist's environment, which
+ * container platforms cap.
  */
 export interface ChangeRequest {
   readonly reviewId: number;

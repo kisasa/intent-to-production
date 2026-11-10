@@ -8,10 +8,9 @@
  * Both are required, with no code-level default: an unset `model`/`effort`
  * would otherwise either silently track whatever the CLI's default happens
  * to be on a given build, or mask a missing deployment config behind a value
- * this codebase invented. In production both are baked into the specialist-
- * sandbox task definition's baseline environment by infrastructure/stacks/
- * specialist-sandbox.ts (context keys `claude-model` / `claude-effort`) —
- * tune them there, not here, to change every specialist run in a deployment.
+ * this codebase invented. Whatever launches the specialist supplies them —
+ * the Docker launcher forwards its own CLAUDE_MODEL/CLAUDE_EFFORT through
+ * SPECIALIST_FORWARD_ENV — so a deployment tunes them there, not here.
  */
 
 import type { EffortLevel } from "@anthropic-ai/claude-agent-sdk";
